@@ -1,15 +1,5 @@
 import { formatCurrency, formatRole } from './formatters';
-
-function driveImgUrl(url) {
-  if (!url) return null;
-  if (url.includes('lh3.googleusercontent.com')) return url;
-  const patterns = [/\/file\/d\/([a-zA-Z0-9_-]+)/, /[?&]id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) return `https://lh3.googleusercontent.com/d/${m[1]}=w400-h400`;
-  }
-  return url;
-}
+import { driveImg as driveImgUrl } from './driveImage';
 
 /**
  * Generates a full-page printable HTML roster for each team and opens the
@@ -86,7 +76,7 @@ export function exportTeamRosters(teams, tournamentName = '') {
       const rbg  = ROLE_BG[p.role]    || 'rgba(100,116,139,0.18)';
       const pImg = driveImgUrl(p.imageUrl);
       const imgHtml = pImg
-        ? `<img src="${pImg}" alt="${p.name}" referrerpolicy="no-referrer" />`
+        ? `<img src="${pImg}" alt="${p.name}" />`
         : `<span>${p.name[0]}</span>`;
 
       return `

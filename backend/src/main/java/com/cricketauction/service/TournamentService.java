@@ -16,32 +16,30 @@ import java.util.List;
 @Transactional
 public class TournamentService {
 
-    private final TournamentRepository tournamentRepository;
+    private final TournamentRepository    tournamentRepository;
     private final AuctionSessionRepository auctionSessionRepository;
 
     public TournamentService(TournamentRepository tournamentRepository,
                              AuctionSessionRepository auctionSessionRepository) {
-        this.tournamentRepository = tournamentRepository;
+        this.tournamentRepository    = tournamentRepository;
         this.auctionSessionRepository = auctionSessionRepository;
     }
 
     public TournamentResponse createTournament(TournamentRequest request) {
         if (tournamentRepository.existsByName(request.getName())) {
-            throw new IllegalArgumentException("Tournament with name '" + request.getName() + "' already exists");
+            throw new IllegalArgumentException(
+                    "Tournament with name '" + request.getName() + "' already exists");
         }
         Tournament tournament = Tournament.builder()
                 .name(request.getName())
                 .description(request.getDescription())
                 .build();
-        tournament = tournamentRepository.save(tournament);
-        return mapToResponse(tournament);
+        return mapToResponse(tournamentRepository.save(tournament));
     }
 
     @Transactional(readOnly = true)
     public List<TournamentResponse> getAllTournaments() {
-        return tournamentRepository.findAll().stream()
-                .map(this::mapToResponse)
-                .toList();
+        return tournamentRepository.findAll().stream().map(this::mapToResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -50,17 +48,28 @@ public class TournamentService {
     }
 
     public TournamentResponse updateTournament(Long id, TournamentRequest request) {
-        Tournament tournament = findById(id);
-        tournament.setName(request.getName());
-        tournament.setDescription(request.getDescription());
-        return mapToResponse(tournamentRepository.save(tournament));
+        Tournament t = findById(id);
+        t.setName(request.getName());
+        t.setDescription(request.getDescription());
+        return mapToResponse(tournamentRepository.save(t));
     }
 
     public void deleteTournament(Long id) {
         Tournament tournament = findById(id);
-        // Null out FKs in auction_sessions that point to players/teams so
-        // the subsequent cascade delete on players/teams can proceed.
-        auctionSessionRepository.nullifyForeignKeysForTournament(id);
+
+        /*
+         * auction_sessions has FK columns current_player_id and
+         * highest_bidder_team_id that point to players/teams.
+         * Those FKs prevent JPA's cascade-delete from working.
+         *
+         * Fix: delete all auction sessions that belong to this tournament
+         * explicitly, in one query, BEFORE the cascade on players/teams runs.
+         */
+        List<com.cricketauction.entity.AuctionSession> sessions =
+                auctionSessionRepository.findByTournamentId(id);
+        auctionSessionRepository.deleteAll(sessions);
+        auctionSessionRepository.flush();   // flush so FK rows are gone before cascade
+
         tournamentRepository.delete(tournament);
     }
 
@@ -69,20 +78,18 @@ public class TournamentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", id));
     }
 
-    private TournamentResponse mapToResponse(Tournament tournament) {
-        long sold = tournament.getPlayers().stream()
-                .filter(p -> p.getStatus() == Player.PlayerStatus.SOLD).count();
-        long unsold = tournament.getPlayers().stream()
-                .filter(p -> p.getStatus() == Player.PlayerStatus.UNSOLD).count();
+    private TournamentResponse mapToResponse(Tournament t) {
+        long sold   = t.getPlayers().stream().filter(p -> p.getStatus() == Player.PlayerStatus.SOLD).count();
+        long unsold = t.getPlayers().stream().filter(p -> p.getStatus() == Player.PlayerStatus.UNSOLD).count();
         return TournamentResponse.builder()
-                .id(tournament.getId())
-                .name(tournament.getName())
-                .description(tournament.getDescription())
-                .totalPlayers(tournament.getPlayers().size())
-                .totalTeams(tournament.getTeams().size())
+                .id(t.getId())
+                .name(t.getName())
+                .description(t.getDescription())
+                .totalPlayers(t.getPlayers().size())
+                .totalTeams(t.getTeams().size())
                 .soldPlayers((int) sold)
                 .unsoldPlayers((int) unsold)
-                .createdAt(tournament.getCreatedAt())
+                .createdAt(t.getCreatedAt())
                 .build();
     }
 }
