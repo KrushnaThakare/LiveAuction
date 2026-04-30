@@ -19,15 +19,19 @@ function escHtml(str = '') {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// inline same formula so the printed HTML works without a module import
+const PROXY_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
+  ? import.meta.env.VITE_API_URL.replace(/\/+$/, '')
+  : 'http://localhost:8080/api';
+
 function driveImgUrl(url) {
   if (!url) return null;
+  if (url.includes('/api/proxy/image')) return url.startsWith('http') ? url : `${PROXY_BASE.replace('/api','')}${url}`;
+  if (!url.includes('drive.google.com') && !url.includes('lh3.googleusercontent.com')) return url;
   try {
-    if (!url.includes('drive.google.com')) return url;
     let id = '';
     if (url.includes('/d/')) { id = url.split('/d/')[1].split('/')[0]; }
     else if (url.includes('id=')) { id = url.split('id=')[1]; if (id.includes('&')) id = id.split('&')[0]; }
-    if (id) return `https://drive.google.com/uc?export=view&id=${id}`;
+    if (id) return `${PROXY_BASE}/proxy/image?id=${id}`;
   } catch(_) {}
   return url;
 }

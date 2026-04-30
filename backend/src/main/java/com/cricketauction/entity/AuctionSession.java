@@ -24,7 +24,10 @@ public class AuctionSession {
     @JoinColumn(name = "tournament_id", nullable = false)
     private Tournament tournament;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    // ManyToOne (not OneToOne) so the same player can appear in multiple sessions
+    // (e.g. when re-auctioned after being unsold). OneToOne creates a UNIQUE
+    // constraint on current_player_id which causes a duplicate-key error on re-auction.
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "current_player_id")
     private Player currentPlayer;
 

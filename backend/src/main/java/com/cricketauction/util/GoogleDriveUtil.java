@@ -3,8 +3,10 @@ package com.cricketauction.util;
 import org.springframework.stereotype.Component;
 
 /**
- * Converts any Google Drive share URL to a direct-view URL.
- * Formula that is confirmed working: https://drive.google.com/uc?export=view&id={fileId}
+ * Converts any Google Drive share URL to a backend proxy URL.
+ * The proxy endpoint (GET /api/proxy/image?id={fileId}) fetches the image
+ * server-side and streams it to the browser, bypassing the 403 that
+ * direct drive.google.com/uc?export=view requests get in browser context.
  */
 @Component
 public class GoogleDriveUtil {
@@ -14,24 +16,32 @@ public class GoogleDriveUtil {
 
         try {
             if (url.contains("drive.google.com")) {
-                String fileId = "";
-
-                if (url.contains("/d/")) {
-                    fileId = url.split("/d/")[1].split("/")[0];
-                } else if (url.contains("id=")) {
-                    fileId = url.split("id=")[1];
-                    // strip any trailing query params after the id
-                    if (fileId.contains("&")) fileId = fileId.split("&")[0];
-                }
-
-                if (!fileId.isBlank()) {
-                    return "https://drive.google.com/uc?export=view&id=" + fileId;
+                String fileId = extractFileId(url);
+                if (fileId != null && !fileId.isBlank()) {
+                    // Store proxy URL — backend will fetch from Drive at render time
+                    return "/api/proxy/image?id=" + fileId;
                 }
             }
         } catch (Exception e) {
-            // return original URL on any parse failure
+            // return original on parse failure
         }
 
         return url;
+    }
+
+    public static String extractFileId(String url) {
+        if (url == null) return null;
+        try {
+            if (url.contains("/d/")) {
+                return url.split("/d/")[1].split("/")[0];
+            } else if (url.contains("id=")) {
+                String id = url.split("id=")[1];
+                if (id.contains("&")) id = id.split("&")[0];
+                return id;
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return null;
     }
 }
