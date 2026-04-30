@@ -3,10 +3,9 @@ package com.cricketauction.util;
 import org.springframework.stereotype.Component;
 
 /**
- * Converts any Google Drive share URL to a backend proxy URL.
- * The proxy endpoint (GET /api/proxy/image?id={fileId}) fetches the image
- * server-side and streams it to the browser, bypassing the 403 that
- * direct drive.google.com/uc?export=view requests get in browser context.
+ * Converts any Google Drive share URL to a direct uc?export=view URL.
+ * This URL works in the browser when the user is logged into Google.
+ * (Google blocks server-side downloads without OAuth since late 2024.)
  */
 @Component
 public class GoogleDriveUtil {
@@ -18,9 +17,7 @@ public class GoogleDriveUtil {
             if (url.contains("drive.google.com")) {
                 String fileId = extractFileId(url);
                 if (fileId != null && !fileId.isBlank()) {
-                    // Store usercontent URL for server-side download attempts
-                    // The actual download happens via browser-side fetch (ImageDownloadUtil / frontend)
-                    return "/api/proxy/image?id=" + fileId;
+                    return "https://drive.google.com/uc?export=view&id=" + fileId;
                 }
             }
         } catch (Exception e) {
@@ -40,9 +37,7 @@ public class GoogleDriveUtil {
                 if (id.contains("&")) id = id.split("&")[0];
                 return id;
             }
-        } catch (Exception e) {
-            // ignore
-        }
+        } catch (Exception ignored) {}
         return null;
     }
 }

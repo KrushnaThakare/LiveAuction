@@ -4,7 +4,6 @@ import com.cricketauction.entity.Player;
 import com.cricketauction.entity.Tournament;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,12 +14,10 @@ import java.util.List;
 @Component
 public class ExcelParserUtil {
 
-    private final GoogleDriveUtil    googleDriveUtil;
-    private final ImageDownloadUtil  imageDownloadUtil;
+    private final GoogleDriveUtil googleDriveUtil;
 
-    public ExcelParserUtil(GoogleDriveUtil googleDriveUtil, ImageDownloadUtil imageDownloadUtil) {
-        this.googleDriveUtil   = googleDriveUtil;
-        this.imageDownloadUtil = imageDownloadUtil;
+    public ExcelParserUtil(GoogleDriveUtil googleDriveUtil) {
+        this.googleDriveUtil = googleDriveUtil;
     }
 
     public List<Player> parsePlayersFromExcel(MultipartFile file, Tournament tournament) throws IOException {
@@ -46,17 +43,13 @@ public class ExcelParserUtil {
 
                 if (name == null || name.isBlank()) continue;
 
-                Player.PlayerRole role;
-                try {
-                    role = Player.PlayerRole.valueOf(roleStr.toUpperCase().replace(" ", "_").replace("-", "_"));
-                } catch (Exception e) {
-                    role = Player.PlayerRole.BATSMAN;
-                }
+                Player.PlayerRole role = parseRole(roleStr);
 
                 if (basePrice == null || basePrice <= 0) basePrice = 1000.0;
 
-                // Download image locally so it never relies on Google Drive in the browser
-                String convertedImageUrl = imageDownloadUtil.downloadAndStore(imageUrl);
+                // Convert Drive share URL to direct-view URL stored in DB.
+                // The browser renders it directly (user is logged into Google).
+                String convertedImageUrl = googleDriveUtil.convertToDirectLink(imageUrl);
 
                 Player player = Player.builder()
                         .name(name.trim())
@@ -73,6 +66,22 @@ public class ExcelParserUtil {
         }
 
         return players;
+    }
+
+    /**
+     * Robustly parses any variation of role text from the Excel.
+     * Handles: "All Rounder", "AllRounder", "all rounder", "AR", "WK", "WKT", etc.
+     */
+    private Player.PlayerRole parseRole(String raw) {
+        if (raw == null || raw.isBlank()) return Player.PlayerRole.BATSMAN;
+        String s = raw.trim().toUpperCase()
+                .replace(" ", "").replace("-", "").replace("_", "");
+        return switch (s) {
+            case "ALLROUNDER", "ALLROUNDERS", "AR", "ALL" -> Player.PlayerRole.ALL_ROUNDER;
+            case "BOWLER", "BOWLERS", "BOWL", "B" -> Player.PlayerRole.BOWLER;
+            case "WICKETKEEPER", "WICKET", "WK", "WKT", "KEEPER", "WKKEEPER" -> Player.PlayerRole.WICKET_KEEPER;
+            default -> Player.PlayerRole.BATSMAN;
+        };
     }
 
     private boolean isRowEmpty(Row row) {
