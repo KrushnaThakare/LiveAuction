@@ -1,0 +1,109 @@
+/* ============================================================
+   Theme Definitions — CSS Custom Properties
+   ============================================================ */
+
+:root,
+[data-theme="midnight-blue"] {
+  --color-primary: #3b82f6;
+  --color-primary-dark: #1d4ed8;
+  --color-primary-light: #93c5fd;
+  --color-secondary: #8b5cf6;
+  --color-accent: #f59e0b;
+  --color-accent-dark: #d97706;
+  --color-background: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-2: #263347;
+  --color-border: #334155;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-sold: #10b981;
+  --color-unsold: #ef4444;
+  --color-in-auction: #f59e0b;
+}
+
+[data-theme="emerald-night"] {
+  --color-primary: #10b981;
+  --color-primary-dark: #059669;
+  --color-primary-light: #6ee7b7;
+  --color-secondary: #0ea5e9;
+  --color-accent: #f59e0b;
+  --color-accent-dark: #d97706;
+  --color-background: #0a1628;
+  --color-surface: #0f2027;
+  --color-surface-2: #1a3040;
+  --color-border: #1e4060;
+  --color-text-primary: #ecfdf5;
+  --color-text-secondary: #6ee7b7;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-sold: #10b981;
+  --color-unsold: #ef4444;
+  --color-in-auction: #f59e0b;
+}
+
+[data-theme="royal-gold"] {
+  --color-primary: #f59e0b;
+  --color-primary-dark: #d97706;
+  --color-primary-light: #fcd34d;
+  --color-secondary: #dc2626;
+  --color-accent: #7c3aed;
+  --color-accent-dark: #6d28d9;
+  --color-background: #1a0e00;
+  --color-surface: #2d1a00;
+  --color-surface-2: #3d2600;
+  --color-border: #5c3a00;
+  --color-text-primary: #fffbeb;
+  --color-text-secondary: #fcd34d;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-sold: #10b981;
+  --color-unsold: #ef4444;
+  --color-in-auction: #f59e0b;
+}
+
+[data-theme="crimson-fire"] {
+  --color-primary: #ef4444;
+  --color-primary-dark: #dc2626;
+  --color-primary-light: #fca5a5;
+  --color-secondary: #f97316;
+  --color-accent: #facc15;
+  --color-accent-dark: #eab308;
+  --color-background: #1a0505;
+  --color-surface: #2d0a0a;
+  --color-surface-2: #3d1010;
+  --color-border: #5c1a1a;
+  --color-text-primary: #fef2f2;
+  --color-text-secondary: #fca5a5;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f97316;
+  --color-sold: #10b981;
+  --color-unsold: #7c3aed;
+  --color-in-auction: #f97316;
+}
+
+[data-theme="ocean-breeze"] {
+  --color-primary: #0ea5e9;
+  --color-primary-dark: #0284c7;
+  --color-primary-light: #7dd3fc;
+  --color-secondary: #6366f1;
+  --color-accent: #06b6d4;
+  --color-accent-dark: #0891b2;
+  --color-background: #020617;
+  --color-surface: #0c1a2e;
+  --color-surface-2: #162540;
+  --color-border: #1e3a5f;
+  --color-text-primary: #f0f9ff;
+  --color-text-secondary: #7dd3fc;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-sold: #10b981;
+  --color-unsold: #ef4444;
+  --color-in-auction: #0ea5e9;
+}
