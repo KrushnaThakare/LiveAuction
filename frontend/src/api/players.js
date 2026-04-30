@@ -18,4 +18,6 @@ export const playerApi = {
     api.put(`/tournaments/${tournamentId}/players/${playerId}`, data),
   delete: (tournamentId, playerId) =>
     api.delete(`/tournaments/${tournamentId}/players/${playerId}`),
+  downloadImages: (tournamentId) =>
+    api.post(`/tournaments/${tournamentId}/players/download-images`),
 };

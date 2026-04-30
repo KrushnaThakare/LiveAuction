@@ -8,6 +8,7 @@ import com.cricketauction.exception.ResourceNotFoundException;
 import com.cricketauction.repository.PlayerRepository;
 import com.cricketauction.util.ExcelParserUtil;
 import com.cricketauction.util.GoogleDriveUtil;
+import com.cricketauction.util.ImageDownloadUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,19 +20,20 @@ import java.util.List;
 @Transactional
 public class PlayerService {
 
-    private final PlayerRepository playerRepository;
-    private final GoogleDriveUtil googleDriveUtil;
-    private final TournamentService tournamentService;
-    private final ExcelParserUtil excelParserUtil;
+    private final PlayerRepository   playerRepository;
+    private final TournamentService  tournamentService;
+    private final ExcelParserUtil    excelParserUtil;
+    private final ImageDownloadUtil  imageDownloadUtil;
 
     public PlayerService(PlayerRepository playerRepository,
                          TournamentService tournamentService,
                          ExcelParserUtil excelParserUtil,
-                         GoogleDriveUtil googleDriveUtil) {
-        this.playerRepository = playerRepository;
+                         GoogleDriveUtil googleDriveUtil,
+                         ImageDownloadUtil imageDownloadUtil) {
+        this.playerRepository  = playerRepository;
         this.tournamentService = tournamentService;
-        this.excelParserUtil = excelParserUtil;
-        this.googleDriveUtil = googleDriveUtil;
+        this.excelParserUtil   = excelParserUtil;
+        this.imageDownloadUtil = imageDownloadUtil;
     }
 
     public List<PlayerResponse> uploadPlayers(Long tournamentId, MultipartFile file) throws IOException {
@@ -67,7 +69,7 @@ public class PlayerService {
         player.setRole(request.getRole());
         player.setBasePrice(request.getBasePrice());
         if (request.getImageUrl() != null) {
-            player.setImageUrl(googleDriveUtil.convertToDirectLink(request.getImageUrl()));
+            player.setImageUrl(imageDownloadUtil.downloadAndStore(request.getImageUrl()));
         }
         player = playerRepository.save(player);
         return mapToResponse(player);

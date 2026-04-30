@@ -1,50 +1,48 @@
 /**
- * Converts any Google Drive share URL to our backend proxy URL.
+ * Resolves a player image URL for display in the browser.
  *
- * Why a proxy?
- * - drive.google.com/uc?export=view returns 403 when the browser isn't
- *   logged into Google (auth context not present in the browser's fetch).
- * - The Spring Boot backend fetches the image server-to-server, which works
- *   for publicly-shared files, then streams the bytes to the browser.
- * - The browser only ever makes a request to http://localhost:8080/api/proxy/image
- *   so there's no auth/CORS/403 issue.
+ * Backend stores images as:
+ *   /api/images/{filename}   → locally downloaded file (served by Spring Boot)
+ *   /api/proxy/image?id=...  → legacy proxy URL (also served by Spring Boot)
+ *   https://...              → external URL, pass through
  *
- * For non-Drive URLs the original URL is returned unchanged.
+ * All /api/... paths are made absolute using the configured API base URL.
  */
-
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api')
-  .replace(/\/+$/, '');
+const API_ORIGIN = (() => {
+  const base = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/+$/, '');
+  // Strip the /api suffix to get just the origin
+  return base.endsWith('/api') ? base.slice(0, -4) : base.replace(/\/api$/, '');
+})();
 
 export function driveImg(url) {
   if (!url) return null;
 
-  // Already a proxy URL (stored after upload) — make absolute if relative
-  if (url.startsWith('/api/proxy/image')) {
-    return `${API_BASE.replace('/api', '')}/api/proxy/image` + url.split('/api/proxy/image')[1];
+  // Locally stored image — make absolute
+  if (url.startsWith('/api/')) {
+    return `${API_ORIGIN}${url}`;
   }
 
-  // Already an absolute proxy URL from this server
-  if (url.includes('/api/proxy/image')) return url;
-
-  // Not a Drive URL — return as-is (external image, etc.)
-  if (!url.includes('drive.google.com') && !url.includes('lh3.googleusercontent.com')) {
+  // Already absolute — return as-is (covers http://localhost:8080/api/images/...)
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // If it's a drive URL that wasn't converted, route through proxy
+    if (url.includes('drive.google.com') || url.includes('lh3.googleusercontent.com')) {
+      const id = extractDriveId(url);
+      if (id) return `${API_ORIGIN}/api/proxy/image?id=${id}`;
+    }
     return url;
   }
 
-  // Extract file ID from any Drive URL variant
-  let fileId = null;
-  try {
-    if (url.includes('/d/')) {
-      fileId = url.split('/d/')[1].split('/')[0];
-    } else if (url.includes('id=')) {
-      fileId = url.split('id=')[1];
-      if (fileId.includes('&')) fileId = fileId.split('&')[0];
-    }
-  } catch (_) { /* ignore */ }
-
-  if (fileId && fileId.trim()) {
-    return `${API_BASE}/proxy/image?id=${fileId.trim()}`;
-  }
-
   return url;
+}
+
+function extractDriveId(url) {
+  try {
+    if (url.includes('/d/')) return url.split('/d/')[1].split('/')[0];
+    if (url.includes('id=')) {
+      let id = url.split('id=')[1];
+      if (id.includes('&')) id = id.split('&')[0];
+      return id;
+    }
+  } catch (_) {}
+  return null;
 }

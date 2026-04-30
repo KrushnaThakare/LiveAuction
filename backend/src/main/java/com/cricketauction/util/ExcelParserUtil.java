@@ -4,6 +4,7 @@ import com.cricketauction.entity.Player;
 import com.cricketauction.entity.Tournament;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,10 +15,12 @@ import java.util.List;
 @Component
 public class ExcelParserUtil {
 
-    private final GoogleDriveUtil googleDriveUtil;
+    private final GoogleDriveUtil    googleDriveUtil;
+    private final ImageDownloadUtil  imageDownloadUtil;
 
-    public ExcelParserUtil(GoogleDriveUtil googleDriveUtil) {
-        this.googleDriveUtil = googleDriveUtil;
+    public ExcelParserUtil(GoogleDriveUtil googleDriveUtil, ImageDownloadUtil imageDownloadUtil) {
+        this.googleDriveUtil   = googleDriveUtil;
+        this.imageDownloadUtil = imageDownloadUtil;
     }
 
     public List<Player> parsePlayersFromExcel(MultipartFile file, Tournament tournament) throws IOException {
@@ -52,7 +55,8 @@ public class ExcelParserUtil {
 
                 if (basePrice == null || basePrice <= 0) basePrice = 1000.0;
 
-                String convertedImageUrl = googleDriveUtil.convertToDirectLink(imageUrl);
+                // Download image locally so it never relies on Google Drive in the browser
+                String convertedImageUrl = imageDownloadUtil.downloadAndStore(imageUrl);
 
                 Player player = Player.builder()
                         .name(name.trim())

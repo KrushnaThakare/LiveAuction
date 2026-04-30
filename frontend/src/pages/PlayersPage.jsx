@@ -10,7 +10,7 @@ import Modal from '../components/common/Modal';
 import { exportPlayersList } from '../utils/playersExport';
 import { formatRole } from '../utils/formatters';
 import toast from 'react-hot-toast';
-import { Users, Upload, Search, Download, X } from 'lucide-react';
+import { Users, Upload, Search, Download, X, ImageDown } from 'lucide-react';
 
 const ROLES       = ['ALL', 'BATSMAN', 'BOWLER', 'ALL_ROUNDER', 'WICKET_KEEPER'];
 const STATUS_FILTERS = ['ALL', 'AVAILABLE', 'SOLD', 'UNSOLD', 'IN_AUCTION'];
@@ -19,9 +19,10 @@ export default function PlayersPage() {
   const { activeTournament } = useTournament();
   const navigate = useNavigate();
 
-  const [players, setPlayers]         = useState([]);
-  const [loading, setLoading]         = useState(false);
-  const [uploading, setUploading]     = useState(false);
+  const [players, setPlayers]             = useState([]);
+  const [loading, setLoading]             = useState(false);
+  const [uploading, setUploading]         = useState(false);
+  const [downloadingImgs, setDownloadingImgs] = useState(false);
   const [search, setSearch]           = useState('');
   const [roleFilter, setRoleFilter]   = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -110,6 +111,21 @@ export default function PlayersPage() {
     }
   };
 
+  /* ── download images locally ── */
+  const handleDownloadImages = async () => {
+    if (!activeTournament) return;
+    setDownloadingImgs(true);
+    try {
+      const res = await playerApi.downloadImages(activeTournament.id);
+      toast.success(res.data.message || 'Images downloaded!');
+      fetchPlayers(); // refresh to show new local URLs
+    } catch {
+      // handled by interceptor
+    } finally {
+      setDownloadingImgs(false);
+    }
+  };
+
   /* ── export ── */
   const handleExport = () => {
     if (players.length === 0) { toast.error('No players to export'); return; }
@@ -148,10 +164,22 @@ export default function PlayersPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {players.length > 0 && (
-            <button className="btn-secondary" onClick={handleExport}>
-              <Download size={15} />
-              Export List
-            </button>
+            <>
+              <button
+                className="btn-secondary"
+                onClick={handleDownloadImages}
+                disabled={downloadingImgs}
+                title="Download all Drive images to local server so they display without Google login"
+              >
+                {downloadingImgs
+                  ? <><span className="animate-spin inline-block">⏳</span> Downloading…</>
+                  : <><ImageDown size={15} /> Download Images</>}
+              </button>
+              <button className="btn-secondary" onClick={handleExport}>
+                <Download size={15} />
+                Export List
+              </button>
+            </>
           )}
           <label className="btn-primary cursor-pointer">
             {uploading
