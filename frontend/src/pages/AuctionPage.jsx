@@ -443,8 +443,8 @@ function PlayerImage({ imgUrl, name, roleColor }) {
     <img
       src={imgUrl}
       alt={name}
+      loading="lazy"
       referrerPolicy="no-referrer"
-      crossOrigin="anonymous"
       className="w-full h-full object-cover object-top"
       onError={() => setFailed(true)}
     />
