@@ -5,8 +5,11 @@ export const auctionApi = {
     api.get(`/tournaments/${tournamentId}/auction/state`),
   startAuction: (tournamentId, playerId) =>
     api.post(`/tournaments/${tournamentId}/auction/start/${playerId}`),
-  placeBid: (tournamentId, teamId) =>
-    api.post(`/tournaments/${tournamentId}/auction/bid`, { teamId }),
+  placeBid: (tournamentId, teamId, customBidAmount) =>
+    api.post(`/tournaments/${tournamentId}/auction/bid`, {
+      teamId,
+      ...(customBidAmount != null ? { customBidAmount } : {}),
+    }),
   sellPlayer: (tournamentId) =>
     api.post(`/tournaments/${tournamentId}/auction/sell`),
   markUnsold: (tournamentId) =>
