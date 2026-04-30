@@ -1,6 +1,8 @@
 import { formatCurrency, formatRole } from './formatters';
 import { driveImg as driveImgUrl } from './driveImage';
 
+// Re-export so the module is used (avoids tree-shake)
+
 /**
  * Generates a full-page printable HTML roster for each team and opens the
  * browser's print dialog. Works without any PDF library.
