@@ -13,50 +13,49 @@ import EmptyState from '../components/common/EmptyState';
 import toast from 'react-hot-toast';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
-  ChevronRight, CheckCircle, XCircle, Plus, Minus, Keyboard,
+  ChevronRight, CheckCircle, XCircle, Plus, Minus,
+  Keyboard, Shuffle, StopCircle, RefreshCw,
 } from 'lucide-react';
 
-/* ─────────────────────────────────────────────────────────────
-   Image helper — converts any Google Drive share URL to a
-   direct CDN link that works without auth / redirects.
-   Uses lh3.googleusercontent.com which is the actual host
-   that Drive's thumbnail endpoint 302s to, so we skip the
-   intermediary entirely and avoid the 429 rate-limit.
-───────────────────────────────────────────────────────────── */
-function driveImgUrl(url) {
+/* ── Drive image URL (no crossOrigin, just referrerPolicy) ── */
+function driveImg(url) {
   if (!url) return null;
-
-  // Already a direct lh3 link
   if (url.includes('lh3.googleusercontent.com')) return url;
-
-  // Extract file ID from any drive.google.com URL variant
-  let id = null;
-  const patterns = [
-    /\/file\/d\/([a-zA-Z0-9_-]+)/,          // /file/d/{id}/view
-    /[?&]id=([a-zA-Z0-9_-]+)/,              // ?id= or &id=
-    /\/d\/([a-zA-Z0-9_-]+)/,                // generic /d/{id}
-  ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) { id = m[1]; break; }
-  }
-
-  if (id) {
-    // lh3 direct CDN — no auth, no redirect, no rate limit
-    return `https://lh3.googleusercontent.com/d/${id}=w600-h600`;
-  }
-
-  return url; // non-Drive URL — return as-is
+  const m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
+         || url.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+         || url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return `https://lh3.googleusercontent.com/d/${m[1]}=w600-h600`;
+  return url;
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* ── Image component — no crossOrigin ── */
+function PlayerImage({ imgUrl, name, roleColor }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [imgUrl]);
+  if (!imgUrl || failed) {
+    return (
+      <span className="absolute inset-0 flex items-center justify-center font-black select-none"
+        style={{ fontSize: '5rem', color: roleColor, opacity: 0.5 }}>
+        {name?.[0]?.toUpperCase() ?? '?'}
+      </span>
+    );
+  }
+  return (
+    <img src={imgUrl} alt={name} loading="lazy" referrerPolicy="no-referrer"
+      className="w-full h-full object-cover object-top"
+      onError={() => setFailed(true)} />
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
    MAIN PAGE
-═══════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════ */
 export default function AuctionPage() {
   const { activeTournament } = useTournament();
 
   const [auctionState, setAuctionState]         = useState(null);
   const [availablePlayers, setAvailablePlayers] = useState([]);
+  const [unsoldPlayers, setUnsoldPlayers]       = useState([]);
   const [teams, setTeams]                       = useState([]);
   const [loading, setLoading]                   = useState(true);
   const [actionLoading, setActionLoading]       = useState(false);
@@ -64,23 +63,26 @@ export default function AuctionPage() {
   const [voiceEnabled, setVoiceEnabled]         = useState(true);
   const [bidFlash, setBidFlash]                 = useState(false);
   const [bidKey, setBidKey]                     = useState(0);
-  const [proposedBid, setProposedBid]           = useState(null); // null = use auto-increment
+  /* proposedBid = number the host has typed/arrowed; null means "not set" */
+  const [proposedBid, setProposedBid]           = useState(null);
   const [showKeyHelp, setShowKeyHelp]           = useState(false);
   const [soldOverlay, setSoldOverlay]           = useState(null);
   const containerRef = useRef(null);
 
-  /* ── fetch ── */
+  /* ── fetch all data ── */
   const fetchAll = useCallback(async () => {
     if (!activeTournament) return;
     try {
-      const [s, p, t] = await Promise.all([
+      const [sRes, pRes, uRes, tRes] = await Promise.all([
         auctionApi.getState(activeTournament.id),
         playerApi.getAll(activeTournament.id, 'AVAILABLE'),
+        playerApi.getAll(activeTournament.id, 'UNSOLD'),
         teamApi.getAll(activeTournament.id),
       ]);
-      setAuctionState(s.data.data);
-      setAvailablePlayers(p.data.data || []);
-      setTeams(t.data.data || []);
+      setAuctionState(sRes.data.data);
+      setAvailablePlayers(pRes.data.data || []);
+      setUnsoldPlayers(uRes.data.data || []);
+      setTeams(tRes.data.data || []);
     } finally {
       setLoading(false);
     }
@@ -99,7 +101,7 @@ export default function AuctionPage() {
     return () => clearInterval(id);
   }, [auctionState?.status, activeTournament]);
 
-  /* ── start auction ── */
+  /* ── start specific player ── */
   const handleStartAuction = useCallback(async (player) => {
     if (!activeTournament || actionLoading) return;
     setActionLoading(true);
@@ -116,15 +118,42 @@ export default function AuctionPage() {
     }
   }, [activeTournament, actionLoading, voiceEnabled]);
 
-  /* ── place bid ── */
-  const handleBid = useCallback(async (teamId) => {
+  /* ── start random player ── */
+  const handleStartRandom = useCallback(async () => {
     if (!activeTournament || actionLoading) return;
-    const amount = proposedBid ?? undefined; // undefined → backend uses auto-increment
     setActionLoading(true);
     try {
-      const res = await auctionApi.placeBid(activeTournament.id, teamId, amount);
+      const res = await auctionApi.startRandom(activeTournament.id);
+      const state = res.data.data;
+      setAuctionState(state);
+      setProposedBid(null);
+      setBidKey(k => k + 1);
+      if (state.currentPlayer) {
+        setAvailablePlayers(p => p.filter(pl => pl.id !== state.currentPlayer.id));
+        if (voiceEnabled) announceAuctionStart(state.currentPlayer.name, state.currentPlayer.basePrice);
+        toast.success(`Now auctioning: ${state.currentPlayer.name}`);
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  }, [activeTournament, actionLoading, voiceEnabled]);
+
+  /*
+   * ── assign bid to a team ──────────────────────────────────────────
+   * Rules:
+   *   • If host has set a proposedBid → use that exact amount, then clear it
+   *   • If no proposedBid → use the backend auto-increment (send no customBidAmount)
+   * The team button NEVER raises the bid on its own when a proposedBid is set;
+   * it only records which team is bidding at the host-chosen price.
+   */
+  const handleAssignBid = useCallback(async (teamId) => {
+    if (!activeTournament || actionLoading) return;
+    setActionLoading(true);
+    try {
+      const amount = proposedBid ?? undefined;
+      const res = await auctionApi.assignBid(activeTournament.id, teamId, amount);
       setAuctionState(res.data.data);
-      setProposedBid(null);            // reset after bid is placed
+      setProposedBid(null);   // clear after assignment
       setBidFlash(true);
       setBidKey(k => k + 1);
       setTimeout(() => setBidFlash(false), 800);
@@ -144,16 +173,11 @@ export default function AuctionPage() {
       const res = await auctionApi.sellPlayer(activeTournament.id);
       setAuctionState(res.data.data);
       setProposedBid(null);
-      setSoldOverlay({
-        name:   prev?.currentPlayer?.name,
-        team:   res.data.data.highestBidderTeamName,
-        amount: res.data.data.currentBid,
-      });
+      setSoldOverlay({ name: prev?.currentPlayer?.name, team: res.data.data.highestBidderTeamName, amount: res.data.data.currentBid });
       setTimeout(() => setSoldOverlay(null), 4000);
-      if (voiceEnabled)
-        announcePlayerSold(prev?.currentPlayer?.name, res.data.data.highestBidderTeamName, res.data.data.currentBid);
-      const teamsRes = await teamApi.getAll(activeTournament.id);
-      setTeams(teamsRes.data.data || []);
+      if (voiceEnabled) announcePlayerSold(prev?.currentPlayer?.name, res.data.data.highestBidderTeamName, res.data.data.currentBid);
+      const tRes = await teamApi.getAll(activeTournament.id);
+      setTeams(tRes.data.data || []);
     } finally {
       setActionLoading(false);
     }
@@ -170,61 +194,84 @@ export default function AuctionPage() {
       setProposedBid(null);
       if (voiceEnabled && prev?.currentPlayer?.name) announcePlayerUnsold(prev.currentPlayer.name);
       toast('Marked as UNSOLD', { icon: '❌' });
+      fetchAll();
     } finally {
       setActionLoading(false);
     }
-  }, [activeTournament, actionLoading, auctionState, voiceEnabled]);
+  }, [activeTournament, actionLoading, auctionState, voiceEnabled, fetchAll]);
 
-  /* ── proposed bid step helpers ── */
-  const computeStep = useCallback((base) => base < 10000 ? 1000 : 2000, []);
+  /* ── stop auction ── */
+  const handleStop = useCallback(async () => {
+    if (!activeTournament || actionLoading) return;
+    if (!confirm('Stop the current auction? The player will go back to Available.')) return;
+    setActionLoading(true);
+    try {
+      await auctionApi.stopAuction(activeTournament.id);
+      toast('Auction stopped — player returned to Available', { icon: '⏹' });
+      fetchAll();
+    } finally {
+      setActionLoading(false);
+    }
+  }, [activeTournament, actionLoading, fetchAll]);
 
+  /* ── re-auction unsold ── */
+  const handleReAuction = useCallback(async () => {
+    if (!activeTournament || actionLoading) return;
+    setActionLoading(true);
+    try {
+      const res = await auctionApi.reAuctionUnsold(activeTournament.id);
+      toast.success(res.data.message);
+      fetchAll();
+    } finally {
+      setActionLoading(false);
+    }
+  }, [activeTournament, actionLoading, fetchAll]);
+
+  /* ── bid step helpers ── */
   const stepUp = useCallback(() => {
     setProposedBid(prev => {
       const base = prev ?? auctionState?.currentBid ?? 0;
-      const step = computeStep(base);
+      const step = base < 10000 ? 1000 : 2000;
       return base + step;
     });
     setBidKey(k => k + 1);
-  }, [auctionState?.currentBid, computeStep]);
+  }, [auctionState?.currentBid]);
 
   const stepDown = useCallback(() => {
     setProposedBid(prev => {
       const base = prev ?? auctionState?.currentBid ?? 0;
-      const step = computeStep(base);
+      const step = base < 10000 ? 1000 : 2000;
       const next = base - step;
-      // Can't go below the committed current bid
       const floor = auctionState?.currentBid ?? 0;
       return next <= floor ? null : next;
     });
     setBidKey(k => k + 1);
-  }, [auctionState?.currentBid, computeStep]);
+  }, [auctionState?.currentBid]);
 
-  /* ── keyboard ── */
+  /* ── keyboard shortcuts ── */
   useEffect(() => {
     const onKey = (e) => {
       const isActive = auctionState?.status === 'ACTIVE';
-      const inInput  = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT';
+      const inInput  = ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName);
 
-      // Arrow keys always work, even when input focused
       if (e.key === 'ArrowUp')   { e.preventDefault(); if (isActive) stepUp();   return; }
       if (e.key === 'ArrowDown') { e.preventDefault(); if (isActive) stepDown(); return; }
-
-      // All other shortcuts only when not typing
       if (inInput) return;
 
-      if ((e.key === 's' || e.key === 'S') && isActive && auctionState?.highestBidderTeamId) { handleSell();   return; }
-      if ((e.key === 'u' || e.key === 'U') && isActive)                                       { handleUnsold(); return; }
+      if ((e.key === 's' || e.key === 'S') && isActive && auctionState?.highestBidderTeamId) { handleSell(); return; }
+      if ((e.key === 'u' || e.key === 'U') && isActive) { handleUnsold(); return; }
+      if ((e.key === 'r' || e.key === 'R') && !isActive) { handleStartRandom(); return; }
       if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); return; }
 
       const num = parseInt(e.key, 10);
       if (!isNaN(num) && num >= 1 && num <= 9 && isActive) {
         const team = teams[num - 1];
-        if (team) handleBid(team.id);
+        if (team) handleAssignBid(team.id);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [auctionState, teams, handleSell, handleUnsold, handleBid, stepUp, stepDown]);
+  }, [auctionState, teams, handleSell, handleUnsold, handleStartRandom, handleAssignBid, stepUp, stepDown]);
 
   /* ── fullscreen ── */
   const toggleFullscreen = () => {
@@ -238,54 +285,49 @@ export default function AuctionPage() {
   }, []);
 
   if (!activeTournament) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <EmptyState icon={Gavel} title="No tournament selected" description="Select a tournament to start the auction." />
-      </div>
-    );
+    return <div className="max-w-6xl mx-auto px-4 py-8">
+      <EmptyState icon={Gavel} title="No tournament selected" description="Select a tournament to start the auction." />
+    </div>;
   }
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" text="Loading auction..." /></div>;
+    return <div className="flex items-center justify-center h-64">
+      <LoadingSpinner size="lg" text="Loading auction..." />
+    </div>;
   }
 
-  const isActive    = auctionState?.status === 'ACTIVE';
-  const displayBid  = proposedBid ?? auctionState?.nextBidAmount ?? 0;
-  const isProposed  = proposedBid !== null;
+  const isActive   = auctionState?.status === 'ACTIVE';
+  const displayBid = proposedBid ?? auctionState?.nextBidAmount ?? 0;
+  const allDone    = availablePlayers.length === 0 && !isActive && unsoldPlayers.length > 0;
 
   return (
     <div ref={containerRef} className="flex flex-col"
       style={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'var(--color-background)' }}>
 
-      {/* ── Top Bar ── */}
+      {/* ── Top bar ── */}
       <div className="flex-shrink-0 px-4 py-2.5 flex items-center justify-between"
         style={{ backgroundColor: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
         <div className="flex items-center gap-3">
           <Gavel size={18} style={{ color: 'var(--color-primary)' }} />
           <span className="font-bold" style={{ color: 'var(--color-text-primary)' }}>Live Auction</span>
-          <span className="text-sm hidden sm:inline" style={{ color: 'var(--color-text-secondary)' }}>
-            — {activeTournament.name}
-          </span>
+          <span className="hidden sm:inline text-sm" style={{ color: 'var(--color-text-secondary)' }}>— {activeTournament.name}</span>
           {isActive && <span className="badge-in-auction">● LIVE</span>}
         </div>
         <div className="flex items-center gap-2">
-          <button className="btn-secondary !p-2" onClick={() => setShowKeyHelp(v => !v)} title="Shortcuts">
-            <Keyboard size={15} />
-          </button>
-          <button className="btn-secondary !p-2"
-            onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}>
+          <button className="btn-secondary !p-2" onClick={() => setShowKeyHelp(v => !v)} title="Shortcuts"><Keyboard size={15} /></button>
+          <button className="btn-secondary !p-2" onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}>
             {voiceEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
-          <button className="btn-secondary !p-2" onClick={toggleFullscreen} title="F = Fullscreen">
+          <button className="btn-secondary !p-2" onClick={toggleFullscreen} title="F=Fullscreen">
             {fullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
           </button>
         </div>
       </div>
 
-      {/* ── Keyboard help strip ── */}
+      {/* ── Key help ── */}
       {showKeyHelp && (
         <div className="flex-shrink-0 px-4 py-2 flex flex-wrap gap-4 text-xs items-center"
           style={{ backgroundColor: 'var(--color-surface-2)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-          {[['↑ ↓','Set bid amount'],['1–9','Bid for team'],['S','Sell'],['U','Unsold'],['F','Fullscreen']].map(([k,v]) => (
+          {[['↑↓','Set bid'],['1–9','Assign to team'],['S','Sell'],['U','Unsold'],['R','Random player'],['F','Fullscreen']].map(([k,v]) => (
             <span key={k}>
               <kbd className="px-1.5 py-0.5 rounded font-mono font-bold mr-1"
                 style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>{k}</kbd>
@@ -302,7 +344,6 @@ export default function AuctionPage() {
         <div className="flex-1 flex flex-col overflow-auto">
           {isActive && auctionState?.currentPlayer ? (
             <>
-              {/* Player stage */}
               <StageCard
                 player={auctionState.currentPlayer}
                 committedBid={auctionState.currentBid}
@@ -312,24 +353,27 @@ export default function AuctionPage() {
                 bidKey={bidKey}
               />
 
-              {/* SOLD / UNSOLD */}
-              <div className="flex gap-3 px-4 pb-3">
+              {/* SOLD / UNSOLD / STOP */}
+              <div className="flex gap-2 px-4 pb-2">
                 <button onClick={handleSell}
                   disabled={actionLoading || !auctionState?.highestBidderTeamId}
-                  className="flex-1 btn-success py-3 text-sm font-bold tracking-wide">
-                  <CheckCircle size={18} />
-                  SOLD <span className="opacity-50 text-xs font-normal ml-1">[S]</span>
+                  className="flex-1 btn-success py-3 text-sm font-bold">
+                  <CheckCircle size={17} /> SOLD <span className="opacity-50 text-xs">[S]</span>
                 </button>
                 <button onClick={handleUnsold}
                   disabled={actionLoading}
-                  className="flex-1 btn-danger py-3 text-sm font-bold tracking-wide">
-                  <XCircle size={18} />
-                  UNSOLD <span className="opacity-50 text-xs font-normal ml-1">[U]</span>
+                  className="flex-1 btn-danger py-3 text-sm font-bold">
+                  <XCircle size={17} /> UNSOLD <span className="opacity-50 text-xs">[U]</span>
+                </button>
+                <button onClick={handleStop}
+                  disabled={actionLoading}
+                  className="btn-secondary !px-4 py-3 text-sm" title="Stop & return player to Available">
+                  <StopCircle size={17} />
                 </button>
               </div>
 
-              {/* Bid amount control strip */}
-              <BidAmountStrip
+              {/* Bid amount strip */}
+              <BidStrip
                 proposedBid={proposedBid}
                 setProposedBid={setProposedBid}
                 setBidKey={setBidKey}
@@ -340,13 +384,13 @@ export default function AuctionPage() {
                 disabled={actionLoading}
               />
 
-              {/* Teams grid */}
-              <TeamBidGrid
+              {/* Team assign grid */}
+              <TeamAssignGrid
                 teams={teams}
                 auctionState={auctionState}
                 displayBid={displayBid}
-                isProposed={isProposed}
-                onBid={handleBid}
+                proposedBid={proposedBid}
+                onAssign={handleAssignBid}
                 disabled={actionLoading}
               />
             </>
@@ -354,8 +398,12 @@ export default function AuctionPage() {
             <IdleStage
               auctionState={auctionState}
               availablePlayers={availablePlayers}
+              unsoldPlayers={unsoldPlayers}
+              allDone={allDone}
               actionLoading={actionLoading}
               onStart={handleStartAuction}
+              onRandom={handleStartRandom}
+              onReAuction={handleReAuction}
             />
           )}
         </div>
@@ -364,7 +412,6 @@ export default function AuctionPage() {
         <TeamsSidebar teams={teams} auctionState={auctionState} />
       </div>
 
-      {/* SOLD overlay */}
       {soldOverlay && <SoldOverlay {...soldOverlay} />}
     </div>
   );
@@ -372,40 +419,33 @@ export default function AuctionPage() {
 
 /* ═══════════════════════════════════════════════════════════
    STAGE CARD
-   Shows: photo | name | role | bid counter
 ═══════════════════════════════════════════════════════════ */
 function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, bidFlash, bidKey }) {
   const roleColor = getRoleColor(player.role);
   const roleBg    = getRoleBg(player.role);
-  const imgUrl    = driveImgUrl(player.imageUrl);
+  const imgUrl    = driveImg(player.imageUrl);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 pt-4 pb-2 gap-3">
-
-      {/* ── Photo ── */}
-      <div
-        className="stage-scanlines relative rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center"
+      {/* Photo */}
+      <div className="stage-scanlines relative rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center"
         style={{
-          width: 'min(260px, 34vw)', height: 'min(300px, 38vw)',
-          minWidth: 160, minHeight: 190,
+          width: 'min(260px,34vw)', height: 'min(300px,38vw)', minWidth: 160, minHeight: 190,
           background: `radial-gradient(circle at 50% 55%, ${roleBg} 0%, var(--color-surface-2) 80%)`,
           border: `3px solid ${roleColor}`,
           boxShadow: `0 0 40px ${roleColor}44, 0 0 80px ${roleColor}18`,
-        }}
-      >
+        }}>
         <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={roleColor} />
-
-        {/* Role badge */}
         <div className="absolute top-3 right-3 text-xs px-2.5 py-1 rounded-full font-bold backdrop-blur-sm"
           style={{ backgroundColor: roleBg, color: roleColor, border: `1px solid ${roleColor}` }}>
           {formatRole(player.role)}
         </div>
       </div>
 
-      {/* ── Name ── */}
+      {/* Name */}
       <div className="text-center">
         <h1 className="font-black leading-tight text-shimmer"
-          style={{ fontSize: 'clamp(1.6rem, 4vw, 3rem)', letterSpacing: '-0.02em' }}>
+          style={{ fontSize: 'clamp(1.6rem,4vw,3rem)', letterSpacing: '-0.02em' }}>
           {player.name}
         </h1>
         <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
@@ -413,7 +453,7 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
         </p>
       </div>
 
-      {/* ── Bid counter ── */}
+      {/* Bid counter */}
       <BidCounter
         committedBid={committedBid}
         proposedBid={proposedBid}
@@ -425,35 +465,8 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
   );
 }
 
-/* ── PlayerImage with proper fallback chain ── */
-function PlayerImage({ imgUrl, name, roleColor }) {
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => { setFailed(false); }, [imgUrl]);
-
-  if (!imgUrl || failed) {
-    return (
-      <span className="text-7xl font-black select-none" style={{ color: roleColor, opacity: 0.55 }}>
-        {name?.[0] ?? '?'}
-      </span>
-    );
-  }
-
-  return (
-    <img
-      src={imgUrl}
-      alt={name}
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      className="w-full h-full object-cover object-top"
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
 /* ═══════════════════════════════════════════════════════════
-   BID COUNTER
-   Shows proposed bid (orange) OR committed bid (primary)
+   BID COUNTER — shows proposed (orange) vs committed (blue)
 ═══════════════════════════════════════════════════════════ */
 function BidCounter({ committedBid, proposedBid, highestBidderTeamName, bidFlash, bidKey }) {
   const isProposed  = proposedBid !== null;
@@ -461,34 +474,26 @@ function BidCounter({ committedBid, proposedBid, highestBidderTeamName, bidFlash
   const accentColor = isProposed ? 'var(--color-accent)' : 'var(--color-primary)';
 
   return (
-    <div
-      className="w-full max-w-md mx-auto rounded-3xl px-6 py-4 text-center relative overflow-hidden transition-all duration-300"
+    <div className="w-full max-w-md mx-auto rounded-3xl px-6 py-4 text-center transition-all duration-300"
       style={{
         backgroundColor: bidFlash ? 'rgba(245,158,11,0.1)' : 'var(--color-surface)',
         border: `2px solid ${isProposed ? 'var(--color-accent)' : bidFlash ? 'var(--color-accent)' : 'var(--color-primary)'}`,
-        boxShadow: isProposed
-          ? '0 0 24px rgba(245,158,11,0.3), 0 0 48px rgba(245,158,11,0.1)'
-          : '0 0 20px rgba(59,130,246,0.2)',
-      }}
-    >
-      {/* Label */}
+        boxShadow: isProposed ? '0 0 24px rgba(245,158,11,0.3)' : '0 0 20px rgba(59,130,246,0.2)',
+      }}>
       <p className="text-xs uppercase tracking-widest font-semibold mb-1"
         style={{ color: isProposed ? 'var(--color-accent)' : 'var(--color-text-secondary)' }}>
-        {isProposed ? '⬆ Proposed Bid' : 'Current Bid'}
+        {isProposed ? '⬆ Calling Bid' : 'Current Bid'}
       </p>
 
-      {/* Amount — re-mounts for animation */}
-      <div key={bidKey}
-        className="font-black animate-bid-count"
-        style={{ fontSize: 'clamp(2.4rem, 6vw, 4rem)', color: accentColor, lineHeight: 1,
+      <div key={bidKey} className="font-black animate-bid-count"
+        style={{ fontSize: 'clamp(2.4rem,6vw,4rem)', color: accentColor, lineHeight: 1,
           textShadow: `0 0 20px ${accentColor}66` }}>
         {formatCurrency(displayBid)}
       </div>
 
-      {/* Bidder / hint */}
       {isProposed ? (
         <p className="mt-2 text-sm font-semibold" style={{ color: 'var(--color-accent)' }}>
-          ↑ ↓ to adjust · click team to confirm bid
+          Click a team to confirm at this price
         </p>
       ) : highestBidderTeamName ? (
         <p className="mt-2 font-bold text-base" style={{ color: 'var(--color-accent)' }}>
@@ -496,18 +501,14 @@ function BidCounter({ committedBid, proposedBid, highestBidderTeamName, bidFlash
         </p>
       ) : (
         <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          No bids yet — be first!
+          No bids yet
         </p>
       )}
 
-      {/* Separator + committed info when proposed is shown */}
-      {isProposed && (
-        <div className="mt-2 pt-2 flex justify-center gap-4 text-xs"
-          style={{ borderTop: '1px solid var(--color-border)' }}>
-          <span style={{ color: 'var(--color-text-secondary)' }}>
-            Current: <strong style={{ color: 'var(--color-primary)' }}>{formatCurrency(committedBid)}</strong>
-            {highestBidderTeamName && <span style={{ color: 'var(--color-accent)' }}> ({highestBidderTeamName})</span>}
-          </span>
+      {isProposed && committedBid > 0 && (
+        <div className="mt-2 pt-2 text-xs" style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+          Last confirmed: <strong style={{ color: 'var(--color-primary)' }}>{formatCurrency(committedBid)}</strong>
+          {highestBidderTeamName && <span style={{ color: 'var(--color-accent)' }}> ({highestBidderTeamName})</span>}
         </div>
       )}
     </div>
@@ -515,21 +516,16 @@ function BidCounter({ committedBid, proposedBid, highestBidderTeamName, bidFlash
 }
 
 /* ═══════════════════════════════════════════════════════════
-   BID AMOUNT STRIP
-   +/− buttons + editable input to set the proposed bid
+   BID AMOUNT STRIP — arrows + input
 ═══════════════════════════════════════════════════════════ */
-function BidAmountStrip({ proposedBid, setProposedBid, setBidKey, committedBid, nextBid, onStepUp, onStepDown, disabled }) {
-  const displayed = proposedBid ?? nextBid ?? 0;
-
+function BidStrip({ proposedBid, setProposedBid, setBidKey, committedBid, nextBid, onStepUp, onStepDown, disabled }) {
   const handleInputChange = (e) => {
-    const val = e.target.value;
-    if (val === '' || val === '0') { setProposedBid(null); return; }
-    const n = parseFloat(val);
+    const v = e.target.value;
+    if (v === '') { setProposedBid(null); return; }
+    const n = parseFloat(v);
     if (!isNaN(n)) { setProposedBid(n); setBidKey(k => k + 1); }
   };
-
   const handleInputKey = (e) => {
-    // Arrow keys work even when focused here
     if (e.key === 'ArrowUp')   { e.preventDefault(); onStepUp();   }
     if (e.key === 'ArrowDown') { e.preventDefault(); onStepDown(); }
   };
@@ -538,60 +534,53 @@ function BidAmountStrip({ proposedBid, setProposedBid, setBidKey, committedBid, 
     <div className="px-4 pb-2">
       <div className="rounded-2xl p-3 flex items-center gap-2"
         style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-
         <span className="text-xs font-bold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>
-          Bid Amount
+          Calling Amount
         </span>
-
-        <button onClick={onStepDown} disabled={disabled || !proposedBid}
-          className="btn-secondary !p-2 flex-shrink-0" title="↓ Arrow">
+        <button onClick={onStepDown} disabled={disabled || !proposedBid} className="btn-secondary !p-2 flex-shrink-0">
           <Minus size={14} />
         </button>
-
-        <input
-          type="number"
-          className="input text-center font-bold !py-1.5 flex-1"
-          placeholder={`${nextBid} (auto)`}
+        <input type="number" className="input text-center font-bold !py-1.5 flex-1"
+          placeholder={`${nextBid} (auto-step)`}
           value={proposedBid ?? ''}
           min={committedBid + 1}
           step={committedBid < 10000 ? 1000 : 2000}
           onChange={handleInputChange}
           onKeyDown={handleInputKey}
-          disabled={disabled}
-        />
-
-        <button onClick={onStepUp} disabled={disabled}
-          className="btn-secondary !p-2 flex-shrink-0" title="↑ Arrow">
+          disabled={disabled} />
+        <button onClick={onStepUp} disabled={disabled} className="btn-secondary !p-2 flex-shrink-0">
           <Plus size={14} />
         </button>
-
         {proposedBid !== null && (
           <button onClick={() => { setProposedBid(null); setBidKey(k => k + 1); }}
             className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
             style={{ color: 'var(--color-text-secondary)', backgroundColor: 'var(--color-surface-2)' }}>
-            Reset
+            Auto
           </button>
         )}
       </div>
       <p className="text-xs mt-1 px-1" style={{ color: 'var(--color-text-secondary)' }}>
-        ↑ ↓ arrows set amount · click a team button to record their bid · then SOLD to finalise
+        ↑↓ to call an amount → click a team to confirm → SOLD to finalise
       </p>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════
-   TEAM BID GRID
+   TEAM ASSIGN GRID
+   Clicking a team ONLY records "this team bids at displayBid".
+   It never auto-increments on its own.
 ═══════════════════════════════════════════════════════════ */
-function TeamBidGrid({ teams, auctionState, displayBid, isProposed, onBid, disabled }) {
+function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign, disabled }) {
   return (
     <div className="px-4 pb-4">
-      <p className="text-xs font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-        <span>{isProposed ? 'Bid at' : 'Next bid'}</span>
-        <span style={{ color: isProposed ? 'var(--color-accent)' : 'var(--color-primary)', fontWeight: 700 }}>
+      <p className="text-xs font-semibold mb-2 flex items-center gap-2"
+        style={{ color: 'var(--color-text-secondary)' }}>
+        <span>{proposedBid !== null ? '→ Confirm bid at' : 'Auto-step bid at'}</span>
+        <span style={{ color: proposedBid !== null ? 'var(--color-accent)' : 'var(--color-primary)', fontWeight: 700 }}>
           {formatCurrency(displayBid)}
         </span>
-        <span className="ml-auto opacity-60">Press 1–9 for quick bid</span>
+        <span className="ml-auto opacity-60">Keys 1–9</span>
       </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
@@ -601,11 +590,8 @@ function TeamBidGrid({ teams, auctionState, displayBid, isProposed, onBid, disab
           const pct       = team.budget ? ((team.budget - team.remainingBudget) / team.budget) * 100 : 0;
 
           return (
-            <button
-              key={team.id}
-              onClick={() => onBid(team.id)}
+            <button key={team.id} onClick={() => onAssign(team.id)}
               disabled={disabled || !canBid}
-              title={`${team.name} — Press ${idx + 1}`}
               className="relative flex flex-col gap-1 px-3 py-3 rounded-2xl font-medium transition-all duration-200 text-left active:scale-95"
               style={{
                 backgroundColor: isHighest ? 'var(--color-primary)' : 'var(--color-surface)',
@@ -614,9 +600,7 @@ function TeamBidGrid({ teams, auctionState, displayBid, isProposed, onBid, disab
                 opacity: !canBid ? 0.3 : 1,
                 boxShadow: isHighest ? '0 0 20px var(--color-primary)' : 'none',
                 animation: isHighest ? 'teamHighlight 1.2s ease-in-out infinite' : 'none',
-              }}
-            >
-              {/* Keyboard number */}
+              }}>
               {idx < 9 && (
                 <span className="absolute top-2 right-2 text-xs w-5 h-5 rounded flex items-center justify-center font-mono font-bold"
                   style={{ backgroundColor: isHighest ? 'rgba(255,255,255,0.2)' : 'var(--color-surface-2)',
@@ -624,12 +608,7 @@ function TeamBidGrid({ teams, auctionState, displayBid, isProposed, onBid, disab
                   {idx + 1}
                 </span>
               )}
-
-              {isHighest && (
-                <span className="text-xs font-bold" style={{ color: 'rgba(255,255,255,0.9)' }}>● Highest</span>
-              )}
-
-              {/* Team logo + name */}
+              {isHighest && <span className="text-xs font-bold opacity-90">● Highest Bid</span>}
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center font-bold text-sm flex-shrink-0"
                   style={{ backgroundColor: isHighest ? 'rgba(255,255,255,0.2)' : 'var(--color-surface-2)',
@@ -640,18 +619,14 @@ function TeamBidGrid({ teams, auctionState, displayBid, isProposed, onBid, disab
                 </div>
                 <span className="font-bold text-sm truncate">{team.name}</span>
               </div>
-
-              <div className="text-xs"
-                style={{ color: isHighest ? 'rgba(255,255,255,0.75)' : 'var(--color-text-secondary)' }}>
+              <div className="text-xs" style={{ color: isHighest ? 'rgba(255,255,255,0.75)' : 'var(--color-text-secondary)' }}>
                 {formatCurrency(team.remainingBudget)} left
               </div>
-
-              {/* Mini budget bar */}
               <div className="h-1 rounded-full overflow-hidden"
                 style={{ backgroundColor: isHighest ? 'rgba(255,255,255,0.2)' : 'var(--color-surface-2)' }}>
                 <div className="h-full rounded-full"
                   style={{ width: `${pct}%`,
-                           backgroundColor: isHighest ? 'rgba(255,255,255,0.7)' : pct > 80 ? 'var(--color-danger)' : 'var(--color-primary)' }} />
+                    backgroundColor: isHighest ? 'rgba(255,255,255,0.7)' : pct > 80 ? 'var(--color-danger)' : 'var(--color-primary)' }} />
               </div>
             </button>
           );
@@ -662,57 +637,71 @@ function TeamBidGrid({ teams, auctionState, displayBid, isProposed, onBid, disab
 }
 
 /* ═══════════════════════════════════════════════════════════
-   IDLE STAGE
+   IDLE STAGE — between players
 ═══════════════════════════════════════════════════════════ */
-function IdleStage({ auctionState, availablePlayers, actionLoading, onStart }) {
+function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
+                     actionLoading, onStart, onRandom, onReAuction }) {
   return (
     <div className="flex-1 flex flex-col p-4 gap-4">
-      <div className="rounded-3xl p-8 text-center flex flex-col items-center gap-3"
+      {/* Status banner */}
+      <div className="rounded-3xl p-6 text-center flex flex-col items-center gap-3"
         style={{ background: 'linear-gradient(135deg, var(--color-surface), var(--color-surface-2))', border: '1px solid var(--color-border)' }}>
-        <Gavel size={52} style={{ color: 'var(--color-primary)', opacity: 0.4 }} />
+        <Gavel size={48} style={{ color: 'var(--color-primary)', opacity: 0.4 }} />
         <h2 className="text-2xl font-black" style={{ color: 'var(--color-text-primary)' }}>
-          {auctionState?.status === 'SOLD'   ? '✅ SOLD! Pick next player' :
-           auctionState?.status === 'UNSOLD' ? '❌ UNSOLD. Pick next player' :
-           'Select a player to begin'}
+          {auctionState?.status === 'SOLD'   ? '✅ SOLD! Select next player' :
+           auctionState?.status === 'UNSOLD' ? '❌ UNSOLD. Select next player' :
+           'Ready to start — pick a player'}
         </h2>
         <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          {availablePlayers.length} player{availablePlayers.length !== 1 ? 's' : ''} available
+          {availablePlayers.length} available · {unsoldPlayers.length} unsold
         </p>
+
+        {/* Action buttons */}
+        <div className="flex gap-3 flex-wrap justify-center mt-1">
+          {availablePlayers.length > 0 && (
+            <button onClick={onRandom} disabled={actionLoading} className="btn-primary">
+              <Shuffle size={16} /> Random Player <span className="opacity-60 text-xs">[R]</span>
+            </button>
+          )}
+          {allDone && (
+            <button onClick={onReAuction} disabled={actionLoading} className="btn-secondary">
+              <RefreshCw size={16} /> Re-auction {unsoldPlayers.length} Unsold
+            </button>
+          )}
+        </div>
       </div>
 
-      <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
-        Available Players ({availablePlayers.length})
-      </p>
-
-      {availablePlayers.length === 0 ? (
-        <p className="text-center py-8 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          All players have been auctioned.
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-          {availablePlayers.map((player) => {
-            const imgUrl = driveImgUrl(player.imageUrl);
-            return (
-              <button key={player.id} onClick={() => onStart(player)} disabled={actionLoading}
-                className="flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200"
-                style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-                onMouseEnter={e => e.currentTarget.style.borderColor='var(--color-primary)'}
-                onMouseLeave={e => e.currentTarget.style.borderColor='var(--color-border)'}>
-                <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center font-bold text-xl"
-                  style={{ backgroundColor: getRoleBg(player.role), color: getRoleColor(player.role) }}>
-                  <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={getRoleColor(player.role)} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>{player.name}</p>
-                  <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    {formatRole(player.role)} · {formatCurrency(player.basePrice)}
-                  </p>
-                </div>
-                <ChevronRight size={15} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
-              </button>
-            );
-          })}
-        </div>
+      {/* Available players list */}
+      {availablePlayers.length > 0 && (
+        <>
+          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
+            Available Players ({availablePlayers.length})
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+            {availablePlayers.map(player => {
+              const imgUrl = driveImg(player.imageUrl);
+              return (
+                <button key={player.id} onClick={() => onStart(player)} disabled={actionLoading}
+                  className="flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200"
+                  style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor='var(--color-primary)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor='var(--color-border)'}>
+                  <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 relative flex items-center justify-center"
+                    style={{ backgroundColor: getRoleBg(player.role) }}>
+                    <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={getRoleColor(player.role)} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>{player.name}</p>
+                    <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                      {formatRole(player.role)} · {formatCurrency(player.basePrice)}
+                    </p>
+                  </div>
+                  <ChevronRight size={15} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
@@ -728,7 +717,7 @@ function TeamsSidebar({ teams, auctionState }) {
       <p className="text-xs font-bold uppercase tracking-widest px-1 mb-3" style={{ color: 'var(--color-text-secondary)' }}>
         Teams
       </p>
-      {teams.map((team) => {
+      {teams.map(team => {
         const isHighest = team.id === auctionState?.highestBidderTeamId;
         const pct = team.budget ? ((team.budget - team.remainingBudget) / team.budget) * 100 : 0;
         return (
@@ -742,9 +731,7 @@ function TeamsSidebar({ teams, auctionState }) {
               <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center font-bold text-sm flex-shrink-0"
                 style={{ backgroundColor: isHighest ? 'var(--color-primary)' : 'var(--color-surface)',
                          color: isHighest ? 'white' : 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
-                {team.logoUrl
-                  ? <img src={team.logoUrl} alt="" className="w-full h-full object-cover" onError={e => e.target.style.display='none'} />
-                  : team.name[0]}
+                {team.logoUrl ? <img src={team.logoUrl} alt="" className="w-full h-full object-cover" onError={e=>e.target.style.display='none'}/> : team.name[0]}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>{team.name}</p>
@@ -756,7 +743,7 @@ function TeamsSidebar({ teams, auctionState }) {
               <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>{formatCurrency(team.remainingBudget)}</span>
             </div>
             <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-border)' }}>
-              <div className="h-full rounded-full transition-all duration-500"
+              <div className="h-full rounded-full transition-all"
                 style={{ width: `${pct}%`, backgroundColor: pct > 80 ? 'var(--color-danger)' : 'var(--color-primary)' }} />
             </div>
             <div className="flex justify-between text-xs mt-1">
@@ -780,9 +767,7 @@ function SoldOverlay({ name, team, amount }) {
       <div className="animate-sold text-center">
         <div className="text-8xl mb-4">🏏</div>
         <h1 className="font-black uppercase tracking-widest text-shimmer mb-2"
-          style={{ fontSize: 'clamp(2.5rem, 8vw, 6rem)' }}>
-          SOLD!
-        </h1>
+          style={{ fontSize: 'clamp(2.5rem,8vw,6rem)' }}>SOLD!</h1>
         <p className="text-4xl font-black mb-2" style={{ color: 'white' }}>{name}</p>
         <p className="text-2xl font-bold mb-1" style={{ color: 'var(--color-accent)' }}>{team}</p>
         <p className="text-3xl font-black" style={{ color: 'var(--color-success)' }}>{formatCurrency(amount)}</p>
