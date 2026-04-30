@@ -22,8 +22,10 @@ public class GoogleDriveUtil {
 
         String fileId = extractFileId(url);
         if (fileId != null) {
-            // thumbnail API works reliably for publicly shared files across browsers
-            return "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w400-h400";
+            // lh3.googleusercontent.com is the CDN that Drive's thumbnail redirects to.
+            // Using it directly avoids the 302 redirect, the 429 rate-limit on the
+            // thumbnail endpoint, and any CORS / referrer issues in the browser.
+            return "https://lh3.googleusercontent.com/d/" + fileId + "=w600-h600";
         }
 
         return url;

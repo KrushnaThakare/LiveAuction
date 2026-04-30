@@ -1,4 +1,23 @@
+import { useState, useEffect } from 'react';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../../utils/formatters';
+
+function PlayerImg({ imgUrl, name, roleColor }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [imgUrl]);
+  if (!imgUrl || failed) {
+    return (
+      <span className="absolute inset-0 flex items-center justify-center text-5xl font-black select-none"
+        style={{ color: roleColor, opacity: 0.55 }}>
+        {name?.[0] ?? '?'}
+      </span>
+    );
+  }
+  return (
+    <img src={imgUrl} alt={name} referrerPolicy="no-referrer" crossOrigin="anonymous"
+      className="w-full h-full object-cover object-top"
+      onError={() => setFailed(true)} />
+  );
+}
 
 const STATUS_LABELS = {
   AVAILABLE: 'Available',
@@ -13,17 +32,21 @@ const STATUS_CLASS = {
   UNSOLD:     'badge-unsold',
 };
 
-function gdriveFallback(url) {
+function driveImgUrl(url) {
   if (!url) return null;
-  const m = url.match(/[?&]id=([^&]+)/) || url.match(/\/d\/([^/]+)/);
-  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400-h400`;
+  if (url.includes('lh3.googleusercontent.com')) return url;
+  const patterns = [/\/file\/d\/([a-zA-Z0-9_-]+)/, /[?&]id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return `https://lh3.googleusercontent.com/d/${m[1]}=w400-h400`;
+  }
   return url;
 }
 
 export default function PlayerCard({ player, onStartAuction }) {
   const roleColor = getRoleColor(player.role);
   const roleBg    = getRoleBg(player.role);
-  const imgUrl    = gdriveFallback(player.imageUrl);
+  const imgUrl    = driveImgUrl(player.imageUrl);
 
   return (
     <div className="card-hover group relative overflow-hidden">
@@ -35,23 +58,7 @@ export default function PlayerCard({ player, onStartAuction }) {
         className="w-full aspect-square rounded-xl overflow-hidden mb-3 flex items-center justify-center font-black text-5xl relative"
         style={{ backgroundColor: roleBg, color: roleColor }}
       >
-        {imgUrl ? (
-          <img
-            src={imgUrl}
-            alt={player.name}
-            className="w-full h-full object-cover object-top"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
-            }}
-          />
-        ) : null}
-        <div
-          className="absolute inset-0 items-center justify-center"
-          style={{ display: imgUrl ? 'none' : 'flex' }}
-        >
-          {player.name[0]}
-        </div>
+        <PlayerImg imgUrl={imgUrl} name={player.name} roleColor={roleColor} />
 
         {/* Status badge over image */}
         <div className="absolute top-2 right-2">
