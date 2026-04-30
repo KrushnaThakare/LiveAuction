@@ -47,7 +47,14 @@ public class ImageDownloadUtil {
     public String downloadAndStore(String url) {
         if (url == null || url.isBlank()) return url;
         // Already a local URL — skip
-        if (url.startsWith("/api/images/") || url.startsWith("http://localhost")) return url;
+        if (url.startsWith("/api/images/")) return url;
+        // Legacy proxy URL: extract the Drive ID and reconstruct the direct URL
+        if (url.contains("/api/proxy/image")) {
+            String id = null;
+            if (url.contains("id=")) { id = url.split("id=")[1]; if (id.contains("&")) id = id.split("&")[0]; }
+            if (id == null || id.isBlank()) return url;
+            url = "https://drive.usercontent.google.com/download?id=" + id + "&export=download&confirm=t";
+        }
 
         // Extract Drive file ID if needed, build uc?export=view URL
         String downloadUrl = toDriveDirectUrl(url);
@@ -133,12 +140,15 @@ public class ImageDownloadUtil {
     }
 
     private String toDriveDirectUrl(String url) {
-        if (!url.contains("drive.google.com")) return url;
+        if (!url.contains("drive.google.com") && !url.contains("drive.usercontent.google.com")) return url;
         try {
             String id = null;
             if (url.contains("/d/")) id = url.split("/d/")[1].split("/")[0];
             else if (url.contains("id=")) { id = url.split("id=")[1]; if (id.contains("&")) id = id.split("&")[0]; }
-            if (id != null && !id.isBlank()) return "https://drive.google.com/uc?export=view&id=" + id;
+            if (id != null && !id.isBlank()) {
+                // drive.usercontent.google.com is Google's new direct download host
+                return "https://drive.usercontent.google.com/download?id=" + id + "&export=download&confirm=t";
+            }
         } catch (Exception ignored) {}
         return url;
     }
