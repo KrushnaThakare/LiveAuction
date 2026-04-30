@@ -8,6 +8,7 @@ import {
   announcePlayerSold, announcePlayerUnsold, stopSpeaking,
 } from '../utils/voiceAnnouncement';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
+import { driveImg } from '../utils/driveImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import toast from 'react-hot-toast';
@@ -17,18 +18,7 @@ import {
   Keyboard, Shuffle, StopCircle, RefreshCw,
 } from 'lucide-react';
 
-/* ── Drive image URL (no crossOrigin, just referrerPolicy) ── */
-function driveImg(url) {
-  if (!url) return null;
-  if (url.includes('lh3.googleusercontent.com')) return url;
-  const m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
-         || url.match(/[?&]id=([a-zA-Z0-9_-]+)/)
-         || url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (m) return `https://lh3.googleusercontent.com/d/${m[1]}=w600-h600`;
-  return url;
-}
-
-/* ── Image component — no crossOrigin ── */
+/* ── Image component — plain <img>, no extra attributes ── */
 function PlayerImage({ imgUrl, name, roleColor }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => { setFailed(false); }, [imgUrl]);
@@ -41,7 +31,7 @@ function PlayerImage({ imgUrl, name, roleColor }) {
     );
   }
   return (
-    <img src={imgUrl} alt={name} loading="lazy" referrerPolicy="no-referrer"
+    <img src={imgUrl} alt={name} loading="lazy"
       className="w-full h-full object-cover object-top"
       onError={() => setFailed(true)} />
   );
