@@ -6,98 +6,94 @@ const STATUS_LABELS = {
   SOLD: 'Sold',
   UNSOLD: 'Unsold',
 };
-
 const STATUS_CLASS = {
-  AVAILABLE: 'badge-available',
+  AVAILABLE:  'badge-available',
   IN_AUCTION: 'badge-in-auction',
-  SOLD: 'badge-sold',
-  UNSOLD: 'badge-unsold',
+  SOLD:       'badge-sold',
+  UNSOLD:     'badge-unsold',
 };
 
-export default function PlayerCard({ player, onStartAuction, compact = false }) {
+function gdriveFallback(url) {
+  if (!url) return null;
+  const m = url.match(/[?&]id=([^&]+)/) || url.match(/\/d\/([^/]+)/);
+  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400-h400`;
+  return url;
+}
+
+export default function PlayerCard({ player, onStartAuction }) {
   const roleColor = getRoleColor(player.role);
-  const roleBg = getRoleBg(player.role);
+  const roleBg    = getRoleBg(player.role);
+  const imgUrl    = gdriveFallback(player.imageUrl);
 
   return (
     <div className="card-hover group relative overflow-hidden">
-      {/* Role color accent bar */}
-      <div
-        className="absolute top-0 left-0 right-0 h-0.5"
-        style={{ backgroundColor: roleColor }}
-      />
+      {/* Role accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: roleColor }} />
 
-      <div className="flex items-start gap-3">
-        {/* Player Image */}
+      {/* Player photo — square, top of card */}
+      <div
+        className="w-full aspect-square rounded-xl overflow-hidden mb-3 flex items-center justify-center font-black text-5xl relative"
+        style={{ backgroundColor: roleBg, color: roleColor }}
+      >
+        {imgUrl ? (
+          <img
+            src={imgUrl}
+            alt={player.name}
+            className="w-full h-full object-cover object-top"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+        ) : null}
         <div
-          className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center font-bold text-lg"
-          style={{ backgroundColor: roleBg, color: roleColor }}
+          className="absolute inset-0 items-center justify-center"
+          style={{ display: imgUrl ? 'none' : 'flex' }}
         >
-          {player.imageUrl ? (
-            <img
-              src={player.imageUrl}
-              alt={player.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
-            />
-          ) : null}
-          <span className={player.imageUrl ? 'hidden' : 'flex items-center justify-center w-full h-full'}>
-            {player.name[0]}
-          </span>
+          {player.name[0]}
         </div>
 
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <h3
-              className="font-semibold text-sm truncate"
-              style={{ color: 'var(--color-text-primary)' }}
-            >
-              {player.name}
-            </h3>
-            <span className={STATUS_CLASS[player.status]}>{STATUS_LABELS[player.status]}</span>
-          </div>
-
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span
-              className="text-xs px-2 py-0.5 rounded-md font-medium"
-              style={{ backgroundColor: roleBg, color: roleColor }}
-            >
-              {formatRole(player.role)}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between mt-2">
-            <div>
-              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Base: </span>
-              <span className="text-sm font-bold" style={{ color: 'var(--color-accent)' }}>
-                {formatCurrency(player.basePrice)}
-              </span>
-              {player.status === 'SOLD' && player.currentBid > 0 && (
-                <>
-                  <span className="text-xs ml-2" style={{ color: 'var(--color-text-secondary)' }}>Sold: </span>
-                  <span className="text-sm font-bold" style={{ color: 'var(--color-sold)' }}>
-                    {formatCurrency(player.currentBid)}
-                  </span>
-                </>
-              )}
-            </div>
-            {player.teamName && (
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{
-                backgroundColor: 'var(--color-surface-2)',
-                color: 'var(--color-primary)',
-                border: '1px solid var(--color-primary)',
-              }}>
-                {player.teamName}
-              </span>
-            )}
-          </div>
+        {/* Status badge over image */}
+        <div className="absolute top-2 right-2">
+          <span className={STATUS_CLASS[player.status]}>{STATUS_LABELS[player.status]}</span>
         </div>
       </div>
 
-      {/* Action button */}
+      {/* Name & Role */}
+      <h3 className="font-bold text-sm truncate mb-1" style={{ color: 'var(--color-text-primary)' }}>
+        {player.name}
+      </h3>
+      <span
+        className="text-xs px-2 py-0.5 rounded-md font-medium"
+        style={{ backgroundColor: roleBg, color: roleColor }}
+      >
+        {formatRole(player.role)}
+      </span>
+
+      {/* Pricing */}
+      <div className="flex items-center justify-between mt-2">
+        <div>
+          <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Base </span>
+          <span className="text-sm font-bold" style={{ color: 'var(--color-accent)' }}>
+            {formatCurrency(player.basePrice)}
+          </span>
+        </div>
+        {player.status === 'SOLD' && player.currentBid > 0 && (
+          <span className="text-sm font-bold" style={{ color: 'var(--color-sold)' }}>
+            {formatCurrency(player.currentBid)}
+          </span>
+        )}
+        {player.teamName && (
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{
+            backgroundColor: 'var(--color-surface-2)',
+            color: 'var(--color-primary)',
+            border: '1px solid var(--color-primary)',
+          }}>
+            {player.teamName}
+          </span>
+        )}
+      </div>
+
       {onStartAuction && player.status === 'AVAILABLE' && (
         <button
           onClick={(e) => { e.stopPropagation(); onStartAuction(player); }}

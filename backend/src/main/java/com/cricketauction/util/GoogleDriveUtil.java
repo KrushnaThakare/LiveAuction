@@ -22,7 +22,8 @@ public class GoogleDriveUtil {
 
         String fileId = extractFileId(url);
         if (fileId != null) {
-            return "https://drive.google.com/uc?export=view&id=" + fileId;
+            // thumbnail API works reliably for publicly shared files across browsers
+            return "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w400-h400";
         }
 
         return url;

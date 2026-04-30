@@ -86,8 +86,17 @@ public class AuctionService {
         }
 
         double currentBid = session.getCurrentBid();
-        double increment = currentBid < BID_THRESHOLD ? BID_INCREMENT_LOW : BID_INCREMENT_HIGH;
-        double newBid = currentBid + increment;
+        double newBid;
+
+        if (bidRequest.getCustomBidAmount() != null) {
+            newBid = bidRequest.getCustomBidAmount();
+            if (newBid <= currentBid) {
+                throw new AuctionException("Custom bid must be greater than the current bid of " + currentBid);
+            }
+        } else {
+            double increment = currentBid < BID_THRESHOLD ? BID_INCREMENT_LOW : BID_INCREMENT_HIGH;
+            newBid = currentBid + increment;
+        }
 
         if (biddingTeam.getRemainingBudget() < newBid) {
             throw new AuctionException("Team '" + biddingTeam.getName() + "' does not have sufficient budget for this bid");
