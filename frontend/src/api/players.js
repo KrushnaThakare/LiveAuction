@@ -14,6 +14,8 @@ export const playerApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  update: (tournamentId, playerId, data) =>
+    api.put(`/tournaments/${tournamentId}/players/${playerId}`, data),
   delete: (tournamentId, playerId) =>
     api.delete(`/tournaments/${tournamentId}/players/${playerId}`),
 };

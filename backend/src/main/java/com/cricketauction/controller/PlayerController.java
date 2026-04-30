@@ -1,9 +1,11 @@
 package com.cricketauction.controller;
 
 import com.cricketauction.dto.ApiResponse;
+import com.cricketauction.dto.PlayerRequest;
 import com.cricketauction.dto.PlayerResponse;
 import com.cricketauction.entity.Player;
 import com.cricketauction.service.PlayerService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -50,6 +52,14 @@ public class PlayerController {
             @PathVariable Long tournamentId,
             @PathVariable Long playerId) {
         return ResponseEntity.ok(ApiResponse.success(playerService.getPlayerById(playerId)));
+    }
+
+    @PutMapping("/{playerId}")
+    public ResponseEntity<ApiResponse<PlayerResponse>> updatePlayer(
+            @PathVariable Long tournamentId,
+            @PathVariable Long playerId,
+            @Valid @RequestBody PlayerRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Player updated", playerService.updatePlayer(playerId, request)));
     }
 
     @DeleteMapping("/{playerId}")
