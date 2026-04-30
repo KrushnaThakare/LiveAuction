@@ -8,6 +8,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import Modal from '../components/common/Modal';
 import { exportPlayersList } from '../utils/playersExport';
+import { downloadImagesInBrowser } from '../utils/browserImageDownload';
 import { formatRole } from '../utils/formatters';
 import toast from 'react-hot-toast';
 import { Users, Upload, Search, Download, X, ImageDown } from 'lucide-react';
@@ -23,6 +24,7 @@ export default function PlayersPage() {
   const [loading, setLoading]             = useState(false);
   const [uploading, setUploading]         = useState(false);
   const [downloadingImgs, setDownloadingImgs] = useState(false);
+  const [imgProgress, setImgProgress]     = useState(null); // { done, total, current }
   const [search, setSearch]           = useState('');
   const [roleFilter, setRoleFilter]   = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -111,18 +113,29 @@ export default function PlayersPage() {
     }
   };
 
-  /* ── download images locally ── */
+  /* ── download images (browser-side, uses your Google session) ── */
   const handleDownloadImages = async () => {
     if (!activeTournament) return;
     setDownloadingImgs(true);
+    setImgProgress({ done: 0, total: 0, current: 'Starting…' });
     try {
-      const res = await playerApi.downloadImages(activeTournament.id);
-      toast.success(res.data.message || 'Images downloaded!');
-      fetchPlayers(); // refresh to show new local URLs
-    } catch {
-      // handled by interceptor
+      const { done, total } = await downloadImagesInBrowser(
+        activeTournament.id,
+        (done, total, name, ok) => {
+          setImgProgress({ done, total, current: name });
+        }
+      );
+      if (total === 0) {
+        toast.success('All images are already saved locally!');
+      } else {
+        toast.success(`${done} of ${total} images downloaded successfully`);
+      }
+      fetchPlayers();
+    } catch (e) {
+      toast.error('Image download failed: ' + e.message);
     } finally {
       setDownloadingImgs(false);
+      setImgProgress(null);
     }
   };
 
@@ -169,10 +182,15 @@ export default function PlayersPage() {
                 className="btn-secondary"
                 onClick={handleDownloadImages}
                 disabled={downloadingImgs}
-                title="Download all Drive images to local server so they display without Google login"
+                title="Downloads player photos via your browser (must be logged into Google Drive)"
               >
-                {downloadingImgs
-                  ? <><span className="animate-spin inline-block">⏳</span> Downloading…</>
+                {downloadingImgs && imgProgress
+                  ? <span className="flex items-center gap-1.5">
+                      <span className="animate-spin inline-block">⏳</span>
+                      {imgProgress.total > 0
+                        ? `${imgProgress.done}/${imgProgress.total} — ${imgProgress.current}`
+                        : 'Fetching…'}
+                    </span>
                   : <><ImageDown size={15} /> Download Images</>}
               </button>
               <button className="btn-secondary" onClick={handleExport}>

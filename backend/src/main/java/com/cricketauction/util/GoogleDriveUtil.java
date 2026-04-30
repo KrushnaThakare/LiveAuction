@@ -18,7 +18,8 @@ public class GoogleDriveUtil {
             if (url.contains("drive.google.com")) {
                 String fileId = extractFileId(url);
                 if (fileId != null && !fileId.isBlank()) {
-                    // Store proxy URL — backend will fetch from Drive at render time
+                    // Store usercontent URL for server-side download attempts
+                    // The actual download happens via browser-side fetch (ImageDownloadUtil / frontend)
                     return "/api/proxy/image?id=" + fileId;
                 }
             }
