@@ -18,9 +18,22 @@ export function TournamentProvider({ children }) {
       const savedId = localStorage.getItem('active-tournament-id');
       if (savedId) {
         const found = list.find((t) => t.id === parseInt(savedId, 10));
-        if (found) setActiveTournament(found);
-      } else if (list.length > 0 && !activeTournament) {
+        if (found) {
+          setActiveTournament(found);
+        } else {
+          // Saved ID no longer exists (tournament was deleted) — clear it and
+          // fall back to the first available tournament
+          localStorage.removeItem('active-tournament-id');
+          if (list.length > 0) {
+            setActiveTournament(list[0]);
+            localStorage.setItem('active-tournament-id', list[0].id);
+          } else {
+            setActiveTournament(null);
+          }
+        }
+      } else if (list.length > 0) {
         setActiveTournament(list[0]);
+        localStorage.setItem('active-tournament-id', list[0].id);
       }
     } catch {
       // handled by interceptor
@@ -35,8 +48,18 @@ export function TournamentProvider({ children }) {
 
   const selectTournament = (tournament) => {
     setActiveTournament(tournament);
-    localStorage.setItem('active-tournament-id', tournament.id);
+    localStorage.setItem('active-tournament-id', String(tournament.id));
   };
+
+  // Keep activeTournament data fresh when the list is refreshed
+  // (e.g. after a tournament edit updates the name/description)
+  useEffect(() => {
+    if (!activeTournament || tournaments.length === 0) return;
+    const fresh = tournaments.find(t => t.id === activeTournament.id);
+    if (fresh && JSON.stringify(fresh) !== JSON.stringify(activeTournament)) {
+      setActiveTournament(fresh);
+    }
+  }, [tournaments]);
 
   return (
     <TournamentContext.Provider
