@@ -8,10 +8,9 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import Modal from '../components/common/Modal';
 import { exportPlayersList } from '../utils/playersExport';
-import { downloadImagesInBrowser } from '../utils/browserImageDownload';
 import { formatRole } from '../utils/formatters';
 import toast from 'react-hot-toast';
-import { Users, Upload, Search, Download, X, ImageDown } from 'lucide-react';
+import { Users, Upload, Search, Download, X, RefreshCw } from 'lucide-react';
 
 const ROLES       = ['ALL', 'BATSMAN', 'BOWLER', 'ALL_ROUNDER', 'WICKET_KEEPER'];
 const STATUS_FILTERS = ['ALL', 'AVAILABLE', 'SOLD', 'UNSOLD', 'IN_AUCTION'];
@@ -20,11 +19,9 @@ export default function PlayersPage() {
   const { activeTournament } = useTournament();
   const navigate = useNavigate();
 
-  const [players, setPlayers]             = useState([]);
-  const [loading, setLoading]             = useState(false);
-  const [uploading, setUploading]         = useState(false);
-  const [downloadingImgs, setDownloadingImgs] = useState(false);
-  const [imgProgress, setImgProgress]     = useState(null); // { done, total, current }
+  const [players, setPlayers]   = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [search, setSearch]           = useState('');
   const [roleFilter, setRoleFilter]   = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -113,31 +110,6 @@ export default function PlayersPage() {
     }
   };
 
-  /* ── download images (browser-side, uses your Google session) ── */
-  const handleDownloadImages = async () => {
-    if (!activeTournament) return;
-    setDownloadingImgs(true);
-    setImgProgress({ done: 0, total: 0, current: 'Starting…' });
-    try {
-      const { done, total } = await downloadImagesInBrowser(
-        activeTournament.id,
-        (done, total, name, ok) => {
-          setImgProgress({ done, total, current: name });
-        }
-      );
-      if (total === 0) {
-        toast.success('All images are already saved locally!');
-      } else {
-        toast.success(`${done} of ${total} images downloaded successfully`);
-      }
-      fetchPlayers();
-    } catch (e) {
-      toast.error('Image download failed: ' + e.message);
-    } finally {
-      setDownloadingImgs(false);
-      setImgProgress(null);
-    }
-  };
 
   /* ── export ── */
   const handleExport = () => {
@@ -178,20 +150,9 @@ export default function PlayersPage() {
         <div className="flex items-center gap-2 flex-wrap">
           {players.length > 0 && (
             <>
-              <button
-                className="btn-secondary"
-                onClick={handleDownloadImages}
-                disabled={downloadingImgs}
-                title="Downloads player photos via your browser (must be logged into Google Drive)"
-              >
-                {downloadingImgs && imgProgress
-                  ? <span className="flex items-center gap-1.5">
-                      <span className="animate-spin inline-block">⏳</span>
-                      {imgProgress.total > 0
-                        ? `${imgProgress.done}/${imgProgress.total} — ${imgProgress.current}`
-                        : 'Fetching…'}
-                    </span>
-                  : <><ImageDown size={15} /> Download Images</>}
+              <button className="btn-secondary" onClick={fetchPlayers}>
+                <RefreshCw size={15} />
+                Refresh
               </button>
               <button className="btn-secondary" onClick={handleExport}>
                 <Download size={15} />
@@ -249,9 +210,14 @@ export default function PlayersPage() {
         style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
         <strong style={{ color: 'var(--color-primary)' }}>Excel Format:</strong>
         <span style={{ color: 'var(--color-text-secondary)' }}>
-          {' '}Name | Role (BATSMAN / BOWLER / ALL_ROUNDER / WICKET_KEEPER) | Base Price | Image URL
-          &nbsp;·&nbsp; Google Drive links auto-converted. Hover a player card to Edit or Delete.
+          {' '}Name | Role | Base Price | Image URL (Google Drive links auto-converted)
         </span>
+        <div className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+          <strong style={{ color: 'var(--color-accent)' }}>Valid roles:</strong>
+          {' '}Batsman · Bowler · Allrounder / All Rounder / AR · Wicket Keeper / WK
+          &nbsp;·&nbsp; Hover a player card to Edit or Delete.
+          &nbsp;·&nbsp; Images load when you are logged into Google Drive.
+        </div>
       </div>
 
       {/* Player Grid */}
