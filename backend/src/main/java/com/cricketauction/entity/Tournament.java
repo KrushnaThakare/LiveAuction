@@ -41,6 +41,10 @@ public class Tournament {
     @Builder.Default
     private List<Team> teams = new ArrayList<>();
 
+    // Tournament logo
+    @Column(name = "logo_url", length = 500)
+    private String logoUrl;
+
     // Registration settings
     @Column(name = "banner_url", length = 500)
     private String bannerUrl;

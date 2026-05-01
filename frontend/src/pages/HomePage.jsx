@@ -6,7 +6,9 @@ import TournamentForm from '../components/tournaments/TournamentForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import toast from 'react-hot-toast';
-import { Trophy, Plus, Users, ShieldCheck, CheckCircle, XCircle, Edit, Trash2 } from 'lucide-react';
+import { Trophy, Plus, Users, ShieldCheck, CheckCircle, XCircle, Edit, Trash2, Upload } from 'lucide-react';
+
+const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
 
 export default function HomePage() {
   const { tournaments, loading, fetchTournaments, selectTournament, activeTournament } = useTournament();
@@ -14,12 +16,17 @@ export default function HomePage() {
   const [showCreateModal, setShowCreateModal]   = useState(false);
   const [editingTournament, setEditingTournament] = useState(null);
   const [editForm, setEditForm]                 = useState({ name: '', description: '' });
+  const [editLogoFile, setEditLogoFile]         = useState(null);
+  const [editLogoPreview, setEditLogoPreview]   = useState(null);
   const [editSaving, setEditSaving]             = useState(false);
 
   const openEdit = (e, t) => {
     e.stopPropagation();
     setEditingTournament(t);
     setEditForm({ name: t.name, description: t.description || '' });
+    setEditLogoFile(null);
+    const logoUrl = t.logoUrl;
+    setEditLogoPreview(logoUrl ? (logoUrl.startsWith('/api') ? API_ORIGIN + logoUrl : logoUrl) : null);
   };
 
   const handleEditSave = async (ev) => {
@@ -28,6 +35,9 @@ export default function HomePage() {
     setEditSaving(true);
     try {
       await tournamentApi.update(editingTournament.id, editForm);
+      if (editLogoFile) {
+        await tournamentApi.uploadLogo(editingTournament.id, editLogoFile);
+      }
       toast.success('Tournament updated');
       setEditingTournament(null);
       fetchTournaments();
@@ -126,9 +136,19 @@ export default function HomePage() {
               </div>
 
               <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                {/* Tournament Logo or default trophy */}
+                <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: 'var(--color-primary)', opacity: 0.9 }}>
-                  <Trophy size={22} color="white" />
+                  {t.logoUrl ? (
+                    <img
+                      src={t.logoUrl.startsWith('/api') ? API_ORIGIN + t.logoUrl : t.logoUrl}
+                      alt={t.name}
+                      className="w-full h-full object-cover"
+                      onError={e => { e.target.style.display='none'; }}
+                    />
+                  ) : (
+                    <Trophy size={22} color="white" />
+                  )}
                 </div>
                 {activeTournament?.id === t.id && (
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full mr-16"
@@ -164,6 +184,33 @@ export default function HomePage() {
       {/* Edit modal */}
       <Modal isOpen={!!editingTournament} onClose={() => setEditingTournament(null)} title="Edit Tournament">
         <form onSubmit={handleEditSave} className="space-y-4">
+          {/* Logo */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+              Tournament Logo
+            </label>
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center font-bold flex-shrink-0"
+                style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}>
+                {editLogoPreview
+                  ? <img src={editLogoPreview} alt="Logo" className="w-full h-full object-cover" />
+                  : <Trophy size={20} color="white" />}
+              </div>
+              <label className="btn-secondary cursor-pointer text-sm">
+                <Upload size={14} />
+                {editLogoFile ? editLogoFile.name : 'Change Logo'}
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setEditLogoFile(file);
+                    const reader = new FileReader();
+                    reader.onload = ev => setEditLogoPreview(ev.target.result);
+                    reader.readAsDataURL(file);
+                  }} />
+              </label>
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Name *</label>
             <input className="input" required value={editForm.name}
@@ -171,7 +218,7 @@ export default function HomePage() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Description</label>
-            <textarea className="input resize-none" rows={3} value={editForm.description}
+            <textarea className="input resize-none" rows={2} value={editForm.description}
               onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
           </div>
           <div className="flex gap-3 justify-end">

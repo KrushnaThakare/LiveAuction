@@ -162,7 +162,13 @@ export default function AuctionPage() {
       const res = await auctionApi.sellPlayer(activeTournament.id);
       setAuctionState(res.data.data);
       setProposedBid(null);
-      setSoldOverlay({ name: prev?.currentPlayer?.name, team: res.data.data.highestBidderTeamName, amount: res.data.data.currentBid });
+      const winningTeam = teams.find(t => t.id === res.data.data.highestBidderTeamId);
+      setSoldOverlay({
+        name: prev?.currentPlayer?.name,
+        team: res.data.data.highestBidderTeamName,
+        teamLogo: winningTeam?.logoUrl || null,
+        amount: res.data.data.currentBid,
+      });
       setTimeout(() => setSoldOverlay(null), 4000);
       if (voiceEnabled) announcePlayerSold(prev?.currentPlayer?.name, res.data.data.highestBidderTeamName, res.data.data.currentBid);
       const tRes = await teamApi.getAll(activeTournament.id);
@@ -749,17 +755,43 @@ function TeamsSidebar({ teams, auctionState }) {
 /* ═══════════════════════════════════════════════════════════
    SOLD OVERLAY
 ═══════════════════════════════════════════════════════════ */
-function SoldOverlay({ name, team, amount }) {
+const SOLD_API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
+
+function SoldOverlay({ name, team, teamLogo, amount }) {
+  const logoSrc = teamLogo
+    ? (teamLogo.startsWith('/api') ? SOLD_API_ORIGIN + teamLogo : teamLogo)
+    : null;
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 animate-fade-in"
-      style={{ backgroundColor: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(10px)' }}>
-      <div className="animate-sold text-center">
-        <div className="text-8xl mb-4">🏏</div>
-        <h1 className="font-black uppercase tracking-widest text-shimmer mb-2"
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 animate-fade-in"
+      style={{ backgroundColor: 'rgba(0,0,0,0.90)', backdropFilter: 'blur(12px)' }}>
+      <div className="animate-sold text-center flex flex-col items-center">
+        {/* SOLD banner */}
+        <h1 className="font-black uppercase tracking-widest text-shimmer mb-3"
           style={{ fontSize: 'clamp(2.5rem,8vw,6rem)' }}>SOLD!</h1>
-        <p className="text-4xl font-black mb-2" style={{ color: 'white' }}>{name}</p>
-        <p className="text-2xl font-bold mb-1" style={{ color: 'var(--color-accent)' }}>{team}</p>
-        <p className="text-3xl font-black" style={{ color: 'var(--color-success)' }}>{formatCurrency(amount)}</p>
+
+        {/* Player name */}
+        <p className="font-black mb-4" style={{ color: 'white', fontSize: 'clamp(1.8rem,5vw,3.5rem)' }}>
+          {name}
+        </p>
+
+        {/* Team logo + name — the centrepiece */}
+        <div className="flex flex-col items-center gap-3 mb-4">
+          {logoSrc && (
+            <div className="w-28 h-28 rounded-3xl overflow-hidden shadow-2xl"
+              style={{ border: '3px solid var(--color-accent)', boxShadow: '0 0 40px rgba(245,158,11,0.5)' }}>
+              <img src={logoSrc} alt={team} className="w-full h-full object-cover" />
+            </div>
+          )}
+          <p className="font-black" style={{ color: 'var(--color-accent)', fontSize: 'clamp(1.5rem,4vw,2.5rem)' }}>
+            {team}
+          </p>
+        </div>
+
+        {/* Final price */}
+        <p className="font-black" style={{ color: 'var(--color-success)', fontSize: 'clamp(1.8rem,5vw,3rem)' }}>
+          {formatCurrency(amount)}
+        </p>
       </div>
     </div>
   );

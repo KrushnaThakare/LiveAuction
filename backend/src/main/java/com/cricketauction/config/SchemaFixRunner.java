@@ -8,12 +8,13 @@ import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Drops the UNIQUE constraint on auction_sessions.current_player_id.
- * It was created when the column was mapped as @OneToOne.
- * Now it is @ManyToOne so a player can appear in multiple sessions (re-auction).
- * Uses SHOW INDEX FROM which works on all MySQL/MariaDB versions.
+ * Uses SHOW INDEX FROM (no WHERE clause — not supported on all MySQL versions),
+ * then filters in Java for Non_unique = 0 AND Column_name = current_player_id.
  */
 @Component
 public class SchemaFixRunner implements ApplicationRunner {
@@ -30,27 +31,36 @@ public class SchemaFixRunner implements ApplicationRunner {
         try (Connection conn = dataSource.getConnection()) {
             String product = conn.getMetaData().getDatabaseProductName().toLowerCase();
             if (!product.contains("mysql") && !product.contains("mariadb")) {
-                return; // skip H2 / other test DBs
-            }
-
-            String indexToDrop = null;
-            // SHOW INDEX is MySQL-native, needs no schema permission
-            try (Statement st = conn.createStatement();
-                 ResultSet rs = st.executeQuery(
-                         "SHOW INDEX FROM auction_sessions WHERE Column_name = 'current_player_id' AND Non_unique = 0")) {
-                if (rs.next()) {
-                    indexToDrop = rs.getString("Key_name");
-                }
-            } catch (SQLException e) {
-                // Table may not exist yet on very first startup — that's fine
-                log.debug("SchemaFixRunner SHOW INDEX: {}", e.getMessage());
                 return;
             }
 
-            if (indexToDrop != null) {
+            List<String> uniqueIndexesToDrop = new ArrayList<>();
+
+            try (Statement st = conn.createStatement();
+                 ResultSet rs = st.executeQuery("SHOW INDEX FROM auction_sessions")) {
+                while (rs.next()) {
+                    String column   = rs.getString("Column_name");
+                    int    nonUniq  = rs.getInt("Non_unique");
+                    String keyName  = rs.getString("Key_name");
+                    // Find unique indexes (Non_unique = 0) on current_player_id
+                    // but NOT the PRIMARY KEY
+                    if ("current_player_id".equals(column)
+                            && nonUniq == 0
+                            && !"PRIMARY".equals(keyName)) {
+                        uniqueIndexesToDrop.add(keyName);
+                    }
+                }
+            } catch (SQLException e) {
+                log.debug("SchemaFixRunner: auction_sessions not ready yet — {}", e.getMessage());
+                return;
+            }
+
+            for (String idx : uniqueIndexesToDrop) {
                 try (Statement st = conn.createStatement()) {
-                    st.execute("ALTER TABLE auction_sessions DROP INDEX `" + indexToDrop + "`");
-                    log.info("SchemaFixRunner: dropped unique index '{}' — re-auction now works", indexToDrop);
+                    st.execute("ALTER TABLE auction_sessions DROP INDEX `" + idx + "`");
+                    log.info("SchemaFixRunner: dropped unique constraint '{}' on current_player_id — re-auction works", idx);
+                } catch (SQLException e) {
+                    log.warn("SchemaFixRunner: could not drop index '{}': {}", idx, e.getMessage());
                 }
             }
         } catch (Exception e) {

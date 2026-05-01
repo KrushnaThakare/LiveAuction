@@ -6,7 +6,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 import {
   Settings, Plus, Trash2, Edit, GripVertical, ExternalLink,
-  Copy, ToggleLeft, ToggleRight, Upload, Image, ChevronDown, ChevronUp,
+  Copy, ToggleLeft, ToggleRight, Upload, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
 const FIELD_TYPES = [
@@ -48,6 +48,9 @@ export default function RegistrationSettingsPage() {
     fieldKey: '', label: '', type: 'TEXT', required: false,
     placeholder: '', defaultValue: '', options: '', mapsToPlayerField: '',
   });
+  const [staticImageFile, setStaticImageFile] = useState(null);
+  const [staticImagePreview, setStaticImagePreview] = useState(null);
+  const [staticImageUploading, setStaticImageUploading] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({});
 
   const registrationUrl = activeTournament
@@ -135,6 +138,8 @@ export default function RegistrationSettingsPage() {
     setEditField(null);
     setTargetSectionId(sectionId);
     setFieldForm({ fieldKey: '', label: '', type: 'TEXT', required: false, placeholder: '', defaultValue: '', options: '', mapsToPlayerField: '' });
+    setStaticImageFile(null);
+    setStaticImagePreview(null);
     setShowFieldModal(true);
   };
 
@@ -148,27 +153,55 @@ export default function RegistrationSettingsPage() {
       options: (field.options || []).join('\n'),
       mapsToPlayerField: field.mapsToPlayerField || '',
     });
+    setStaticImageFile(null);
+    // If existing static image show it as preview
+    const existingUrl = field.defaultValue || '';
+    setStaticImagePreview(existingUrl ? (existingUrl.startsWith('/api') ? `${(import.meta.env.VITE_API_URL||'http://localhost:8080/api').replace('/api','')}${existingUrl}` : existingUrl) : null);
     setShowFieldModal(true);
   };
 
   const handleSaveField = async () => {
     if (!fieldForm.label.trim()) { toast.error('Label required'); return; }
     if (!fieldForm.fieldKey.trim()) { toast.error('Field key required'); return; }
+    if (fieldForm.type === 'STATIC_IMAGE' && !fieldForm.defaultValue && !staticImageFile) {
+      toast.error('Please upload an image or enter a URL for the static image field');
+      return;
+    }
+
     setSaving(true);
-    const optionsArr = fieldForm.options
-      ? fieldForm.options.split('\n').map(s => s.trim()).filter(Boolean) : [];
-    const payload = {
-      ...fieldForm, options: optionsArr, sectionId: targetSectionId,
-    };
     try {
+      let finalDefaultValue = fieldForm.defaultValue;
+
+      // If a file was chosen for STATIC_IMAGE, upload it first
+      if (fieldForm.type === 'STATIC_IMAGE' && staticImageFile) {
+        setStaticImageUploading(true);
+        const uploadRes = await registrationApi.uploadStaticImage(activeTournament.id, staticImageFile);
+        finalDefaultValue = uploadRes.data.data; // /api/uploads/... path
+        setStaticImageUploading(false);
+      }
+
+      const optionsArr = fieldForm.options
+        ? fieldForm.options.split('\n').map(s => s.trim()).filter(Boolean) : [];
+      const payload = {
+        ...fieldForm,
+        defaultValue: finalDefaultValue,
+        options: optionsArr,
+        sectionId: targetSectionId,
+      };
+
       if (editField) {
         await registrationApi.updateField(activeTournament.id, editField.id, payload);
       } else {
         await registrationApi.addField(activeTournament.id, payload);
       }
       setShowFieldModal(false);
+      setStaticImageFile(null);
+      setStaticImagePreview(null);
       fetchAll();
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+      setStaticImageUploading(false);
+    }
   };
 
   const handleDeleteField = async (fid) => {
@@ -389,86 +422,131 @@ export default function RegistrationSettingsPage() {
       <Modal isOpen={showFieldModal} onClose={() => setShowFieldModal(false)}
         title={editField ? 'Edit Field' : 'Add Field'} size="lg">
         <div className="space-y-3">
+          {/* Label + Key always shown */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Label *</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                {fieldForm.type === 'STATIC_IMAGE' ? 'Caption / Label' : 'Label *'}
+              </label>
               <input className="input" value={fieldForm.label}
-                onChange={e => setFieldForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g. Player Name" />
+                onChange={e => setFieldForm(f => ({ ...f, label: e.target.value }))}
+                placeholder={fieldForm.type === 'STATIC_IMAGE' ? 'e.g. Scan to Pay' : 'e.g. Player Name'} />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Field Key *</label>
               <input className="input" value={fieldForm.fieldKey}
                 onChange={e => setFieldForm(f => ({ ...f, fieldKey: e.target.value.replace(/\s+/g, '_').toLowerCase() }))}
-                placeholder="player_name" />
+                placeholder="scanner_image" />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Type</label>
-              <select className="input" value={fieldForm.type}
-                onChange={e => setFieldForm(f => ({ ...f, type: e.target.value }))}>
-                {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Maps to Auction Field</label>
-              <select className="input" value={fieldForm.mapsToPlayerField}
-                onChange={e => setFieldForm(f => ({ ...f, mapsToPlayerField: e.target.value }))}>
-                {PLAYER_FIELD_MAPS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
-            </div>
+          {/* Type selector */}
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Field Type</label>
+            <select className="input" value={fieldForm.type}
+              onChange={e => { setFieldForm(f => ({ ...f, type: e.target.value })); setStaticImageFile(null); setStaticImagePreview(null); }}>
+              {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Placeholder</label>
-              <input className="input" value={fieldForm.placeholder}
-                onChange={e => setFieldForm(f => ({ ...f, placeholder: e.target.value }))} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Default Value</label>
-              <input className="input" value={fieldForm.defaultValue}
-                onChange={e => setFieldForm(f => ({ ...f, defaultValue: e.target.value }))} />
-            </div>
-          </div>
+          {/* ── STATIC IMAGE: upload + URL ── */}
+          {fieldForm.type === 'STATIC_IMAGE' ? (
+            <div className="rounded-xl p-4 space-y-3"
+              style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                Image to display on the form
+              </p>
 
-          {['DROPDOWN','MULTI_SELECT','CHECKBOX_GROUP','RADIO'].includes(fieldForm.type) && (
-            <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                Options (one per line)
+              {/* Preview */}
+              {staticImagePreview && (
+                <img src={staticImagePreview} alt="Preview"
+                  className="max-h-40 rounded-xl object-contain mx-auto block"
+                  style={{ border: '1px solid var(--color-border)' }} />
+              )}
+
+              {/* Upload button */}
+              <label className="btn-secondary cursor-pointer w-full justify-center">
+                <Upload size={15} />
+                {staticImageFile ? staticImageFile.name : 'Upload Image from Computer'}
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setStaticImageFile(file);
+                    const reader = new FileReader();
+                    reader.onload = ev => setStaticImagePreview(ev.target.result);
+                    reader.readAsDataURL(file);
+                    // Clear URL if user picks a file
+                    setFieldForm(f => ({ ...f, defaultValue: '' }));
+                  }} />
               </label>
-              <textarea className="input resize-none" rows={4} value={fieldForm.options}
-                onChange={e => setFieldForm(f => ({ ...f, options: e.target.value }))}
-                placeholder={"Option 1\nOption 2\nOption 3"} />
-            </div>
-          )}
 
-          {fieldForm.type === 'STATIC_IMAGE' && (
-            <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                Image URL or Upload
-              </label>
-              <input className="input mb-2" value={fieldForm.defaultValue}
-                onChange={e => setFieldForm(f => ({ ...f, defaultValue: e.target.value }))}
-                placeholder="https://... or paste a public image URL" />
+              {/* OR divider */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
+                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>OR</span>
+                <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
+              </div>
+
+              {/* Public URL */}
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                  Paste a public image URL
+                </label>
+                <input className="input" value={fieldForm.defaultValue}
+                  onChange={e => {
+                    setFieldForm(f => ({ ...f, defaultValue: e.target.value }));
+                    if (e.target.value) { setStaticImageFile(null); setStaticImagePreview(e.target.value); }
+                    else setStaticImagePreview(null);
+                  }}
+                  placeholder="https://qr.example.com/my-scanner.png" />
+              </div>
               <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                Paste a public image URL (e.g. a QR code, UPI scanner, or instructions image).
-                This image will be displayed on the registration form — players cannot change it.
+                This image is shown on the registration form for players to view. They cannot interact with it.
               </p>
             </div>
-          )}
+          ) : (
+            /* ── Normal fields ── */
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Maps to Auction Field</label>
+                  <select className="input" value={fieldForm.mapsToPlayerField}
+                    onChange={e => setFieldForm(f => ({ ...f, mapsToPlayerField: e.target.value }))}>
+                    {PLAYER_FIELD_MAPS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Placeholder</label>
+                  <input className="input" value={fieldForm.placeholder}
+                    onChange={e => setFieldForm(f => ({ ...f, placeholder: e.target.value }))} />
+                </div>
+              </div>
 
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="req" checked={fieldForm.required}
-              onChange={e => setFieldForm(f => ({ ...f, required: e.target.checked }))} />
-            <label htmlFor="req" className="text-sm" style={{ color: 'var(--color-text-primary)' }}>Required field</label>
-          </div>
+              {['DROPDOWN','MULTI_SELECT','CHECKBOX_GROUP','RADIO'].includes(fieldForm.type) && (
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                    Options (one per line)
+                  </label>
+                  <textarea className="input resize-none" rows={4} value={fieldForm.options}
+                    onChange={e => setFieldForm(f => ({ ...f, options: e.target.value }))}
+                    placeholder={"Option 1\nOption 2\nOption 3"} />
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="req" checked={fieldForm.required}
+                  onChange={e => setFieldForm(f => ({ ...f, required: e.target.checked }))} />
+                <label htmlFor="req" className="text-sm" style={{ color: 'var(--color-text-primary)' }}>Required field</label>
+              </div>
+            </>
+          )}
 
           <div className="flex gap-3 justify-end pt-2">
             <button className="btn-secondary" onClick={() => setShowFieldModal(false)}>Cancel</button>
-            <button className="btn-primary" onClick={handleSaveField} disabled={saving}>
-              {saving ? 'Saving…' : 'Save Field'}
+            <button className="btn-primary" onClick={handleSaveField}
+              disabled={saving || staticImageUploading}>
+              {staticImageUploading ? 'Uploading image…' : saving ? 'Saving…' : 'Save Field'}
             </button>
           </div>
         </div>

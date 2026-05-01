@@ -33,6 +33,7 @@ public class TournamentService {
         Tournament tournament = Tournament.builder()
                 .name(request.getName())
                 .description(request.getDescription())
+                .logoUrl(request.getLogoUrl())
                 .build();
         return mapToResponse(tournamentRepository.save(tournament));
     }
@@ -51,6 +52,7 @@ public class TournamentService {
         Tournament t = findById(id);
         t.setName(request.getName());
         t.setDescription(request.getDescription());
+        if (request.getLogoUrl() != null) t.setLogoUrl(request.getLogoUrl());
         return mapToResponse(tournamentRepository.save(t));
     }
 
@@ -94,6 +96,7 @@ public class TournamentService {
                 .soldPlayers((int) sold)
                 .unsoldPlayers((int) unsold)
                 .createdAt(t.getCreatedAt())
+                .logoUrl(t.getLogoUrl())
                 .bannerUrl(t.getBannerUrl())
                 .registrationEnabled(t.getRegistrationEnabled())
                 .registrationMessage(t.getRegistrationMessage())
