@@ -9,6 +9,7 @@ import {
 } from '../utils/voiceAnnouncement';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
 import { driveImg } from '../utils/driveImage';
+import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import toast from 'react-hot-toast';
@@ -18,22 +19,20 @@ import {
   Keyboard, Shuffle, StopCircle, RefreshCw,
 } from 'lucide-react';
 
-/* ── Image component — plain <img>, no extra attributes ── */
+/* ── Image component using sequential loader ── */
 function PlayerImage({ imgUrl, name, roleColor }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => { setFailed(false); }, [imgUrl]);
-  if (!imgUrl || failed) {
-    return (
-      <span className="absolute inset-0 flex items-center justify-center font-black select-none"
-        style={{ fontSize: '5rem', color: roleColor, opacity: 0.5 }}>
-        {name?.[0]?.toUpperCase() ?? '?'}
-      </span>
-    );
-  }
   return (
-    <img src={imgUrl} alt={name} loading="lazy"
+    <SequentialImage
+      src={imgUrl}
+      alt={name}
       className="w-full h-full object-cover object-top"
-      onError={() => setFailed(true)} />
+      fallback={
+        <span className="absolute inset-0 flex items-center justify-center font-black select-none"
+          style={{ fontSize: '5rem', color: roleColor, opacity: 0.5 }}>
+          {name?.[0]?.toUpperCase() ?? '?'}
+        </span>
+      }
+    />
   );
 }
 

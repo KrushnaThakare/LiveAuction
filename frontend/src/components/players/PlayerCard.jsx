@@ -1,40 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../../utils/formatters';
 import { driveImg } from '../../utils/driveImage';
+import SequentialImage from '../common/SequentialImage';
 import { Trash2, Edit } from 'lucide-react';
 
-/* ── Shared image component ──────────────────────────────── */
-export function PlayerImg({ imgUrl, name, roleColor, style }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => { setFailed(false); }, [imgUrl]);
-
-  if (!imgUrl || failed) {
-    return (
-      <span className="absolute inset-0 flex items-center justify-center font-black select-none"
-        style={{ fontSize: '3rem', color: roleColor, opacity: 0.55, ...style }}>
-        {name?.[0]?.toUpperCase() ?? '?'}
-      </span>
-    );
-  }
-  // Plain <img>: no crossOrigin, no referrerPolicy — just load the URL normally
-  return (
-    <img
-      src={imgUrl}
-      alt={name}
-      loading="lazy"
-      className="w-full h-full object-cover object-top"
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
-/* ── Status labels ───────────────────────────────────────── */
 const STATUS_LABELS = { AVAILABLE: 'Available', IN_AUCTION: 'In Auction', SOLD: 'Sold', UNSOLD: 'Unsold' };
 const STATUS_CLASS  = { AVAILABLE: 'badge-available', IN_AUCTION: 'badge-in-auction', SOLD: 'badge-sold', UNSOLD: 'badge-unsold' };
 
-/* ══════════════════════════════════════════════════════════
-   PLAYER CARD
-══════════════════════════════════════════════════════════ */
 export default function PlayerCard({ player, onStartAuction, onEdit, onDelete }) {
   const roleColor = getRoleColor(player.role);
   const roleBg    = getRoleBg(player.role);
@@ -47,7 +19,17 @@ export default function PlayerCard({ player, onStartAuction, onEdit, onDelete })
       {/* Photo */}
       <div className="w-full aspect-square rounded-xl overflow-hidden mb-3 relative flex-shrink-0"
         style={{ backgroundColor: roleBg }}>
-        <PlayerImg imgUrl={imgUrl} name={player.name} roleColor={roleColor} />
+        <SequentialImage
+          src={imgUrl}
+          alt={player.name}
+          className="w-full h-full object-cover object-top"
+          fallback={
+            <span className="absolute inset-0 flex items-center justify-center font-black select-none"
+              style={{ fontSize: '3rem', color: roleColor, opacity: 0.55 }}>
+              {player.name?.[0]?.toUpperCase() ?? '?'}
+            </span>
+          }
+        />
 
         <div className="absolute top-2 left-2 z-10">
           <span className={STATUS_CLASS[player.status]}>{STATUS_LABELS[player.status]}</span>
