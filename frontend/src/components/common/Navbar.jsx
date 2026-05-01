@@ -4,7 +4,7 @@ import { useTournament } from '../../contexts/TournamentContext';
 import ThemeSwitcher from './ThemeSwitcher';
 import TournamentSelector from './TournamentSelector';
 import {
-  Trophy, Users, Gavel, ShieldCheck, XCircle, Home,
+  Trophy, Users, Gavel, ShieldCheck, XCircle, Home, ClipboardList, Settings,
 } from 'lucide-react';
 
 const navLinks = [
@@ -14,6 +14,8 @@ const navLinks = [
   { to: '/teams', label: 'Teams', icon: ShieldCheck },
   { to: '/sold', label: 'Sold', icon: Trophy },
   { to: '/unsold', label: 'Unsold', icon: XCircle },
+  { to: '/registrations', label: 'Registrations', icon: ClipboardList },
+  { to: '/registration', label: 'Form Builder', icon: Settings },
 ];
 
 export default function Navbar() {

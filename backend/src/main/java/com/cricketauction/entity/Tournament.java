@@ -41,6 +41,20 @@ public class Tournament {
     @Builder.Default
     private List<Team> teams = new ArrayList<>();
 
+    // Registration settings
+    @Column(name = "banner_url", length = 500)
+    private String bannerUrl;
+
+    @Column(name = "registration_enabled")
+    @Builder.Default
+    private Boolean registrationEnabled = false;
+
+    @Column(name = "registration_message", length = 1000)
+    private String registrationMessage;
+
+    @Column(name = "registration_redirect_link", length = 500)
+    private String registrationRedirectLink;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
