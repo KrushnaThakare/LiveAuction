@@ -16,6 +16,7 @@ public class TournamentResponse {
     private int soldPlayers;
     private int unsoldPlayers;
     private LocalDateTime createdAt;
+    private String logoUrl;
     private String bannerUrl;
     private Boolean registrationEnabled;
     private String registrationMessage;

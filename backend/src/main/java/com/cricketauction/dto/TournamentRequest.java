@@ -8,4 +8,5 @@ public class TournamentRequest {
     @NotBlank(message = "Tournament name is required")
     private String name;
     private String description;
+    private String logoUrl;
 }

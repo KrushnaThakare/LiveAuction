@@ -10,6 +10,7 @@
 
 body {
   background-color: var(--color-background);
+  background-image: var(--texture, none);
   color: var(--color-text-primary);
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   min-height: 100vh;
