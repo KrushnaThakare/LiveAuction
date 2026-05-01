@@ -18,12 +18,13 @@ const TEAM_ACCENT_COLORS = [
 export default function TeamsPage() {
   const { activeTournament } = useTournament();
 
-  const [teams, setTeams]           = useState([]);
-  const [loading, setLoading]       = useState(false);
-  const [saving, setSaving]         = useState(false);
-  const [showModal, setShowModal]   = useState(false);
-  const [editingTeam, setEditingTeam] = useState(null);
+  const [teams, setTeams]               = useState([]);
+  const [loading, setLoading]           = useState(false);
+  const [saving, setSaving]             = useState(false);
+  const [showModal, setShowModal]       = useState(false);
+  const [editingTeam, setEditingTeam]   = useState(null);
   const [expandedTeam, setExpandedTeam] = useState(null);
+  const [teamLogoFile, setTeamLogoFile] = useState(null);
 
   const fetchTeams = useCallback(async () => {
     if (!activeTournament) return;
@@ -42,12 +43,20 @@ export default function TeamsPage() {
     if (!activeTournament) return;
     setSaving(true);
     try {
+      let teamId;
       if (editingTeam) {
         await teamApi.update(activeTournament.id, editingTeam.id, formData);
+        teamId = editingTeam.id;
         toast.success('Team updated!');
       } else {
-        await teamApi.create(activeTournament.id, formData);
+        const res = await teamApi.create(activeTournament.id, formData);
+        teamId = res.data.data?.id;
         toast.success('Team created!');
+      }
+      // Upload logo if selected
+      if (teamLogoFile && teamId) {
+        await teamApi.uploadLogo(activeTournament.id, teamId, teamLogoFile);
+        setTeamLogoFile(null);
       }
       setShowModal(false);
       setEditingTeam(null);
@@ -98,7 +107,7 @@ export default function TeamsPage() {
               Export Rosters
             </button>
           )}
-          <button className="btn-primary" onClick={() => { setEditingTeam(null); setShowModal(true); }}>
+          <button className="btn-primary" onClick={() => { setEditingTeam(null); setTeamLogoFile(null); setShowModal(true); }}>
             <Plus size={15} />New Team
           </button>
         </div>
@@ -137,7 +146,7 @@ export default function TeamsPage() {
               accentColor={TEAM_ACCENT_COLORS[idx % TEAM_ACCENT_COLORS.length]}
               expanded={expandedTeam === team.id}
               onToggle={() => setExpandedTeam(expandedTeam === team.id ? null : team.id)}
-              onEdit={() => { setEditingTeam(team); setShowModal(true); }}
+              onEdit={() => { setEditingTeam(team); setTeamLogoFile(null); setShowModal(true); }}
               onDelete={() => handleDelete(team.id)}
             />
           ))}
@@ -146,13 +155,15 @@ export default function TeamsPage() {
 
       <Modal
         isOpen={showModal}
-        onClose={() => { setShowModal(false); setEditingTeam(null); }}
+        onClose={() => { setShowModal(false); setEditingTeam(null); setTeamLogoFile(null); }}
         title={editingTeam ? 'Edit Team' : 'Create Team'}
       >
         <TeamForm
           initialData={editingTeam ? { name: editingTeam.name, logoUrl: editingTeam.logoUrl || '', budget: editingTeam.budget } : null}
+          logoFile={teamLogoFile}
+          onLogoChange={setTeamLogoFile}
           onSubmit={handleSubmit}
-          onCancel={() => { setShowModal(false); setEditingTeam(null); }}
+          onCancel={() => { setShowModal(false); setEditingTeam(null); setTeamLogoFile(null); }}
           loading={saving}
         />
       </Modal>

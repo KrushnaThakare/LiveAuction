@@ -1,13 +1,16 @@
 import api from './axios';
 
 export const teamApi = {
-  getAll: (tournamentId) => api.get(`/tournaments/${tournamentId}/teams`),
-  getById: (tournamentId, teamId) =>
-    api.get(`/tournaments/${tournamentId}/teams/${teamId}`),
-  create: (tournamentId, data) =>
-    api.post(`/tournaments/${tournamentId}/teams`, data),
-  update: (tournamentId, teamId, data) =>
-    api.put(`/tournaments/${tournamentId}/teams/${teamId}`, data),
-  delete: (tournamentId, teamId) =>
-    api.delete(`/tournaments/${tournamentId}/teams/${teamId}`),
+  getAll:  (tid)              => api.get(`/tournaments/${tid}/teams`),
+  getById: (tid, teamId)      => api.get(`/tournaments/${tid}/teams/${teamId}`),
+  create:  (tid, data)        => api.post(`/tournaments/${tid}/teams`, data),
+  update:  (tid, teamId, data) => api.put(`/tournaments/${tid}/teams/${teamId}`, data),
+  delete:  (tid, teamId)      => api.delete(`/tournaments/${tid}/teams/${teamId}`),
+  uploadLogo: (tid, teamId, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post(`/tournaments/${tid}/teams/${teamId}/logo`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };

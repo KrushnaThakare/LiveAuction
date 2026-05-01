@@ -63,6 +63,20 @@ public class SchemaFixRunner implements ApplicationRunner {
                     log.warn("SchemaFixRunner: could not drop index '{}': {}", idx, e.getMessage());
                 }
             }
+
+            // Also null out current_player_id on already-closed sessions (SOLD/UNSOLD status)
+            // so existing data doesn't violate the constraint on startup.
+            try (Statement st = conn.createStatement()) {
+                int updated = st.executeUpdate(
+                    "UPDATE auction_sessions SET current_player_id = NULL, highest_bidder_team_id = NULL " +
+                    "WHERE status IN ('SOLD','UNSOLD') AND current_player_id IS NOT NULL"
+                );
+                if (updated > 0) {
+                    log.info("SchemaFixRunner: nulled current_player_id on {} closed sessions", updated);
+                }
+            } catch (SQLException e) {
+                log.warn("SchemaFixRunner cleanup: {}", e.getMessage());
+            }
         } catch (Exception e) {
             log.warn("SchemaFixRunner: {}", e.getMessage());
         }

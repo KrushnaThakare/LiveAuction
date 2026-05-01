@@ -148,9 +148,17 @@ public class AuctionService {
         player.setCurrentBid(session.getCurrentBid());
         playerRepository.save(player);
 
+        // Null out currentPlayer FK before closing — prevents UNIQUE constraint
+        // violation if this player is ever re-auctioned in a new session row.
+        Player closedPlayer = session.getCurrentPlayer();
+        session.setCurrentPlayer(null);
+        session.setHighestBidderTeam(null);
         session.setStatus(AuctionSession.AuctionStatus.SOLD);
         session.setEndedAt(LocalDateTime.now());
         session = auctionSessionRepository.save(session);
+
+        // Restore for response
+        session.setCurrentPlayer(closedPlayer);
         return mapToResponse(session);
     }
 
@@ -162,9 +170,13 @@ public class AuctionService {
         player.setCurrentBid(0.0);
         playerRepository.save(player);
 
+        Player closedPlayer = session.getCurrentPlayer();
+        session.setCurrentPlayer(null);   // null FK so re-auction session can reuse this player
+        session.setHighestBidderTeam(null);
         session.setStatus(AuctionSession.AuctionStatus.UNSOLD);
         session.setEndedAt(LocalDateTime.now());
         session = auctionSessionRepository.save(session);
+        session.setCurrentPlayer(closedPlayer);
         return mapToResponse(session);
     }
 
@@ -176,12 +188,15 @@ public class AuctionService {
         player.setStatus(Player.PlayerStatus.AVAILABLE);
         player.setCurrentBid(0.0);
         playerRepository.save(player);
+        Player closedPlayer = session.getCurrentPlayer();
 
-        session.setStatus(AuctionSession.AuctionStatus.UNSOLD);
+        session.setCurrentPlayer(null);   // null FK
         session.setHighestBidderTeam(null);
+        session.setStatus(AuctionSession.AuctionStatus.UNSOLD);
         session.setCurrentBid(0.0);
         session.setEndedAt(LocalDateTime.now());
         session = auctionSessionRepository.save(session);
+        session.setCurrentPlayer(closedPlayer);
         return mapToResponse(session);
     }
 
