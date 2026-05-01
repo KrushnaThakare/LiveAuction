@@ -59,6 +59,19 @@ public class RegistrationFormController {
         return ResponseEntity.ok(ApiResponse.success("Settings updated", "ok"));
     }
 
+    /** Upload a static image (QR code, UPI scanner etc.) for use in a STATIC_IMAGE field */
+    @PostMapping("/static-image")
+    public ResponseEntity<ApiResponse<String>> uploadStaticImage(
+            @PathVariable Long tournamentId,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            String url = fileStorage.saveTournamentBanner(file); // reuse same dir
+            return ResponseEntity.ok(ApiResponse.success("Image uploaded", url));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     /** Upload tournament banner */
     @PostMapping("/banner")
     public ResponseEntity<ApiResponse<String>> uploadBanner(

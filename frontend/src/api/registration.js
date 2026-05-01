@@ -5,9 +5,13 @@ export const registrationApi = {
   getForm:        (tid)          => api.get(`/tournaments/${tid}/registration/form`),
   getSettings:    (tid)          => api.get(`/tournaments/${tid}/registration/settings`),
   updateSettings: (tid, data)    => api.put(`/tournaments/${tid}/registration/settings`, data),
-  uploadBanner:   (tid, file)    => {
+  uploadBanner: (tid, file) => {
     const fd = new FormData(); fd.append('file', file);
     return api.post(`/tournaments/${tid}/registration/banner`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  uploadStaticImage: (tid, file) => {
+    const fd = new FormData(); fd.append('file', file);
+    return api.post(`/tournaments/${tid}/registration/static-image`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   createSection:  (tid, data)    => api.post(`/tournaments/${tid}/registration/sections`, data),
   updateSection:  (tid, sid, d)  => api.put(`/tournaments/${tid}/registration/sections/${sid}`, d),
