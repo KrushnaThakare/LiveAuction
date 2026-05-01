@@ -19,21 +19,21 @@ function escHtml(str = '') {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-const PROXY_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
-  ? import.meta.env.VITE_API_URL.replace(/\/+$/, '')
-  : 'http://localhost:8080/api';
+// Always use the absolute backend URL so the printed/PDF page can load images
+const API_ORIGIN = (() => {
+  const base = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
+    ? import.meta.env.VITE_API_URL
+    : 'http://localhost:8080/api';
+  return base.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+})();
 
-function driveImgUrl(url) {
+function resolveImageUrl(url) {
   if (!url) return null;
-  if (url.includes('/api/proxy/image')) return url.startsWith('http') ? url : `${PROXY_BASE.replace('/api','')}${url}`;
-  if (!url.includes('drive.google.com') && !url.includes('lh3.googleusercontent.com')) return url;
-  try {
-    let id = '';
-    if (url.includes('/d/')) { id = url.split('/d/')[1].split('/')[0]; }
-    else if (url.includes('id=')) { id = url.split('id=')[1]; if (id.includes('&')) id = id.split('&')[0]; }
-    if (id) return `${PROXY_BASE}/proxy/image?id=${id}`;
-  } catch(_) {}
-  return url;
+  // Local upload — make absolute so the print window can load it
+  if (url.startsWith('/api/')) return API_ORIGIN + url;
+  // Already absolute
+  if (url.startsWith('http')) return url;
+  return null;
 }
 
 export function exportPlayersList(players, tournamentName = '') {
@@ -79,9 +79,9 @@ export function exportPlayersList(players, tournamentName = '') {
     const rbg = ROLE_BG[role]    || 'rgba(100,116,139,0.15)';
 
     const cards = ps.map(p => {
-      const img = driveImgUrl(p.imageUrl);
+      const img = resolveImageUrl(p.imageUrl);
       const photoHtml = img
-        ? `<div class="photo" style="background:${rbg}"><img src="${img}" alt="${escHtml(p.name)}" referrerpolicy="no-referrer" loading="lazy"/></div>`
+        ? `<div class="photo" style="background:${rbg}"><img src="${img}" alt="${escHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;object-position:top;"/></div>`
         : `<div class="photo" style="background:${rbg};color:${rc};">${escHtml(p.name[0])}</div>`;
       return `
         <div class="card" style="border-color:${rc}33;">

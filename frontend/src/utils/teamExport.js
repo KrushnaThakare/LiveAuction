@@ -1,7 +1,18 @@
 import { formatCurrency, formatRole } from './formatters';
-import { driveImg as driveImgUrl } from './driveImage';
 
-// Re-export so the module is used (avoids tree-shake)
+const API_ORIGIN = (() => {
+  const base = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
+    ? import.meta.env.VITE_API_URL
+    : 'http://localhost:8080/api';
+  return base.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+})();
+
+function driveImgUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('/api/')) return API_ORIGIN + url; // local upload — make absolute
+  if (url.startsWith('http')) return url;               // already absolute
+  return null;
+}
 
 /**
  * Generates a full-page printable HTML roster for each team and opens the

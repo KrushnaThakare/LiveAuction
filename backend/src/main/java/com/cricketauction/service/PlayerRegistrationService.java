@@ -81,15 +81,56 @@ public class PlayerRegistrationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Registration", id)));
     }
 
-    /** Import a single registration as an auction player */
-    public PlayerResponse importToAuction(Long registrationId, String role, Double basePrice) {
+    /** Edit a registration's details and optionally replace the photo */
+    public RegistrationResponse editRegistration(Long registrationId, String formData,
+                                                  String playerName, String mobile,
+                                                  MultipartFile photo) {
         PlayerRegistration reg = regRepo.findById(registrationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Registration", registrationId));
+
+        if (formData   != null) reg.setFormData(formData);
+        if (playerName != null) reg.setPlayerName(playerName);
+        if (mobile     != null) reg.setMobile(mobile);
+
+        if (photo != null && !photo.isEmpty()) {
+            if (reg.getPhotoUrl() != null) fileStorage.deleteFile(reg.getPhotoUrl());
+            try {
+                reg.setPhotoUrl(fileStorage.savePlayerPhoto(reg.getTournament().getId(), photo));
+            } catch (Exception e) {
+                log.warn("Photo update failed: {}", e.getMessage());
+            }
+        }
+
+        return mapToResponse(regRepo.save(reg));
+    }
+
+    /** Import a single registration as an auction player.
+     *  Role is read from formData if a field mapped to 'role' exists; otherwise BATSMAN. */
+    public PlayerResponse importToAuction(Long registrationId, String roleOverride, Double basePrice) {
+        PlayerRegistration reg = regRepo.findById(registrationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Registration", registrationId));
+
+        // Try to read role from the submitted form data
+        String roleStr = roleOverride;
+        if ((roleStr == null || roleStr.isBlank()) && reg.getFormData() != null) {
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
+                java.util.Map<?,?> data = om.readValue(reg.getFormData(), java.util.Map.class);
+                // Look for a field value that is a known role string
+                for (Object v : data.values()) {
+                    if (v instanceof String s) {
+                        String up = s.toUpperCase().replace(" ", "_").replace("-", "_");
+                        try { Player.PlayerRole.valueOf(up); roleStr = s; break; }
+                        catch (Exception ignored) {}
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
 
         Player.PlayerRole playerRole;
         try {
             playerRole = Player.PlayerRole.valueOf(
-                    role.toUpperCase().replace(" ", "_").replace("-", "_"));
+                    roleStr.toUpperCase().replace(" ", "_").replace("-", "_"));
         } catch (Exception e) {
             playerRole = Player.PlayerRole.BATSMAN;
         }

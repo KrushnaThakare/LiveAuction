@@ -26,7 +26,15 @@ export const registrationApi = {
     return api.post(`/registration/${tid}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   getRegistrations: (tid)             => api.get(`/registration/${tid}`),
-  importOne:        (tid, rid, body)  => api.post(`/registration/${tid}/import/${rid}`, body),
-  importAll:        (tid, basePrice)  => api.post(`/registration/${tid}/import-all`, { basePrice }),
-  deleteReg:        (tid, rid)        => api.delete(`/registration/${tid}/${rid}`),
+  importOne:  (tid, rid) => api.post(`/registration/${tid}/import/${rid}`),
+  importAll:  (tid)      => api.post(`/registration/${tid}/import-all`),
+  deleteReg:  (tid, rid) => api.delete(`/registration/${tid}/${rid}`),
+  editReg: (tid, rid, playerName, mobile, formData, photo) => {
+    const fd = new FormData();
+    if (formData)    fd.append('formData',   JSON.stringify(formData));
+    if (playerName)  fd.append('playerName', playerName);
+    if (mobile)      fd.append('mobile',     mobile);
+    if (photo)       fd.append('photo',      photo);
+    return api.patch(`/registration/${tid}/${rid}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };

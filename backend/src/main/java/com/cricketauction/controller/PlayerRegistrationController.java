@@ -40,28 +40,35 @@ public class PlayerRegistrationController {
         return ResponseEntity.ok(ApiResponse.success(regService.getAll(tournamentId)));
     }
 
-    /** Admin — import one registration to auction */
+    /** Admin — import one registration to auction (no extra params, defaults to basePrice=1000) */
     @PostMapping("/{tournamentId}/import/{registrationId}")
     public ResponseEntity<ApiResponse<PlayerResponse>> importOne(
             @PathVariable Long tournamentId,
-            @PathVariable Long registrationId,
-            @RequestBody Map<String, Object> body) {
-        String role = (String) body.getOrDefault("role", "BATSMAN");
-        Double basePrice = body.get("basePrice") != null
-                ? Double.parseDouble(body.get("basePrice").toString()) : 1000.0;
+            @PathVariable Long registrationId) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Player imported", regService.importToAuction(registrationId, role, basePrice)));
+                "Player imported", regService.importToAuction(registrationId, null, 1000.0)));
     }
 
-    /** Admin — bulk import all pending registrations */
+    /** Admin — bulk import all pending registrations (base price = 1000) */
     @PostMapping("/{tournamentId}/import-all")
-    public ResponseEntity<ApiResponse<String>> importAll(
-            @PathVariable Long tournamentId,
-            @RequestBody Map<String, Object> body) {
-        Double basePrice = body.get("basePrice") != null
-                ? Double.parseDouble(body.get("basePrice").toString()) : 1000.0;
-        int count = regService.bulkImport(tournamentId, basePrice);
+    public ResponseEntity<ApiResponse<String>> importAll(@PathVariable Long tournamentId) {
+        int count = regService.bulkImport(tournamentId, 1000.0);
         return ResponseEntity.ok(ApiResponse.success(count + " players imported to auction", String.valueOf(count)));
+    }
+
+    /** Admin — edit registration details + optional new photo */
+    @PatchMapping(value = "/{tournamentId}/{registrationId}",
+                  consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<RegistrationResponse>> editRegistration(
+            @PathVariable Long tournamentId,
+            @PathVariable Long registrationId,
+            @RequestParam(value = "formData",   required = false) String formData,
+            @RequestParam(value = "playerName", required = false) String playerName,
+            @RequestParam(value = "mobile",     required = false) String mobile,
+            @RequestParam(value = "photo",      required = false) MultipartFile photo) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Registration updated",
+                regService.editRegistration(registrationId, formData, playerName, mobile, photo)));
     }
 
     /** Admin — delete a registration */
