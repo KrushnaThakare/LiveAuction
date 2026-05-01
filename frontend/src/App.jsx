@@ -9,6 +9,18 @@ import AuctionPage from './pages/AuctionPage';
 import TeamsPage from './pages/TeamsPage';
 import SoldPlayersPage from './pages/SoldPlayersPage';
 import UnsoldPlayersPage from './pages/UnsoldPlayersPage';
+import RegistrationSettingsPage from './pages/RegistrationSettingsPage';
+import RegisteredPlayersPage from './pages/RegisteredPlayersPage';
+import PublicRegistrationPage from './pages/PublicRegistrationPage';
+
+const toastOpts = {
+  style: {
+    background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+    border: '1px solid var(--color-border)', borderRadius: '12px', fontSize: '14px',
+  },
+  success: { iconTheme: { primary: 'var(--color-success)', secondary: 'white' } },
+  error:   { iconTheme: { primary: 'var(--color-danger)',  secondary: 'white' } },
+};
 
 export default function App() {
   return (
@@ -17,60 +29,31 @@ export default function App() {
         <BrowserRouter>
           <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
             <Routes>
-              {/* Auction page has its own full-screen layout */}
-              <Route
-                path="/auction"
-                element={
-                  <>
-                    <Navbar />
-                    <AuctionPage />
-                  </>
-                }
-              />
-              {/* All other pages with standard layout */}
-              <Route
-                path="/*"
-                element={
-                  <>
-                    <Navbar />
-                    <main>
-                      <Routes>
-                        <Route path="/" element={<HomePage />} />
-                        <Route path="/players" element={<PlayersPage />} />
-                        <Route path="/teams" element={<TeamsPage />} />
-                        <Route path="/sold" element={<SoldPlayersPage />} />
-                        <Route path="/unsold" element={<UnsoldPlayersPage />} />
-                      </Routes>
-                    </main>
-                  </>
-                }
-              />
-            </Routes>
+              {/* Public registration page — no navbar */}
+              <Route path="/register/:tournamentId" element={<PublicRegistrationPage />} />
 
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                style: {
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text-primary)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                },
-                success: {
-                  iconTheme: {
-                    primary: 'var(--color-success)',
-                    secondary: 'white',
-                  },
-                },
-                error: {
-                  iconTheme: {
-                    primary: 'var(--color-danger)',
-                    secondary: 'white',
-                  },
-                },
-              }}
-            />
+              {/* Auction — full screen */}
+              <Route path="/auction" element={<><Navbar /><AuctionPage /></>} />
+
+              {/* All other admin pages */}
+              <Route path="/*" element={
+                <>
+                  <Navbar />
+                  <main>
+                    <Routes>
+                      <Route path="/"             element={<HomePage />} />
+                      <Route path="/players"      element={<PlayersPage />} />
+                      <Route path="/teams"        element={<TeamsPage />} />
+                      <Route path="/sold"         element={<SoldPlayersPage />} />
+                      <Route path="/unsold"       element={<UnsoldPlayersPage />} />
+                      <Route path="/registration" element={<RegistrationSettingsPage />} />
+                      <Route path="/registrations" element={<RegisteredPlayersPage />} />
+                    </Routes>
+                  </main>
+                </>
+              } />
+            </Routes>
+            <Toaster position="top-right" toastOptions={toastOpts} />
           </div>
         </BrowserRouter>
       </TournamentProvider>

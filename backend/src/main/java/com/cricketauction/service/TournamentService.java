@@ -73,6 +73,10 @@ public class TournamentService {
         tournamentRepository.delete(tournament);
     }
 
+    public Tournament saveTournament(Tournament tournament) {
+        return tournamentRepository.save(tournament);
+    }
+
     public Tournament findById(Long id) {
         return tournamentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", id));
@@ -90,6 +94,10 @@ public class TournamentService {
                 .soldPlayers((int) sold)
                 .unsoldPlayers((int) unsold)
                 .createdAt(t.getCreatedAt())
+                .bannerUrl(t.getBannerUrl())
+                .registrationEnabled(t.getRegistrationEnabled())
+                .registrationMessage(t.getRegistrationMessage())
+                .registrationRedirectLink(t.getRegistrationRedirectLink())
                 .build();
     }
 }
