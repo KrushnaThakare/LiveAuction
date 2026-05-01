@@ -10,16 +10,17 @@ import {
 } from 'lucide-react';
 
 const FIELD_TYPES = [
-  { value: 'TEXT',           label: 'Text' },
+  { value: 'TEXT',           label: 'Text Input' },
   { value: 'NUMBER',         label: 'Number' },
   { value: 'TEXTAREA',       label: 'Long Text' },
   { value: 'DROPDOWN',       label: 'Dropdown' },
   { value: 'MULTI_SELECT',   label: 'Multi-select' },
   { value: 'CHECKBOX_GROUP', label: 'Checkbox Group' },
   { value: 'RADIO',          label: 'Radio Buttons' },
-  { value: 'FILE_UPLOAD',    label: 'File / Image Upload' },
+  { value: 'FILE_UPLOAD',    label: 'File / Image Upload (from player)' },
   { value: 'PHONE',          label: 'Phone Number' },
   { value: 'EMAIL',          label: 'Email' },
+  { value: 'STATIC_IMAGE',   label: '🖼 Static Image (QR / Banner / Instructions)' },
 ];
 
 const PLAYER_FIELD_MAPS = [
@@ -440,6 +441,21 @@ export default function RegistrationSettingsPage() {
               <textarea className="input resize-none" rows={4} value={fieldForm.options}
                 onChange={e => setFieldForm(f => ({ ...f, options: e.target.value }))}
                 placeholder={"Option 1\nOption 2\nOption 3"} />
+            </div>
+          )}
+
+          {fieldForm.type === 'STATIC_IMAGE' && (
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                Image URL or Upload
+              </label>
+              <input className="input mb-2" value={fieldForm.defaultValue}
+                onChange={e => setFieldForm(f => ({ ...f, defaultValue: e.target.value }))}
+                placeholder="https://... or paste a public image URL" />
+              <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                Paste a public image URL (e.g. a QR code, UPI scanner, or instructions image).
+                This image will be displayed on the registration form — players cannot change it.
+              </p>
             </div>
           )}
 

@@ -53,6 +53,7 @@ export default function PublicRegistrationPage() {
   const validate = () => {
     const errs = {};
     for (const field of allFields) {
+      if (field.type === 'STATIC_IMAGE') continue;
       if (field.required) {
         const v = values[field.fieldKey];
         if (field.type === 'FILE_UPLOAD') {
@@ -188,11 +189,16 @@ function FieldRenderer({ field, value, filePreview, error, onChange, onFile }) {
   const opts = field.options || [];
 
   return (
-    <div>
-      <label style={labelStyle}>
-        {field.label}
-        {field.required && <span style={{ color: '#ef4444' }}> *</span>}
-      </label>
+      <div>
+      {field.type !== 'STATIC_IMAGE' && (
+        <label style={labelStyle}>
+          {field.label}
+          {field.required && <span style={{ color: '#ef4444' }}> *</span>}
+        </label>
+      )}
+      {field.type === 'STATIC_IMAGE' && field.label && (
+        <p style={{ ...labelStyle, marginBottom: '8px' }}>{field.label}</p>
+      )}
 
       <div className="mt-1.5">
         {field.type === 'TEXTAREA' && (
@@ -268,6 +274,17 @@ function FieldRenderer({ field, value, filePreview, error, onChange, onFile }) {
               <input type="file" className="hidden" accept="image/*"
                 onChange={e => onFile(e.target.files?.[0])} />
             </label>
+          </div>
+        )}
+
+        {field.type === 'STATIC_IMAGE' && field.defaultValue && (
+          <div className="rounded-2xl overflow-hidden">
+            <img
+              src={field.defaultValue}
+              alt={field.label}
+              className="w-full max-w-xs mx-auto block rounded-2xl"
+              style={{ border: '1px solid #334155' }}
+            />
           </div>
         )}
       </div>

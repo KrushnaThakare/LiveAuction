@@ -60,6 +60,8 @@ public class FormField {
 
     public enum FieldType {
         TEXT, NUMBER, TEXTAREA, DROPDOWN, MULTI_SELECT,
-        CHECKBOX_GROUP, RADIO, FILE_UPLOAD, PHONE, EMAIL
+        CHECKBOX_GROUP, RADIO, FILE_UPLOAD, PHONE, EMAIL,
+        /** Static image displayed on the form (e.g. payment QR scanner). Not a user input. */
+        STATIC_IMAGE
     }
 }
