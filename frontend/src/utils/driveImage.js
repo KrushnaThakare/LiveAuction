@@ -1,12 +1,11 @@
 /**
- * Converts any Google Drive URL to a direct image URL.
+ * Resolves the correct display URL for a player image.
  *
- * drive.google.com/open?id=...  → NOT an image (redirect to viewer) → convert
- * drive.google.com/file/d/...   → NOT an image (viewer page)        → convert
- * drive.google.com/uc?export=view&id=... → DIRECT image URL ✓
+ * Backend stores Drive images as thumbnail URLs:
+ *   https://drive.google.com/thumbnail?id={id}&sz=w400-h400
  *
- * The uc?export=view URL works as an <img src> in the browser when the user
- * is signed into Google in the same browser (no extra setup needed).
+ * These are loaded sequentially (one at a time, 350ms gap) via SequentialImage
+ * to avoid Google's rate-limiting (429) that occurs when many load at once.
  */
 
 const API_ORIGIN = (() => {
@@ -17,20 +16,19 @@ const API_ORIGIN = (() => {
 export function driveImg(url) {
   if (!url) return null;
 
-  // Locally stored image — make absolute
+  // Locally stored image (/api/images/...) — make absolute
   if (url.startsWith('/api/')) return `${API_ORIGIN}${url}`;
 
   // Already absolute local URL
   if (url.startsWith('http://localhost') || url.startsWith('http://127.')) return url;
 
-  // Already the correct direct image URL — return as-is
-  if (url.includes('uc?export=view')) return url;
-  if (url.includes('uc?export=download')) return url;
+  // Already a thumbnail URL — return as-is
+  if (url.includes('thumbnail?id=')) return url;
 
-  // Any other Drive URL — extract the file ID and build the direct URL
+  // Any other Drive URL — convert to thumbnail
   if (url.includes('drive.google.com') || url.includes('lh3.googleusercontent.com')) {
     const id = extractDriveId(url);
-    if (id) return `https://drive.google.com/uc?export=view&id=${id}`;
+    if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w400-h400`;
   }
 
   return url;
@@ -38,19 +36,16 @@ export function driveImg(url) {
 
 function extractDriveId(url) {
   try {
-    // /file/d/{id}/view  or  /d/{id}
     if (url.includes('/d/')) {
       const part = url.split('/d/')[1];
       return part.split('/')[0].split('?')[0].split('=')[0];
     }
-    // ?id={id}  or  &id={id}  or  open?id={id}
     if (url.includes('id=')) {
       let id = url.split('id=')[1];
       if (id.includes('&')) id = id.split('&')[0];
       if (id.includes('?')) id = id.split('?')[0];
       return id.trim();
     }
-    // lh3.googleusercontent.com/d/{id}=w...
     if (url.includes('lh3.googleusercontent.com/d/')) {
       return url.split('lh3.googleusercontent.com/d/')[1].split('=')[0];
     }
