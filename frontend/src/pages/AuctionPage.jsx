@@ -425,7 +425,7 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 pt-4 pb-2 gap-3">
-      {/* Photo */}
+      {/* Photo — no badge overlaid */}
       <div className="stage-scanlines relative rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center"
         style={{
           width: 'min(260px,34vw)', height: 'min(300px,38vw)', minWidth: 160, minHeight: 190,
@@ -434,10 +434,6 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
           boxShadow: `0 0 40px ${roleColor}44, 0 0 80px ${roleColor}18`,
         }}>
         <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={roleColor} />
-        <div className="absolute top-3 right-3 text-xs px-2.5 py-1 rounded-full font-bold backdrop-blur-sm"
-          style={{ backgroundColor: roleBg, color: roleColor, border: `1px solid ${roleColor}` }}>
-          {formatRole(player.role)}
-        </div>
       </div>
 
       {/* Name */}
@@ -446,7 +442,13 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
           style={{ fontSize: 'clamp(1.6rem,4vw,3rem)', letterSpacing: '-0.02em' }}>
           {player.name}
         </h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+
+        {/* Role badge — standalone, prominent, sport-style */}
+        <div className="flex items-center justify-center gap-2 mt-2">
+          <RoleBadge role={player.role} roleColor={roleColor} roleBg={roleBg} />
+        </div>
+
+        <p className="text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
           Base: <span style={{ color: 'var(--color-accent)', fontWeight: 700 }}>{formatCurrency(player.basePrice)}</span>
         </p>
       </div>
@@ -459,6 +461,38 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
         bidFlash={bidFlash}
         bidKey={bidKey}
       />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ROLE BADGE — sport-style pill displayed below player name
+═══════════════════════════════════════════════════════════ */
+const ROLE_ICONS = {
+  BATSMAN:       '🏏',
+  BOWLER:        '🎳',
+  ALL_ROUNDER:   '⭐',
+  WICKET_KEEPER: '🧤',
+};
+
+function RoleBadge({ role, roleColor, roleBg }) {
+  const icon  = ROLE_ICONS[role] || '🏏';
+  const label = formatRole(role);
+
+  return (
+    <div
+      className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full font-bold tracking-widest uppercase"
+      style={{
+        fontSize: 'clamp(0.65rem, 1.2vw, 0.8rem)',
+        background: `linear-gradient(135deg, ${roleBg} 0%, rgba(0,0,0,0.15) 100%)`,
+        color: roleColor,
+        border: `1.5px solid ${roleColor}`,
+        boxShadow: `0 0 12px ${roleColor}44, inset 0 1px 0 rgba(255,255,255,0.1)`,
+        letterSpacing: '0.12em',
+      }}
+    >
+      <span style={{ fontSize: '1rem' }}>{icon}</span>
+      {label}
     </div>
   );
 }
