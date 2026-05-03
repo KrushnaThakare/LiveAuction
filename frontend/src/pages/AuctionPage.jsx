@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
-  Keyboard, Shuffle, StopCircle, RefreshCw,
+  Keyboard, Shuffle, StopCircle, RefreshCw, Share2,
 } from 'lucide-react';
 
 /* ── Image component using sequential loader ── */
@@ -312,6 +312,16 @@ export default function AuctionPage() {
         </div>
         <div className="flex items-center gap-2">
           <button className="btn-secondary !p-2" onClick={() => setShowKeyHelp(v => !v)} title="Shortcuts"><Keyboard size={15} /></button>
+          {activeTournament && (
+            <button className="btn-secondary !p-2" title="Copy broadcast link (no login needed)"
+              onClick={() => {
+                const url = `${window.location.origin}/view/${activeTournament.id}`;
+                navigator.clipboard.writeText(url);
+                toast.success('Broadcast link copied! Share with viewers.');
+              }}>
+              <Share2 size={15} />
+            </button>
+          )}
           <button className="btn-secondary !p-2" onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}>
             {voiceEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>

@@ -102,12 +102,15 @@ public class AuctionService {
 
         if (bidRequest.getCustomBidAmount() != null) {
             newBid = bidRequest.getCustomBidAmount();
-            if (newBid <= currentBid) {
+            if (newBid <= currentBid && session.getHighestBidderTeam() != null) {
                 throw new AuctionException(
                         "Bid amount must be greater than current bid of " + (long) currentBid);
             }
+        } else if (session.getHighestBidderTeam() == null) {
+            // First bid — team confirms at base price (no increment yet)
+            newBid = currentBid;
         } else {
-            // auto-increment only if no custom amount — host can always override with custom
+            // Subsequent bid — apply standard increment
             double step = currentBid < BID_THRESHOLD ? BID_INC_LOW : BID_INC_HIGH;
             newBid = currentBid + step;
         }

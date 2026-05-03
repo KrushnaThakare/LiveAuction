@@ -50,14 +50,21 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public: login, register page (no auth needed)
+                // ── Fully public — no token needed ───────────────────────────
                 .requestMatchers("/api/auth/**").permitAll()
-                // Public: registration form + file serving (public link)
+                // Public registration form
                 .requestMatchers("/api/registration/*/form").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/registration/*").permitAll()
+                // File serving
                 .requestMatchers("/api/uploads/**", "/api/images/**").permitAll()
+                // Public view mode: read-only tournament data (for broadcast links)
+                .requestMatchers(HttpMethod.GET, "/api/tournaments").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/tournaments/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/tournaments/*/auction/state").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/tournaments/*/teams").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/tournaments/*/players").permitAll()
 
-                // ── READ-ONLY for everyone authenticated ──────────────────────
+                // ── READ-ONLY for authenticated users ─────────────────────────
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/registration/**").authenticated()
 

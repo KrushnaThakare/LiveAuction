@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { authApi } from '../api/auth';
 import api from '../api/axios';
 
@@ -6,6 +6,10 @@ const AuthContext = createContext(null);
 
 const TOKEN_KEY = 'ca_token';
 const USER_KEY  = 'ca_user';
+
+// Allows AuthContext to trigger a tournament refresh after login
+// without creating a circular dependency with TournamentContext
+export const onLoginCallbacks = [];
 
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(() => {
@@ -48,6 +52,8 @@ export function AuthProvider({ children }) {
     localStorage.setItem(USER_KEY, JSON.stringify(data));
     api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
     setUser(data);
+    // Notify tournament context to re-fetch now that the token is set
+    onLoginCallbacks.forEach(cb => cb());
     return data;
   };
 

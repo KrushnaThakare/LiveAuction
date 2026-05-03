@@ -4,9 +4,10 @@ import { tournamentApi } from '../api/tournaments';
 const TournamentContext = createContext(null);
 
 export function TournamentProvider({ children }) {
-  const [tournaments, setTournaments] = useState([]);
+  const [tournaments, setTournaments]         = useState([]);
   const [activeTournament, setActiveTournament] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]                 = useState(false);
+  const [fetchTrigger, setFetchTrigger]       = useState(0);
 
   const fetchTournaments = useCallback(async () => {
     setLoading(true);
@@ -21,8 +22,6 @@ export function TournamentProvider({ children }) {
         if (found) {
           setActiveTournament(found);
         } else {
-          // Saved ID no longer exists (tournament was deleted) — clear it and
-          // fall back to the first available tournament
           localStorage.removeItem('active-tournament-id');
           if (list.length > 0) {
             setActiveTournament(list[0]);
@@ -42,9 +41,15 @@ export function TournamentProvider({ children }) {
     }
   }, []);
 
+  // Re-fetch whenever triggered (on mount + after login)
   useEffect(() => {
     fetchTournaments();
-  }, [fetchTournaments]);
+  }, [fetchTournaments, fetchTrigger]);
+
+  // Trigger a manual refresh (called from AuthContext after login)
+  const refreshTournaments = useCallback(() => {
+    setFetchTrigger(t => t + 1);
+  }, []);
 
   const selectTournament = (tournament) => {
     setActiveTournament(tournament);
@@ -52,7 +57,6 @@ export function TournamentProvider({ children }) {
   };
 
   // Keep activeTournament data fresh when the list is refreshed
-  // (e.g. after a tournament edit updates the name/description)
   useEffect(() => {
     if (!activeTournament || tournaments.length === 0) return;
     const fresh = tournaments.find(t => t.id === activeTournament.id);
@@ -68,6 +72,7 @@ export function TournamentProvider({ children }) {
         activeTournament,
         loading,
         fetchTournaments,
+        refreshTournaments,
         selectTournament,
       }}
     >

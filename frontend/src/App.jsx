@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { TournamentProvider } from './contexts/TournamentContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { TournamentProvider, useTournament } from './contexts/TournamentContext';
+import { AuthProvider, useAuth, onLoginCallbacks } from './contexts/AuthContext';
 import Navbar from './components/common/Navbar';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
@@ -15,6 +16,7 @@ import RegistrationSettingsPage from './pages/RegistrationSettingsPage';
 import RegisteredPlayersPage from './pages/RegisteredPlayersPage';
 import PublicRegistrationPage from './pages/PublicRegistrationPage';
 import UsersPage from './pages/UsersPage';
+import PublicViewPage from './pages/PublicViewPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
 const toastOpts = {
@@ -44,6 +46,14 @@ function Protected({ children, requireOperator = false, requireSuperAdmin = fals
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const { refreshTournaments } = useTournament();
+
+  // Register callback so AuthContext can trigger refresh after login
+  useEffect(() => {
+    onLoginCallbacks.length = 0;
+    onLoginCallbacks.push(refreshTournaments);
+    return () => { onLoginCallbacks.length = 0; };
+  }, [refreshTournaments]);
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center"
@@ -54,8 +64,9 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Public — registration form (no navbar) */}
+      {/* Fully public — no auth needed */}
       <Route path="/register/:tournamentId" element={<PublicRegistrationPage />} />
+      <Route path="/view/:tournamentId"     element={<PublicViewPage />} />
 
       {/* Auth */}
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />

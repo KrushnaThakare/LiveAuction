@@ -6,13 +6,15 @@ import TournamentForm from '../components/tournaments/TournamentForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import toast from 'react-hot-toast';
-import { Trophy, Plus, Users, ShieldCheck, CheckCircle, XCircle, Edit, Trash2, Upload } from 'lucide-react';
+import { Trophy, Plus, Users, ShieldCheck, CheckCircle, XCircle, Edit, Trash2, Upload, Share2 } from 'lucide-react';
 import { resolveUrl } from '../utils/resolveUrl';
+import { useAuth } from '../contexts/AuthContext';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
 
 export default function HomePage() {
   const { tournaments, loading, fetchTournaments, selectTournament, activeTournament } = useTournament();
+  const { isSuperAdmin } = useAuth();
 
   const [showCreateModal, setShowCreateModal]   = useState(false);
   const [editingTournament, setEditingTournament] = useState(null);
@@ -67,9 +69,11 @@ export default function HomePage() {
             Manage your cricket auction tournaments
           </p>
         </div>
-        <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
-          <Plus size={18} />New Tournament
-        </button>
+        {isSuperAdmin && (
+          <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
+            <Plus size={18} />New Tournament
+          </button>
+        )}
       </div>
 
       {/* Stats banner */}
@@ -115,23 +119,39 @@ export default function HomePage() {
                 : {}}
               onClick={() => selectTournament(t)}
             >
-              {/* Edit / Delete buttons — revealed on hover */}
+              {/* Action buttons top-right */}
               <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                 <button
                   onClick={(e) => openEdit(e, t)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center"
                   style={{ backgroundColor: 'var(--color-surface-2)', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}
                   title="Edit tournament"
+                  style={{ display: isSuperAdmin ? undefined : 'none', backgroundColor: 'var(--color-surface-2)', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}
                 >
                   <Edit size={13} />
                 </button>
+                {isSuperAdmin && (
+                  <button
+                    onClick={(e) => handleDelete(e, t)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: 'var(--color-surface-2)', color: 'var(--color-danger)', border: '1px solid var(--color-border)' }}
+                    title="Delete tournament"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
                 <button
-                  onClick={(e) => handleDelete(e, t)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const url = `${window.location.origin}/view/${t.id}`;
+                    navigator.clipboard.writeText(url);
+                    toast.success('Broadcast link copied!');
+                  }}
                   className="w-7 h-7 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: 'var(--color-surface-2)', color: 'var(--color-danger)', border: '1px solid var(--color-border)' }}
-                  title="Delete tournament"
+                  style={{ backgroundColor: 'var(--color-surface-2)', color: 'var(--color-success)', border: '1px solid var(--color-border)' }}
+                  title="Copy broadcast link (no login needed)"
                 >
-                  <Trash2 size={13} />
+                  <Share2 size={13} />
                 </button>
               </div>
 
