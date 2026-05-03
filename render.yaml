@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: cricket-auction-backend
+    runtime: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    plan: free
+    healthCheckPath: /api/tournaments
+    envVars:
+      - key: DB_URL
+        sync: false          # set manually in Render dashboard
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates a secure random value
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false          # set your own secure password
+      - key: CORS_ORIGINS
+        sync: false          # set to your Netlify URL after deploy
+      - key: UPLOAD_DIR
+        value: /tmp/cricket-auction-uploads
