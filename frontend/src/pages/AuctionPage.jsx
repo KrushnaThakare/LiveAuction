@@ -259,6 +259,7 @@ export default function AuctionPage() {
       if ((e.key === 's' || e.key === 'S') && isActive && auctionState?.highestBidderTeamId) { handleSell(); return; }
       if ((e.key === 'u' || e.key === 'U') && isActive) { handleUnsold(); return; }
       if ((e.key === 'r' || e.key === 'R') && !isActive) { handleStartRandom(); return; }
+      if (e.key === 'm' || e.key === 'M') { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); return; }
       if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); return; }
 
       const num = parseInt(e.key, 10);
@@ -335,7 +336,7 @@ export default function AuctionPage() {
       {showKeyHelp && (
         <div className="flex-shrink-0 px-4 py-2 flex flex-wrap gap-4 text-xs items-center"
           style={{ backgroundColor: 'var(--color-surface-2)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-          {[['↑↓','Set bid'],['1–9','Assign to team'],['S','Sell'],['U','Unsold'],['R','Random player'],['F','Fullscreen']].map(([k,v]) => (
+          {[['↑↓','Set bid'],['1–9','Assign to team'],['S','Sell'],['U','Unsold'],['R','Random player'],['M','Mute/Unmute'],['F','Fullscreen']].map(([k,v]) => (
             <span key={k}>
               <kbd className="px-1.5 py-0.5 rounded font-mono font-bold mr-1"
                 style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>{k}</kbd>
