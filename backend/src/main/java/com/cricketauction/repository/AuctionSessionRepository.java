@@ -19,4 +19,14 @@ public interface AuctionSessionRepository extends JpaRepository<AuctionSession, 
     @Modifying
     @Query("UPDATE AuctionSession s SET s.currentPlayer = null, s.highestBidderTeam = null WHERE s.tournament.id = :tournamentId")
     void nullifyForeignKeysForTournament(Long tournamentId);
+
+    /**
+     * Null out current_player_id on any CLOSED sessions that reference this player.
+     * Called before starting a new session for the same player (re-auction).
+     * Uses native SQL so it is not JPQL-validated during schema creation on H2.
+     */
+    @Modifying
+    @Query(value = "UPDATE auction_sessions SET current_player_id = NULL WHERE current_player_id = :playerId AND status IN ('SOLD','UNSOLD')",
+           nativeQuery = true)
+    void nullifyPlayerFromClosedSessions(Long playerId);
 }

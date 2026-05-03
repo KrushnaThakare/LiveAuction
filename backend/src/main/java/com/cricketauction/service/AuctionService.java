@@ -102,12 +102,15 @@ public class AuctionService {
 
         if (bidRequest.getCustomBidAmount() != null) {
             newBid = bidRequest.getCustomBidAmount();
-            if (newBid <= currentBid) {
+            if (newBid <= currentBid && session.getHighestBidderTeam() != null) {
                 throw new AuctionException(
                         "Bid amount must be greater than current bid of " + (long) currentBid);
             }
+        } else if (session.getHighestBidderTeam() == null) {
+            // First bid — team confirms at base price (no increment yet)
+            newBid = currentBid;
         } else {
-            // auto-increment only if no custom amount — host can always override with custom
+            // Subsequent bid — apply standard increment
             double step = currentBid < BID_THRESHOLD ? BID_INC_LOW : BID_INC_HIGH;
             newBid = currentBid + step;
         }
@@ -148,9 +151,22 @@ public class AuctionService {
         player.setCurrentBid(session.getCurrentBid());
         playerRepository.save(player);
 
+        // Null out FK columns before closing — prevents UNIQUE constraint violation
+        // if this player is ever re-auctioned in a new session row.
+        Player closedPlayer     = session.getCurrentPlayer();
+        Team   closedWinnerTeam = session.getHighestBidderTeam();
+        double closedBid        = session.getCurrentBid();
+
+        session.setCurrentPlayer(null);
+        session.setHighestBidderTeam(null);
         session.setStatus(AuctionSession.AuctionStatus.SOLD);
         session.setEndedAt(LocalDateTime.now());
         session = auctionSessionRepository.save(session);
+
+        // Restore in-memory for the API response (DB already has NULLs)
+        session.setCurrentPlayer(closedPlayer);
+        session.setHighestBidderTeam(closedWinnerTeam);
+        session.setCurrentBid(closedBid);
         return mapToResponse(session);
     }
 
@@ -162,9 +178,13 @@ public class AuctionService {
         player.setCurrentBid(0.0);
         playerRepository.save(player);
 
+        Player closedPlayer = session.getCurrentPlayer();
+        session.setCurrentPlayer(null);   // null FK so re-auction session can reuse this player
+        session.setHighestBidderTeam(null);
         session.setStatus(AuctionSession.AuctionStatus.UNSOLD);
         session.setEndedAt(LocalDateTime.now());
         session = auctionSessionRepository.save(session);
+        session.setCurrentPlayer(closedPlayer);
         return mapToResponse(session);
     }
 
@@ -176,12 +196,15 @@ public class AuctionService {
         player.setStatus(Player.PlayerStatus.AVAILABLE);
         player.setCurrentBid(0.0);
         playerRepository.save(player);
+        Player closedPlayer = session.getCurrentPlayer();
 
-        session.setStatus(AuctionSession.AuctionStatus.UNSOLD);
+        session.setCurrentPlayer(null);   // null FK
         session.setHighestBidderTeam(null);
+        session.setStatus(AuctionSession.AuctionStatus.UNSOLD);
         session.setCurrentBid(0.0);
         session.setEndedAt(LocalDateTime.now());
         session = auctionSessionRepository.save(session);
+        session.setCurrentPlayer(closedPlayer);
         return mapToResponse(session);
     }
 
@@ -255,6 +278,13 @@ public class AuctionService {
     }
 
     private AuctionStateResponse createAndSaveSession(Tournament tournament, Player player) {
+        // ── Critical: null out current_player_id on any old closed sessions ──────────────
+        // Old sessions (created before the null-on-close fix) still reference this player.
+        // The UNIQUE constraint on current_player_id fires when we try to insert a new row.
+        // Nulling them here guarantees the insert will always succeed, regardless of the
+        // state of the database index.
+        auctionSessionRepository.nullifyPlayerFromClosedSessions(player.getId());
+
         player.setStatus(Player.PlayerStatus.IN_AUCTION);
         player.setCurrentBid(player.getBasePrice());
         playerRepository.save(player);
@@ -271,7 +301,11 @@ public class AuctionService {
 
     private AuctionStateResponse mapToResponse(AuctionSession session) {
         double current = session.getCurrentBid();
-        double next    = current < BID_THRESHOLD ? current + BID_INC_LOW : current + BID_INC_HIGH;
+        // If nobody has bid yet, the first bid IS the base price (current bid).
+        // Only add an increment after at least one bid has been placed.
+        double next = (session.getHighestBidderTeam() == null)
+                ? current
+                : (current < BID_THRESHOLD ? current + BID_INC_LOW : current + BID_INC_HIGH);
 
         return AuctionStateResponse.builder()
                 .sessionId(session.getId())

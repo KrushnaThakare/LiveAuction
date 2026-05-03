@@ -9,6 +9,7 @@ import {
 } from '../utils/voiceAnnouncement';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
 import { driveImg } from '../utils/driveImage';
+import { resolveUrl } from '../utils/resolveUrl';
 import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
@@ -16,7 +17,7 @@ import toast from 'react-hot-toast';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
-  Keyboard, Shuffle, StopCircle, RefreshCw,
+  Keyboard, Shuffle, StopCircle, RefreshCw, Share2,
 } from 'lucide-react';
 
 /* ── Image component using sequential loader ── */
@@ -162,12 +163,14 @@ export default function AuctionPage() {
       const res = await auctionApi.sellPlayer(activeTournament.id);
       setAuctionState(res.data.data);
       setProposedBid(null);
-      const winningTeam = teams.find(t => t.id === res.data.data.highestBidderTeamId);
+      // Find winning team from local state BEFORE refreshing
+      const winningTeamId = res.data.data.highestBidderTeamId;
+      const winningTeam   = teams.find(t => t.id === winningTeamId);
       setSoldOverlay({
-        name: prev?.currentPlayer?.name,
-        team: res.data.data.highestBidderTeamName,
-        teamLogo: winningTeam?.logoUrl || null,
-        amount: res.data.data.currentBid,
+        name:     prev?.currentPlayer?.name,
+        team:     res.data.data.highestBidderTeamName,
+        teamLogo: resolveUrl(winningTeam?.logoUrl) || null,
+        amount:   res.data.data.currentBid,
       });
       setTimeout(() => setSoldOverlay(null), 4000);
       if (voiceEnabled) announcePlayerSold(prev?.currentPlayer?.name, res.data.data.highestBidderTeamName, res.data.data.currentBid);
@@ -256,6 +259,7 @@ export default function AuctionPage() {
       if ((e.key === 's' || e.key === 'S') && isActive && auctionState?.highestBidderTeamId) { handleSell(); return; }
       if ((e.key === 'u' || e.key === 'U') && isActive) { handleUnsold(); return; }
       if ((e.key === 'r' || e.key === 'R') && !isActive) { handleStartRandom(); return; }
+      if (e.key === 'm' || e.key === 'M') { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); return; }
       if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); return; }
 
       const num = parseInt(e.key, 10);
@@ -309,6 +313,16 @@ export default function AuctionPage() {
         </div>
         <div className="flex items-center gap-2">
           <button className="btn-secondary !p-2" onClick={() => setShowKeyHelp(v => !v)} title="Shortcuts"><Keyboard size={15} /></button>
+          {activeTournament && (
+            <button className="btn-secondary !p-2" title="Copy broadcast link (no login needed)"
+              onClick={() => {
+                const url = `${window.location.origin}/view/${activeTournament.id}`;
+                navigator.clipboard.writeText(url);
+                toast.success('Broadcast link copied! Share with viewers.');
+              }}>
+              <Share2 size={15} />
+            </button>
+          )}
           <button className="btn-secondary !p-2" onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}>
             {voiceEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
@@ -322,7 +336,7 @@ export default function AuctionPage() {
       {showKeyHelp && (
         <div className="flex-shrink-0 px-4 py-2 flex flex-wrap gap-4 text-xs items-center"
           style={{ backgroundColor: 'var(--color-surface-2)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-          {[['↑↓','Set bid'],['1–9','Assign to team'],['S','Sell'],['U','Unsold'],['R','Random player'],['F','Fullscreen']].map(([k,v]) => (
+          {[['↑↓','Set bid'],['1–9','Assign to team'],['S','Sell'],['U','Unsold'],['R','Random player'],['M','Mute/Unmute'],['F','Fullscreen']].map(([k,v]) => (
             <span key={k}>
               <kbd className="px-1.5 py-0.5 rounded font-mono font-bold mr-1"
                 style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>{k}</kbd>
@@ -422,7 +436,7 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 pt-4 pb-2 gap-3">
-      {/* Photo */}
+      {/* Photo — no badge overlaid */}
       <div className="stage-scanlines relative rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center"
         style={{
           width: 'min(260px,34vw)', height: 'min(300px,38vw)', minWidth: 160, minHeight: 190,
@@ -431,10 +445,6 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
           boxShadow: `0 0 40px ${roleColor}44, 0 0 80px ${roleColor}18`,
         }}>
         <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={roleColor} />
-        <div className="absolute top-3 right-3 text-xs px-2.5 py-1 rounded-full font-bold backdrop-blur-sm"
-          style={{ backgroundColor: roleBg, color: roleColor, border: `1px solid ${roleColor}` }}>
-          {formatRole(player.role)}
-        </div>
       </div>
 
       {/* Name */}
@@ -443,7 +453,13 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
           style={{ fontSize: 'clamp(1.6rem,4vw,3rem)', letterSpacing: '-0.02em' }}>
           {player.name}
         </h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+
+        {/* Role badge — standalone, prominent, sport-style */}
+        <div className="flex items-center justify-center gap-2 mt-2">
+          <RoleBadge role={player.role} roleColor={roleColor} roleBg={roleBg} />
+        </div>
+
+        <p className="text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
           Base: <span style={{ color: 'var(--color-accent)', fontWeight: 700 }}>{formatCurrency(player.basePrice)}</span>
         </p>
       </div>
@@ -456,6 +472,38 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
         bidFlash={bidFlash}
         bidKey={bidKey}
       />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ROLE BADGE — sport-style pill displayed below player name
+═══════════════════════════════════════════════════════════ */
+const ROLE_ICONS = {
+  BATSMAN:       '🏏',
+  BOWLER:        '🎳',
+  ALL_ROUNDER:   '⭐',
+  WICKET_KEEPER: '🧤',
+};
+
+function RoleBadge({ role, roleColor, roleBg }) {
+  const icon  = ROLE_ICONS[role] || '🏏';
+  const label = formatRole(role);
+
+  return (
+    <div
+      className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full font-bold tracking-widest uppercase"
+      style={{
+        fontSize: 'clamp(0.65rem, 1.2vw, 0.8rem)',
+        background: `linear-gradient(135deg, ${roleBg} 0%, rgba(0,0,0,0.15) 100%)`,
+        color: roleColor,
+        border: `1.5px solid ${roleColor}`,
+        boxShadow: `0 0 12px ${roleColor}44, inset 0 1px 0 rgba(255,255,255,0.1)`,
+        letterSpacing: '0.12em',
+      }}
+    >
+      <span style={{ fontSize: '1rem' }}>{icon}</span>
+      {label}
     </div>
   );
 }
@@ -609,7 +657,7 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
                   style={{ backgroundColor: isHighest ? 'rgba(255,255,255,0.2)' : 'var(--color-surface-2)',
                            color: isHighest ? 'white' : 'var(--color-primary)' }}>
                   {team.logoUrl
-                    ? <img src={team.logoUrl} alt="" className="w-full h-full object-cover" onError={e => e.target.style.display='none'} />
+                    ? <img src={resolveUrl(team.logoUrl)} alt="" className="w-full h-full object-cover" onError={e => e.target.style.display='none'} />
                     : team.name[0]}
                 </div>
                 <span className="font-bold text-sm truncate">{team.name}</span>
@@ -726,7 +774,7 @@ function TeamsSidebar({ teams, auctionState }) {
               <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center font-bold text-sm flex-shrink-0"
                 style={{ backgroundColor: isHighest ? 'var(--color-primary)' : 'var(--color-surface)',
                          color: isHighest ? 'white' : 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
-                {team.logoUrl ? <img src={team.logoUrl} alt="" className="w-full h-full object-cover" onError={e=>e.target.style.display='none'}/> : team.name[0]}
+                {team.logoUrl ? <img src={resolveUrl(team.logoUrl)} alt="" className="w-full h-full object-cover" onError={e=>e.target.style.display='none'}/> : team.name[0]}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>{team.name}</p>
@@ -755,12 +803,9 @@ function TeamsSidebar({ teams, auctionState }) {
 /* ═══════════════════════════════════════════════════════════
    SOLD OVERLAY
 ═══════════════════════════════════════════════════════════ */
-const SOLD_API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
-
 function SoldOverlay({ name, team, teamLogo, amount }) {
-  const logoSrc = teamLogo
-    ? (teamLogo.startsWith('/api') ? SOLD_API_ORIGIN + teamLogo : teamLogo)
-    : null;
+  // teamLogo is already resolved to absolute URL before being passed here
+  const logoSrc = teamLogo || null;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 animate-fade-in"
