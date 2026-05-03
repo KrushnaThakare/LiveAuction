@@ -2,6 +2,7 @@ package com.cricketauction.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+// suppress unused import warning — Index is used in @Table annotation
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,7 +10,11 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "auction_sessions")
+@Table(name = "auction_sessions",
+       indexes = {
+           @Index(name = "idx_auction_sessions_tournament", columnList = "tournament_id"),
+           @Index(name = "idx_auction_sessions_status",     columnList = "status"),
+       })
 @Data
 @Builder
 @NoArgsConstructor
