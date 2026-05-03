@@ -7,6 +7,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
 import { exportTeamRosters } from '../utils/teamExport';
+import { resolveUrl } from '../utils/resolveUrl';
 import toast from 'react-hot-toast';
 import { ShieldCheck, Plus, Edit, Trash2, ChevronDown, ChevronUp, Download } from 'lucide-react';
 
@@ -204,7 +205,7 @@ function TeamCard({ team, accentColor, expanded, onToggle, onEdit, onDelete }) {
             }}
           >
             {team.logoUrl ? (
-              <img src={team.logoUrl} alt={team.name} className="w-full h-full object-cover"
+              <img src={resolveUrl(team.logoUrl)} alt={team.name} className="w-full h-full object-cover"
                 onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
             ) : null}
             <span style={{ display: team.logoUrl ? 'none' : 'flex' }}>{team.name[0]}</span>

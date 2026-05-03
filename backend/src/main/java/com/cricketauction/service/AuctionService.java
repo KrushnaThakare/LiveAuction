@@ -148,17 +148,22 @@ public class AuctionService {
         player.setCurrentBid(session.getCurrentBid());
         playerRepository.save(player);
 
-        // Null out currentPlayer FK before closing — prevents UNIQUE constraint
-        // violation if this player is ever re-auctioned in a new session row.
-        Player closedPlayer = session.getCurrentPlayer();
+        // Null out FK columns before closing — prevents UNIQUE constraint violation
+        // if this player is ever re-auctioned in a new session row.
+        Player closedPlayer     = session.getCurrentPlayer();
+        Team   closedWinnerTeam = session.getHighestBidderTeam();
+        double closedBid        = session.getCurrentBid();
+
         session.setCurrentPlayer(null);
         session.setHighestBidderTeam(null);
         session.setStatus(AuctionSession.AuctionStatus.SOLD);
         session.setEndedAt(LocalDateTime.now());
         session = auctionSessionRepository.save(session);
 
-        // Restore for response
+        // Restore in-memory for the API response (DB already has NULLs)
         session.setCurrentPlayer(closedPlayer);
+        session.setHighestBidderTeam(closedWinnerTeam);
+        session.setCurrentBid(closedBid);
         return mapToResponse(session);
     }
 
@@ -270,6 +275,13 @@ public class AuctionService {
     }
 
     private AuctionStateResponse createAndSaveSession(Tournament tournament, Player player) {
+        // ── Critical: null out current_player_id on any old closed sessions ──────────────
+        // Old sessions (created before the null-on-close fix) still reference this player.
+        // The UNIQUE constraint on current_player_id fires when we try to insert a new row.
+        // Nulling them here guarantees the insert will always succeed, regardless of the
+        // state of the database index.
+        auctionSessionRepository.nullifyPlayerFromClosedSessions(player.getId());
+
         player.setStatus(Player.PlayerStatus.IN_AUCTION);
         player.setCurrentBid(player.getBasePrice());
         playerRepository.save(player);

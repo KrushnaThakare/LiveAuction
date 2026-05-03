@@ -19,4 +19,14 @@ public interface AuctionSessionRepository extends JpaRepository<AuctionSession, 
     @Modifying
     @Query("UPDATE AuctionSession s SET s.currentPlayer = null, s.highestBidderTeam = null WHERE s.tournament.id = :tournamentId")
     void nullifyForeignKeysForTournament(Long tournamentId);
+
+    /**
+     * Null out current_player_id on any CLOSED sessions that reference this player.
+     * Called before starting a new session for the same player (re-auction).
+     * This makes the UNIQUE constraint irrelevant — the old rows no longer reference
+     * this player, so the new row can safely use current_player_id = playerId.
+     */
+    @Modifying
+    @Query("UPDATE AuctionSession s SET s.currentPlayer = null WHERE s.currentPlayer.id = :playerId AND s.status IN ('SOLD','UNSOLD')")
+    void nullifyPlayerFromClosedSessions(Long playerId);
 }

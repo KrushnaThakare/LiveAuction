@@ -9,6 +9,7 @@ import {
 } from '../utils/voiceAnnouncement';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
 import { driveImg } from '../utils/driveImage';
+import { resolveUrl } from '../utils/resolveUrl';
 import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
@@ -162,12 +163,14 @@ export default function AuctionPage() {
       const res = await auctionApi.sellPlayer(activeTournament.id);
       setAuctionState(res.data.data);
       setProposedBid(null);
-      const winningTeam = teams.find(t => t.id === res.data.data.highestBidderTeamId);
+      // Find winning team from local state BEFORE refreshing
+      const winningTeamId = res.data.data.highestBidderTeamId;
+      const winningTeam   = teams.find(t => t.id === winningTeamId);
       setSoldOverlay({
-        name: prev?.currentPlayer?.name,
-        team: res.data.data.highestBidderTeamName,
-        teamLogo: winningTeam?.logoUrl || null,
-        amount: res.data.data.currentBid,
+        name:     prev?.currentPlayer?.name,
+        team:     res.data.data.highestBidderTeamName,
+        teamLogo: resolveUrl(winningTeam?.logoUrl) || null,
+        amount:   res.data.data.currentBid,
       });
       setTimeout(() => setSoldOverlay(null), 4000);
       if (voiceEnabled) announcePlayerSold(prev?.currentPlayer?.name, res.data.data.highestBidderTeamName, res.data.data.currentBid);
@@ -609,7 +612,7 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
                   style={{ backgroundColor: isHighest ? 'rgba(255,255,255,0.2)' : 'var(--color-surface-2)',
                            color: isHighest ? 'white' : 'var(--color-primary)' }}>
                   {team.logoUrl
-                    ? <img src={team.logoUrl} alt="" className="w-full h-full object-cover" onError={e => e.target.style.display='none'} />
+                    ? <img src={resolveUrl(team.logoUrl)} alt="" className="w-full h-full object-cover" onError={e => e.target.style.display='none'} />
                     : team.name[0]}
                 </div>
                 <span className="font-bold text-sm truncate">{team.name}</span>
@@ -726,7 +729,7 @@ function TeamsSidebar({ teams, auctionState }) {
               <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center font-bold text-sm flex-shrink-0"
                 style={{ backgroundColor: isHighest ? 'var(--color-primary)' : 'var(--color-surface)',
                          color: isHighest ? 'white' : 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
-                {team.logoUrl ? <img src={team.logoUrl} alt="" className="w-full h-full object-cover" onError={e=>e.target.style.display='none'}/> : team.name[0]}
+                {team.logoUrl ? <img src={resolveUrl(team.logoUrl)} alt="" className="w-full h-full object-cover" onError={e=>e.target.style.display='none'}/> : team.name[0]}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>{team.name}</p>
@@ -755,12 +758,9 @@ function TeamsSidebar({ teams, auctionState }) {
 /* ═══════════════════════════════════════════════════════════
    SOLD OVERLAY
 ═══════════════════════════════════════════════════════════ */
-const SOLD_API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
-
 function SoldOverlay({ name, team, teamLogo, amount }) {
-  const logoSrc = teamLogo
-    ? (teamLogo.startsWith('/api') ? SOLD_API_ORIGIN + teamLogo : teamLogo)
-    : null;
+  // teamLogo is already resolved to absolute URL before being passed here
+  const logoSrc = teamLogo || null;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 animate-fade-in"

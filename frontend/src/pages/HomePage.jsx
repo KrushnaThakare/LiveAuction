@@ -7,6 +7,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import toast from 'react-hot-toast';
 import { Trophy, Plus, Users, ShieldCheck, CheckCircle, XCircle, Edit, Trash2, Upload } from 'lucide-react';
+import { resolveUrl } from '../utils/resolveUrl';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
 
@@ -25,8 +26,7 @@ export default function HomePage() {
     setEditingTournament(t);
     setEditForm({ name: t.name, description: t.description || '' });
     setEditLogoFile(null);
-    const logoUrl = t.logoUrl;
-    setEditLogoPreview(logoUrl ? (logoUrl.startsWith('/api') ? API_ORIGIN + logoUrl : logoUrl) : null);
+    setEditLogoPreview(resolveUrl(t.logoUrl));
   };
 
   const handleEditSave = async (ev) => {
@@ -141,7 +141,7 @@ export default function HomePage() {
                   style={{ backgroundColor: 'var(--color-primary)', opacity: 0.9 }}>
                   {t.logoUrl ? (
                     <img
-                      src={t.logoUrl.startsWith('/api') ? API_ORIGIN + t.logoUrl : t.logoUrl}
+                      src={resolveUrl(t.logoUrl)}
                       alt={t.name}
                       className="w-full h-full object-cover"
                       onError={e => { e.target.style.display='none'; }}
