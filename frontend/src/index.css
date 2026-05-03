@@ -209,62 +209,54 @@ body {
   100% { transform: scale(1)    rotate(0deg);  opacity: 1; }
 }
 
-/* ── Gavel / hammer animations ── */
-@keyframes gavelSwing {
-  0%   { transform: rotate(-55deg) translateY(-8px); }
-  55%  { transform: rotate(15deg)  translateY(0px);  }
-  65%  { transform: rotate(8deg)   translateY(2px);  }
-  75%  { transform: rotate(12deg)  translateY(0px);  }
-  100% { transform: rotate(10deg)  translateY(0px);  }
+/* ── Gavel / hammer animations (real image) ── */
+@keyframes gavelRaise {
+  0%   { transform: rotate(0deg)   translateY(0);    }
+  100% { transform: rotate(-48deg) translateY(-30px); }
 }
 
-@keyframes gavelImpact {
-  0%, 90% { transform: scaleX(1) scaleY(1); opacity: 0; }
-  55%      { transform: scaleX(1.6) scaleY(0.4); opacity: 1; }
-  70%      { transform: scaleX(0.9) scaleY(1.2); opacity: 0.6; }
-  85%      { transform: scaleX(1) scaleY(1); opacity: 0; }
+@keyframes gavelStrike {
+  0%   { transform: rotate(-48deg) translateY(-30px); }
+  70%  { transform: rotate(18deg)  translateY(8px);   }
+  80%  { transform: rotate(14deg)  translateY(4px);   }
+  90%  { transform: rotate(16deg)  translateY(6px);   }
+  100% { transform: rotate(15deg)  translateY(5px);   }
 }
 
-@keyframes gavelRipple {
-  0%   { transform: scale(0.3); opacity: 0.8; }
-  100% { transform: scale(3);   opacity: 0; }
+@keyframes impactFlash {
+  0%   { opacity: 0; transform: scale(0.2); }
+  30%  { opacity: 1; transform: scale(1.4); }
+  100% { opacity: 0; transform: scale(2.2); }
+}
+
+@keyframes impactRipple {
+  0%   { transform: scale(0.1); opacity: 0.9; }
+  100% { transform: scale(4);   opacity: 0; }
 }
 
 @keyframes verdictSlam {
-  0%   { transform: scale(2.5) translateY(-20px); opacity: 0; filter: blur(8px); }
-  50%  { transform: scale(0.95) translateY(2px);  opacity: 1; filter: blur(0); }
-  65%  { transform: scale(1.04) translateY(0);    opacity: 1; }
+  0%   { transform: scale(2.8) translateY(-16px); opacity: 0; filter: blur(10px); }
+  55%  { transform: scale(0.92) translateY(3px);  opacity: 1; filter: blur(0); }
+  70%  { transform: scale(1.05) translateY(0);    opacity: 1; }
   100% { transform: scale(1)    translateY(0);    opacity: 1; }
 }
 
 @keyframes detailFadeUp {
-  0%   { transform: translateY(24px); opacity: 0; }
+  0%   { transform: translateY(28px); opacity: 0; }
   100% { transform: translateY(0);    opacity: 1; }
 }
 
-@keyframes boardShake {
-  0%, 100% { transform: translateX(0) rotate(0deg); }
-  20%       { transform: translateX(-4px) rotate(-1deg); }
-  40%       { transform: translateX(4px) rotate(1deg); }
-  60%       { transform: translateX(-3px) rotate(-0.5deg); }
-  80%       { transform: translateX(3px) rotate(0.5deg); }
-}
-
-.animate-gavel-swing {
-  animation: gavelSwing 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  transform-origin: top right;
+@keyframes overlayFadeIn {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 .animate-verdict-slam {
-  animation: verdictSlam 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: verdictSlam 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 .animate-detail-up {
   animation: detailFadeUp 0.5s ease-out forwards;
-}
-
-.animate-board-shake {
-  animation: boardShake 0.4s ease-out;
 }
 
 @keyframes scanline {
