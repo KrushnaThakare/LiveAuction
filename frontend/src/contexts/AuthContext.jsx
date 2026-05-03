@@ -66,10 +66,16 @@ export function AuthProvider({ children }) {
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isOperator   = user?.role === 'OPERATOR' || isSuperAdmin;
-  const isViewer     = !!user; // any authenticated user can view
+  const isViewer     = !!user;
+
+  // White-label branding: operator's custom app name/logo, fallback to default
+  const brand = {
+    name: user?.appName || 'Cricket Auction',
+    logoUrl: user?.appLogoUrl || null,
+  };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isSuperAdmin, isOperator, isViewer }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isSuperAdmin, isOperator, isViewer, brand }}>
       {children}
     </AuthContext.Provider>
   );

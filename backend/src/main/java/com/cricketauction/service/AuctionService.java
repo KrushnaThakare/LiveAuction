@@ -151,12 +151,17 @@ public class AuctionService {
         player.setCurrentBid(session.getCurrentBid());
         playerRepository.save(player);
 
-        // Null out FK columns before closing — prevents UNIQUE constraint violation
-        // if this player is ever re-auctioned in a new session row.
+        // Store undo metadata BEFORE nulling FK columns
         Player closedPlayer     = session.getCurrentPlayer();
         Team   closedWinnerTeam = session.getHighestBidderTeam();
         double closedBid        = session.getCurrentBid();
 
+        session.setUndoPlayerId(closedPlayer.getId());
+        session.setUndoTeamId(winningTeam.getId());
+        session.setUndoAmount(session.getCurrentBid());
+        session.setUndoPreviousPlayerStatus(Player.PlayerStatus.AVAILABLE);
+
+        // Null FK columns so the UNIQUE constraint is never triggered on re-auction
         session.setCurrentPlayer(null);
         session.setHighestBidderTeam(null);
         session.setStatus(AuctionSession.AuctionStatus.SOLD);
@@ -174,12 +179,17 @@ public class AuctionService {
     public AuctionStateResponse markUnsold(Long tournamentId) {
         AuctionSession session = requireActiveSession(tournamentId);
         Player player = session.getCurrentPlayer();
+        Player closedPlayer = player;
+
+        // Save undo metadata
+        session.setUndoPlayerId(player.getId());
+        session.setUndoPreviousPlayerStatus(Player.PlayerStatus.AVAILABLE);
+
         player.setStatus(Player.PlayerStatus.UNSOLD);
         player.setCurrentBid(0.0);
         playerRepository.save(player);
 
-        Player closedPlayer = session.getCurrentPlayer();
-        session.setCurrentPlayer(null);   // null FK so re-auction session can reuse this player
+        session.setCurrentPlayer(null);
         session.setHighestBidderTeam(null);
         session.setStatus(AuctionSession.AuctionStatus.UNSOLD);
         session.setEndedAt(LocalDateTime.now());
@@ -206,6 +216,47 @@ public class AuctionService {
         session = auctionSessionRepository.save(session);
         session.setCurrentPlayer(closedPlayer);
         return mapToResponse(session);
+    }
+
+    /* ── undo the last SOLD or UNSOLD decision ── */
+    public AuctionStateResponse undoLastDecision(Long tournamentId) {
+        // Find the most recent SOLD or UNSOLD session
+        AuctionSession session = auctionSessionRepository
+                .findTopByTournamentIdAndStatusInOrderByIdDesc(
+                        tournamentId,
+                        List.of(AuctionSession.AuctionStatus.SOLD, AuctionSession.AuctionStatus.UNSOLD))
+                .orElseThrow(() -> new AuctionException("Nothing to undo — no recent sold or unsold decision"));
+
+        if (session.getUndoPlayerId() == null) {
+            throw new AuctionException("Undo data not available for this session (session too old)");
+        }
+
+        // Load the player and restore them to AVAILABLE
+        Player player = playerRepository.findById(session.getUndoPlayerId())
+                .orElseThrow(() -> new AuctionException("Player not found for undo"));
+
+        boolean wasSold = session.getStatus() == AuctionSession.AuctionStatus.SOLD;
+
+        if (wasSold && session.getUndoTeamId() != null) {
+            // Restore team budget and remove player from team
+            teamRepository.findById(session.getUndoTeamId()).ifPresent(team -> {
+                team.setRemainingBudget(team.getRemainingBudget() + session.getUndoAmount());
+                teamRepository.save(team);
+            });
+            player.setTeam(null);
+        }
+
+        // Reset player to AVAILABLE
+        player.setStatus(Player.PlayerStatus.AVAILABLE);
+        player.setCurrentBid(0.0);
+        playerRepository.save(player);
+
+        // Mark session as UNDONE
+        session.setStatus(AuctionSession.AuctionStatus.UNDONE);
+        auctionSessionRepository.save(session);
+
+        // Return current auction state (idle, ready for next player)
+        return getAuctionState(tournamentId);
     }
 
     /* ── re-auction all unsold players (reset to AVAILABLE) ── */
@@ -301,11 +352,14 @@ public class AuctionService {
 
     private AuctionStateResponse mapToResponse(AuctionSession session) {
         double current = session.getCurrentBid();
-        // If nobody has bid yet, the first bid IS the base price (current bid).
-        // Only add an increment after at least one bid has been placed.
         double next = (session.getHighestBidderTeam() == null)
                 ? current
                 : (current < BID_THRESHOLD ? current + BID_INC_LOW : current + BID_INC_HIGH);
+
+        // A session is undoable if it is SOLD or UNSOLD and has undo metadata
+        boolean undoable = (session.getStatus() == AuctionSession.AuctionStatus.SOLD
+                         || session.getStatus() == AuctionSession.AuctionStatus.UNSOLD)
+                        && session.getUndoPlayerId() != null;
 
         return AuctionStateResponse.builder()
                 .sessionId(session.getId())
@@ -319,6 +373,8 @@ public class AuctionService {
                         ? session.getHighestBidderTeam().getName() : null)
                 .nextBidAmount(next)
                 .tournamentId(session.getTournament().getId())
+                .undoable(undoable)
+                .undoSessionId(undoable ? session.getId() : null)
                 .build();
     }
 }

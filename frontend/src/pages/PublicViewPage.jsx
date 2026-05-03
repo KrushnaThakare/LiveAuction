@@ -5,6 +5,7 @@ import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/fo
 import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
 import SequentialImage from '../components/common/SequentialImage';
+import GavelOverlay from '../components/common/GavelOverlay';
 import { Gavel, ShieldCheck, Trophy, XCircle, Wifi, ChevronDown, ChevronUp } from 'lucide-react';
 
 async function get(path) {
@@ -70,20 +71,23 @@ export default function PublicViewPage() {
       try {
         const a = await get(`/tournaments/${tournamentId}/auction/state`);
         setAuction(prev => {
-          // Detect SOLD transition → show overlay
-          if (prev?.status === 'ACTIVE' && a?.status === 'SOLD') {
-            const teamsList = teams; // closure captures current teams
-            const winnerTeam = teamsList.find(t => t.id === a.highestBidderTeamId);
+          const wasActive = prev?.status === 'ACTIVE';
+          if (wasActive && a?.status === 'SOLD') {
+            const winnerTeam = teams.find(t => t.id === a.highestBidderTeamId);
             setSoldOverlay({
+              verdict:  'SOLD',
               name:     prev.currentPlayer?.name,
               team:     a.highestBidderTeamName,
               teamLogo: resolveUrl(winnerTeam?.logoUrl),
               amount:   a.currentBid,
             });
-            setTimeout(() => setSoldOverlay(null), 4500);
-            // Refresh data after sale
+            setTimeout(() => setSoldOverlay(null), 5200);
             refreshTeams();
             refreshPlayers();
+          }
+          if (wasActive && a?.status === 'UNSOLD') {
+            setSoldOverlay({ verdict: 'UNSOLD', name: prev.currentPlayer?.name });
+            setTimeout(() => setSoldOverlay(null), 4200);
           }
           return a;
         });
@@ -157,44 +161,13 @@ export default function PublicViewPage() {
         {tab === 'unsold'  && <PlayerListView players={unsold} emptyMsg="No unsold players yet" label="Unsold" />}
       </div>
 
-      {/* Cinematic SOLD overlay */}
-      {soldOverlay && <PublicSoldOverlay {...soldOverlay} />}
+      {/* Gavel overlay — same for SOLD and UNSOLD */}
+      {soldOverlay && <GavelOverlay {...soldOverlay} duration={soldOverlay.verdict === 'SOLD' ? 5000 : 4000} />}
     </div>
   );
 }
 
-/* ═══ CINEMATIC SOLD OVERLAY (same as admin) ═══ */
-function PublicSoldOverlay({ name, team, teamLogo, amount }) {
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 animate-fade-in"
-      style={{ backgroundColor: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)' }}>
-      <div className="animate-sold text-center flex flex-col items-center">
-        <h1 className="font-black uppercase tracking-widest text-shimmer mb-3"
-          style={{ fontSize: 'clamp(2.5rem,8vw,6rem)' }}>SOLD!</h1>
-
-        <p className="font-black mb-4" style={{ color: 'white', fontSize: 'clamp(1.6rem,5vw,3rem)' }}>
-          {name}
-        </p>
-
-        <div className="flex flex-col items-center gap-3 mb-4">
-          {teamLogo && (
-            <div className="w-24 h-24 rounded-3xl overflow-hidden shadow-2xl"
-              style={{ border: '3px solid var(--color-accent)', boxShadow: '0 0 40px rgba(245,158,11,0.5)' }}>
-              <img src={teamLogo} alt={team} className="w-full h-full object-cover" />
-            </div>
-          )}
-          <p className="font-black" style={{ color: 'var(--color-accent)', fontSize: 'clamp(1.4rem,4vw,2.2rem)' }}>
-            {team}
-          </p>
-        </div>
-
-        <p className="font-black" style={{ color: 'var(--color-success)', fontSize: 'clamp(1.6rem,5vw,2.8rem)' }}>
-          {formatCurrency(amount)}
-        </p>
-      </div>
-    </div>
-  );
-}
+/* GavelOverlay handles both SOLD and UNSOLD — imported from components/common */
 
 /* ═══ AUCTION VIEW ═══ */
 function AuctionView({ auctionState, teams }) {

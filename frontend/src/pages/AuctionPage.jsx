@@ -10,6 +10,7 @@ import {
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
 import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
+import GavelOverlay from '../components/common/GavelOverlay';
 import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
@@ -17,7 +18,7 @@ import toast from 'react-hot-toast';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
-  Keyboard, Shuffle, StopCircle, RefreshCw, Share2,
+  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw,
 } from 'lucide-react';
 
 /* ── Image component using sequential loader ── */
@@ -56,7 +57,7 @@ export default function AuctionPage() {
   /* proposedBid = number the host has typed/arrowed; null means "not set" */
   const [proposedBid, setProposedBid]           = useState(null);
   const [showKeyHelp, setShowKeyHelp]           = useState(false);
-  const [soldOverlay, setSoldOverlay]           = useState(null);
+  const [soldOverlay, setSoldOverlay]           = useState(null); // { verdict, name, team, teamLogo, amount }
   const containerRef = useRef(null);
 
   /* ── fetch all data ── */
@@ -167,12 +168,13 @@ export default function AuctionPage() {
       const winningTeamId = res.data.data.highestBidderTeamId;
       const winningTeam   = teams.find(t => t.id === winningTeamId);
       setSoldOverlay({
+        verdict:  'SOLD',
         name:     prev?.currentPlayer?.name,
         team:     res.data.data.highestBidderTeamName,
         teamLogo: resolveUrl(winningTeam?.logoUrl) || null,
         amount:   res.data.data.currentBid,
       });
-      setTimeout(() => setSoldOverlay(null), 4000);
+      setTimeout(() => setSoldOverlay(null), 5000);
       if (voiceEnabled) announcePlayerSold(prev?.currentPlayer?.name, res.data.data.highestBidderTeamName, res.data.data.currentBid);
       const tRes = await teamApi.getAll(activeTournament.id);
       setTeams(tRes.data.data || []);
@@ -191,7 +193,8 @@ export default function AuctionPage() {
       setAuctionState(res.data.data);
       setProposedBid(null);
       if (voiceEnabled && prev?.currentPlayer?.name) announcePlayerUnsold(prev.currentPlayer.name);
-      toast('Marked as UNSOLD', { icon: '❌' });
+      setSoldOverlay({ verdict: 'UNSOLD', name: prev?.currentPlayer?.name });
+      setTimeout(() => setSoldOverlay(null), 4000);
       fetchAll();
     } finally {
       setActionLoading(false);
@@ -210,6 +213,23 @@ export default function AuctionPage() {
     } finally {
       setActionLoading(false);
     }
+  }, [activeTournament, actionLoading, fetchAll]);
+
+  /* ── undo last sold/unsold decision ── */
+  const handleUndo = useCallback(async () => {
+    if (!activeTournament || actionLoading) return;
+    if (!confirm('Undo the last decision?\n\nThis will:\n• Return the player to Available\n• Restore the team\'s budget (if sold)\n• Remove the player from their squad')) return;
+    setActionLoading(true);
+    try {
+      const res = await auctionApi.undo(activeTournament.id);
+      setAuctionState(res.data.data);
+      setSoldOverlay(null);
+      toast.success('Decision undone — player returned to Available');
+      const tRes = await teamApi.getAll(activeTournament.id);
+      setTeams(tRes.data.data || []);
+      fetchAll();
+    } catch { /* handled */ }
+    finally { setActionLoading(false); }
   }, [activeTournament, actionLoading, fetchAll]);
 
   /* ── re-auction unsold ── */
@@ -413,6 +433,7 @@ export default function AuctionPage() {
               onStart={handleStartAuction}
               onRandom={handleStartRandom}
               onReAuction={handleReAuction}
+              onUndo={handleUndo}
             />
           )}
         </div>
@@ -421,7 +442,7 @@ export default function AuctionPage() {
         <TeamsSidebar teams={teams} auctionState={auctionState} />
       </div>
 
-      {soldOverlay && <SoldOverlay {...soldOverlay} />}
+      {soldOverlay && <GavelOverlay {...soldOverlay} duration={soldOverlay.verdict === 'SOLD' ? 5000 : 4000} />}
     </div>
   );
 }
@@ -683,7 +704,9 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
    IDLE STAGE — between players
 ═══════════════════════════════════════════════════════════ */
 function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
-                     actionLoading, onStart, onRandom, onReAuction }) {
+                     actionLoading, onStart, onRandom, onReAuction, onUndo }) {
+  const canUndo = auctionState?.undoable;
+
   return (
     <div className="flex-1 flex flex-col p-4 gap-4">
       {/* Status banner */}
@@ -709,6 +732,15 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
           {allDone && (
             <button onClick={onReAuction} disabled={actionLoading} className="btn-secondary">
               <RefreshCw size={16} /> Re-auction {unsoldPlayers.length} Unsold
+            </button>
+          )}
+          {canUndo && (
+            <button onClick={onUndo} disabled={actionLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all"
+              style={{ backgroundColor: 'rgba(245,158,11,0.1)', color: 'var(--color-warning)',
+                       border: '1.5px solid var(--color-warning)' }}
+              title="Undo last sold/unsold decision">
+              <RotateCcw size={15} /> Undo Last Decision
             </button>
           )}
         </div>
@@ -800,44 +832,4 @@ function TeamsSidebar({ teams, auctionState }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   SOLD OVERLAY
-═══════════════════════════════════════════════════════════ */
-function SoldOverlay({ name, team, teamLogo, amount }) {
-  // teamLogo is already resolved to absolute URL before being passed here
-  const logoSrc = teamLogo || null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 animate-fade-in"
-      style={{ backgroundColor: 'rgba(0,0,0,0.90)', backdropFilter: 'blur(12px)' }}>
-      <div className="animate-sold text-center flex flex-col items-center">
-        {/* SOLD banner */}
-        <h1 className="font-black uppercase tracking-widest text-shimmer mb-3"
-          style={{ fontSize: 'clamp(2.5rem,8vw,6rem)' }}>SOLD!</h1>
-
-        {/* Player name */}
-        <p className="font-black mb-4" style={{ color: 'white', fontSize: 'clamp(1.8rem,5vw,3.5rem)' }}>
-          {name}
-        </p>
-
-        {/* Team logo + name — the centrepiece */}
-        <div className="flex flex-col items-center gap-3 mb-4">
-          {logoSrc && (
-            <div className="w-28 h-28 rounded-3xl overflow-hidden shadow-2xl"
-              style={{ border: '3px solid var(--color-accent)', boxShadow: '0 0 40px rgba(245,158,11,0.5)' }}>
-              <img src={logoSrc} alt={team} className="w-full h-full object-cover" />
-            </div>
-          )}
-          <p className="font-black" style={{ color: 'var(--color-accent)', fontSize: 'clamp(1.5rem,4vw,2.5rem)' }}>
-            {team}
-          </p>
-        </div>
-
-        {/* Final price */}
-        <p className="font-black" style={{ color: 'var(--color-success)', fontSize: 'clamp(1.8rem,5vw,3rem)' }}>
-          {formatCurrency(amount)}
-        </p>
-      </div>
-    </div>
-  );
-}
+/* SoldOverlay is replaced by GavelOverlay component */

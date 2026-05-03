@@ -53,6 +53,11 @@ public class SchemaFixRunner implements ApplicationRunner {
                 return;
             }
 
+            // Step 0: add undo columns if they don't exist yet
+            // (Hibernate ddl-auto=update only runs on application startup;
+            //  this ensures columns exist even before Hibernate processes the schema)
+            addUndoColumnsIfMissing(conn);
+
             // Step 1: null out FK values on closed sessions first
             // (needed even if the index is already gone, prevents future constraint hits)
             nullifyClosedSessions(conn);
@@ -73,6 +78,62 @@ public class SchemaFixRunner implements ApplicationRunner {
 
         } catch (Exception e) {
             log.warn("SchemaFixRunner: {}", e.getMessage());
+        }
+    }
+
+    /** Add the undo metadata columns to auction_sessions if they are missing */
+    private void addUndoColumnsIfMissing(Connection conn) {
+        String[] columns = {
+            "undo_player_id             BIGINT",
+            "undo_team_id               BIGINT",
+            "undo_amount                DOUBLE",
+            "undo_previous_player_status VARCHAR(30)"
+        };
+
+        // Also add branding columns to app_users if missing
+        addColumnsToTable(conn, "app_users", new String[]{
+            "app_name     VARCHAR(100)",
+            "app_logo_url VARCHAR(500)"
+        });
+        // Also ensure the status ENUM includes UNDONE
+        try {
+            boolean wasAuto = conn.getAutoCommit();
+            conn.setAutoCommit(true);
+            try (Statement st = conn.createStatement()) {
+                st.execute("ALTER TABLE auction_sessions MODIFY COLUMN status " +
+                        "ENUM('IDLE','ACTIVE','SOLD','UNSOLD','UNDONE') NOT NULL");
+                log.debug("SchemaFixRunner: status enum updated to include UNDONE");
+            } catch (SQLException e) {
+                log.debug("SchemaFixRunner status enum: {}", e.getMessage());
+            } finally {
+                conn.setAutoCommit(wasAuto);
+            }
+        } catch (SQLException ignored) {}
+
+        addColumnsToTable(conn, "auction_sessions", columns);
+    }
+
+    private void addColumnsToTable(Connection conn, String tableName, String[] columns) {
+        for (String colDef : columns) {
+            String colName = colDef.trim().split("\\s+")[0];
+            try {
+                boolean exists;
+                try (ResultSet rs = conn.getMetaData().getColumns(null, null, tableName, colName)) {
+                    exists = rs.next();
+                }
+                if (!exists) {
+                    boolean wasAuto = conn.getAutoCommit();
+                    conn.setAutoCommit(true);
+                    try (Statement st = conn.createStatement()) {
+                        st.execute("ALTER TABLE " + tableName + " ADD COLUMN " + colDef);
+                        log.info("SchemaFixRunner: added column {}.{}", tableName, colName);
+                    } finally {
+                        conn.setAutoCommit(wasAuto);
+                    }
+                }
+            } catch (SQLException e) {
+                log.debug("SchemaFixRunner addColumn {}.{}: {}", tableName, colName, e.getMessage());
+            }
         }
     }
 

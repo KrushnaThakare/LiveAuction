@@ -41,6 +41,13 @@ public class AppUser {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
+    /** White-label branding shown in the app header for this operator */
+    @Column(name = "app_name", length = 100)
+    private String appName;
+
+    @Column(name = "app_logo_url", length = 500)
+    private String appLogoUrl;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

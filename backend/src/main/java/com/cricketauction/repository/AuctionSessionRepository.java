@@ -13,6 +13,9 @@ import java.util.Optional;
 public interface AuctionSessionRepository extends JpaRepository<AuctionSession, Long> {
     Optional<AuctionSession> findByTournamentIdAndStatus(Long tournamentId, AuctionSession.AuctionStatus status);
     Optional<AuctionSession> findTopByTournamentIdOrderByIdDesc(Long tournamentId);
+    /** Find the most recent SOLD or UNSOLD session (for undo) */
+    Optional<AuctionSession> findTopByTournamentIdAndStatusInOrderByIdDesc(
+            Long tournamentId, java.util.List<AuctionSession.AuctionStatus> statuses);
     List<AuctionSession> findByTournamentId(Long tournamentId);
 
     /** Null out FK references so cascade delete on Tournament can proceed */

@@ -36,7 +36,8 @@ public class AppUserService implements UserDetailsService {
         );
     }
 
-    public AppUser createUser(String username, String rawPassword, String displayName, AppUser.UserRole role) {
+    public AppUser createUser(String username, String rawPassword, String displayName,
+                               AppUser.UserRole role, String appName, String appLogoUrl) {
         if (userRepo.existsByUsername(username)) {
             throw new IllegalArgumentException("Username '" + username + "' already exists");
         }
@@ -46,16 +47,28 @@ public class AppUserService implements UserDetailsService {
                 .displayName(displayName)
                 .role(role)
                 .active(true)
+                .appName(appName)
+                .appLogoUrl(appLogoUrl)
                 .build();
         return userRepo.save(user);
     }
 
-    public AppUser updateUser(Long id, String displayName, AppUser.UserRole role, Boolean active) {
+    public AppUser updateUser(Long id, String displayName, AppUser.UserRole role,
+                               Boolean active, String appName) {
         AppUser user = userRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         if (displayName != null) user.setDisplayName(displayName);
         if (role != null)        user.setRole(role);
         if (active != null)      user.setActive(active);
+        if (appName != null)     user.setAppName(appName);
+        return userRepo.save(user);
+    }
+
+    public AppUser findById(Long id) {
+        return userRepo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public AppUser save(AppUser user) {
         return userRepo.save(user);
     }
 
