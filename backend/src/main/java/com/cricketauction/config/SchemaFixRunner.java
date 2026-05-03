@@ -40,7 +40,17 @@ public class SchemaFixRunner implements ApplicationRunner {
         try (Connection conn = dataSource.getConnection()) {
             String product = conn.getMetaData().getDatabaseProductName().toLowerCase();
             if (!product.contains("mysql") && !product.contains("mariadb")) {
-                return; // H2 / other — skip
+                return; // H2 (tests) / other — skip entirely
+            }
+
+            // Ensure Hibernate has created the table before we touch it
+            boolean tableExists;
+            try (ResultSet rs = conn.getMetaData().getTables(null, null, "auction_sessions", null)) {
+                tableExists = rs.next();
+            }
+            if (!tableExists) {
+                log.debug("SchemaFixRunner: auction_sessions not created yet — skipping");
+                return;
             }
 
             // Step 1: null out FK values on closed sessions first

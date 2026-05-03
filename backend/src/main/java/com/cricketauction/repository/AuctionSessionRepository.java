@@ -23,10 +23,10 @@ public interface AuctionSessionRepository extends JpaRepository<AuctionSession, 
     /**
      * Null out current_player_id on any CLOSED sessions that reference this player.
      * Called before starting a new session for the same player (re-auction).
-     * This makes the UNIQUE constraint irrelevant — the old rows no longer reference
-     * this player, so the new row can safely use current_player_id = playerId.
+     * Uses native SQL so it is not JPQL-validated during schema creation on H2.
      */
     @Modifying
-    @Query("UPDATE AuctionSession s SET s.currentPlayer = null WHERE s.currentPlayer.id = :playerId AND s.status IN ('SOLD','UNSOLD')")
+    @Query(value = "UPDATE auction_sessions SET current_player_id = NULL WHERE current_player_id = :playerId AND status IN ('SOLD','UNSOLD')",
+           nativeQuery = true)
     void nullifyPlayerFromClosedSessions(Long playerId);
 }

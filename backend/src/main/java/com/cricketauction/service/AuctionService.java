@@ -298,7 +298,11 @@ public class AuctionService {
 
     private AuctionStateResponse mapToResponse(AuctionSession session) {
         double current = session.getCurrentBid();
-        double next    = current < BID_THRESHOLD ? current + BID_INC_LOW : current + BID_INC_HIGH;
+        // If nobody has bid yet, the first bid IS the base price (current bid).
+        // Only add an increment after at least one bid has been placed.
+        double next = (session.getHighestBidderTeam() == null)
+                ? current
+                : (current < BID_THRESHOLD ? current + BID_INC_LOW : current + BID_INC_HIGH);
 
         return AuctionStateResponse.builder()
                 .sessionId(session.getId())
