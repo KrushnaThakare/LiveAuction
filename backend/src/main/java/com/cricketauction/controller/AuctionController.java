@@ -80,6 +80,14 @@ public class AuctionController {
                 "Auction stopped", auctionService.stopAuction(tournamentId)));
     }
 
+    /** Undo the last SOLD or UNSOLD decision */
+    @PostMapping("/undo")
+    public ResponseEntity<ApiResponse<AuctionStateResponse>> undoLastDecision(
+            @PathVariable Long tournamentId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Decision reversed", auctionService.undoLastDecision(tournamentId)));
+    }
+
     /** Reset all UNSOLD players to AVAILABLE for a second-round auction */
     @PostMapping("/re-auction-unsold")
     public ResponseEntity<ApiResponse<Integer>> reAuctionUnsold(

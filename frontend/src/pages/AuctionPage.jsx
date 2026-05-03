@@ -18,7 +18,7 @@ import toast from 'react-hot-toast';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
-  Keyboard, Shuffle, StopCircle, RefreshCw, Share2,
+  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw,
 } from 'lucide-react';
 
 /* ── Image component using sequential loader ── */
@@ -213,6 +213,23 @@ export default function AuctionPage() {
     } finally {
       setActionLoading(false);
     }
+  }, [activeTournament, actionLoading, fetchAll]);
+
+  /* ── undo last sold/unsold decision ── */
+  const handleUndo = useCallback(async () => {
+    if (!activeTournament || actionLoading) return;
+    if (!confirm('Undo the last decision?\n\nThis will:\n• Return the player to Available\n• Restore the team\'s budget (if sold)\n• Remove the player from their squad')) return;
+    setActionLoading(true);
+    try {
+      const res = await auctionApi.undo(activeTournament.id);
+      setAuctionState(res.data.data);
+      setSoldOverlay(null);
+      toast.success('Decision undone — player returned to Available');
+      const tRes = await teamApi.getAll(activeTournament.id);
+      setTeams(tRes.data.data || []);
+      fetchAll();
+    } catch { /* handled */ }
+    finally { setActionLoading(false); }
   }, [activeTournament, actionLoading, fetchAll]);
 
   /* ── re-auction unsold ── */
@@ -416,6 +433,7 @@ export default function AuctionPage() {
               onStart={handleStartAuction}
               onRandom={handleStartRandom}
               onReAuction={handleReAuction}
+              onUndo={handleUndo}
             />
           )}
         </div>
@@ -686,7 +704,9 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
    IDLE STAGE — between players
 ═══════════════════════════════════════════════════════════ */
 function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
-                     actionLoading, onStart, onRandom, onReAuction }) {
+                     actionLoading, onStart, onRandom, onReAuction, onUndo }) {
+  const canUndo = auctionState?.undoable;
+
   return (
     <div className="flex-1 flex flex-col p-4 gap-4">
       {/* Status banner */}
@@ -712,6 +732,15 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
           {allDone && (
             <button onClick={onReAuction} disabled={actionLoading} className="btn-secondary">
               <RefreshCw size={16} /> Re-auction {unsoldPlayers.length} Unsold
+            </button>
+          )}
+          {canUndo && (
+            <button onClick={onUndo} disabled={actionLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all"
+              style={{ backgroundColor: 'rgba(245,158,11,0.1)', color: 'var(--color-warning)',
+                       border: '1.5px solid var(--color-warning)' }}
+              title="Undo last sold/unsold decision">
+              <RotateCcw size={15} /> Undo Last Decision
             </button>
           )}
         </div>

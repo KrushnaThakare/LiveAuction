@@ -50,7 +50,26 @@ public class AuctionSession {
     @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
+    // ── Undo metadata — stored so we can fully reverse a SOLD or UNSOLD decision ──
+
+    /** The team this player was sold to (kept for undo even after FKs are nulled) */
+    @Column(name = "undo_team_id")
+    private Long undoTeamId;
+
+    /** The amount that was deducted from the team's budget */
+    @Column(name = "undo_amount")
+    private Double undoAmount;
+
+    /** The player id (kept for undo even after current_player_id is nulled) */
+    @Column(name = "undo_player_id")
+    private Long undoPlayerId;
+
+    /** Previous player status before this session closed */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "undo_previous_player_status")
+    private Player.PlayerStatus undoPreviousPlayerStatus;
+
     public enum AuctionStatus {
-        IDLE, ACTIVE, SOLD, UNSOLD
+        IDLE, ACTIVE, SOLD, UNSOLD, UNDONE
     }
 }

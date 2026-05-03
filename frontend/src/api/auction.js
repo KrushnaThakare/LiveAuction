@@ -13,5 +13,6 @@ export const auctionApi = {
   markUnsold:        (tid)             => api.post(`/tournaments/${tid}/auction/unsold`),
   stopAuction:       (tid)             => api.post(`/tournaments/${tid}/auction/stop`),
   reAuctionUnsold:   (tid)             => api.post(`/tournaments/${tid}/auction/re-auction-unsold`),
+  undo:              (tid)             => api.post(`/tournaments/${tid}/auction/undo`),
   getHistory:        (tid)             => api.get(`/tournaments/${tid}/auction/history`),
 };
