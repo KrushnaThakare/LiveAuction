@@ -40,6 +40,7 @@ public class AdminSeeder implements ApplicationRunner {
                     .displayName("Super Admin")
                     .role(AppUser.UserRole.SUPER_ADMIN)
                     .active(true)
+                    .appName("Cricket Auction")
                     .build();
             userRepo.save(admin);
             log.info("AdminSeeder: created super-admin '{}'", adminUsername);

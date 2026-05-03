@@ -89,6 +89,12 @@ public class SchemaFixRunner implements ApplicationRunner {
             "undo_amount                DOUBLE",
             "undo_previous_player_status VARCHAR(30)"
         };
+
+        // Also add branding columns to app_users if missing
+        addColumnsToTable(conn, "app_users", new String[]{
+            "app_name     VARCHAR(100)",
+            "app_logo_url VARCHAR(500)"
+        });
         // Also ensure the status ENUM includes UNDONE
         try {
             boolean wasAuto = conn.getAutoCommit();
@@ -104,27 +110,29 @@ public class SchemaFixRunner implements ApplicationRunner {
             }
         } catch (SQLException ignored) {}
 
+        addColumnsToTable(conn, "auction_sessions", columns);
+    }
+
+    private void addColumnsToTable(Connection conn, String tableName, String[] columns) {
         for (String colDef : columns) {
             String colName = colDef.trim().split("\\s+")[0];
             try {
-                // Check if column exists
                 boolean exists;
-                try (ResultSet rs = conn.getMetaData().getColumns(
-                        null, null, "auction_sessions", colName)) {
+                try (ResultSet rs = conn.getMetaData().getColumns(null, null, tableName, colName)) {
                     exists = rs.next();
                 }
                 if (!exists) {
                     boolean wasAuto = conn.getAutoCommit();
                     conn.setAutoCommit(true);
                     try (Statement st = conn.createStatement()) {
-                        st.execute("ALTER TABLE auction_sessions ADD COLUMN " + colDef);
-                        log.info("SchemaFixRunner: added column auction_sessions.{}", colName);
+                        st.execute("ALTER TABLE " + tableName + " ADD COLUMN " + colDef);
+                        log.info("SchemaFixRunner: added column {}.{}", tableName, colName);
                     } finally {
                         conn.setAutoCommit(wasAuto);
                     }
                 }
             } catch (SQLException e) {
-                log.debug("SchemaFixRunner addColumn {}: {}", colName, e.getMessage());
+                log.debug("SchemaFixRunner addColumn {}.{}: {}", tableName, colName, e.getMessage());
             }
         }
     }

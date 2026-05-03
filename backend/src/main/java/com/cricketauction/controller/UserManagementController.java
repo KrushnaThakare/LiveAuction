@@ -3,9 +3,11 @@ package com.cricketauction.controller;
 import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.entity.AppUser;
 import com.cricketauction.service.AppUserService;
+import com.cricketauction.service.FileStorageService;
 import lombok.Data;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -15,24 +17,26 @@ import java.util.Map;
 @RequestMapping("/api/users")
 public class UserManagementController {
 
-    private final AppUserService userService;
+    private final AppUserService  userService;
+    private final FileStorageService fileStorage;
 
-    public UserManagementController(AppUserService userService) {
-        this.userService = userService;
+    public UserManagementController(AppUserService userService, FileStorageService fileStorage) {
+        this.userService  = userService;
+        this.fileStorage  = fileStorage;
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<UserResponse>>> listUsers() {
-        List<UserResponse> users = userService.getAllUsers().stream()
-                .map(UserResponse::from).toList();
-        return ResponseEntity.ok(ApiResponse.success(users));
+        return ResponseEntity.ok(ApiResponse.success(
+                userService.getAllUsers().stream().map(UserResponse::from).toList()));
     }
 
     @PostMapping
     public ResponseEntity<ApiResponse<UserResponse>> createUser(@RequestBody CreateUserRequest req) {
         AppUser.UserRole role = AppUser.UserRole.valueOf(req.getRole().toUpperCase());
-        AppUser user = userService.createUser(req.getUsername(), req.getPassword(),
-                req.getDisplayName(), role);
+        AppUser user = userService.createUser(
+                req.getUsername(), req.getPassword(), req.getDisplayName(), role,
+                req.getAppName(), null);
         return ResponseEntity.ok(ApiResponse.success("User created", UserResponse.from(user)));
     }
 
@@ -41,8 +45,25 @@ public class UserManagementController {
             @PathVariable Long id, @RequestBody UpdateUserRequest req) {
         AppUser.UserRole role = req.getRole() != null
                 ? AppUser.UserRole.valueOf(req.getRole().toUpperCase()) : null;
-        AppUser user = userService.updateUser(id, req.getDisplayName(), role, req.getActive());
+        AppUser user = userService.updateUser(
+                id, req.getDisplayName(), role, req.getActive(), req.getAppName());
         return ResponseEntity.ok(ApiResponse.success("User updated", UserResponse.from(user)));
+    }
+
+    /** Upload / replace the operator's app logo */
+    @PostMapping("/{id}/logo")
+    public ResponseEntity<ApiResponse<String>> uploadLogo(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            String url = fileStorage.saveTournamentBanner(file); // reuse tournaments/ dir
+            AppUser user = userService.findById(id);
+            user.setAppLogoUrl(url);
+            userService.save(user);
+            return ResponseEntity.ok(ApiResponse.success("Logo uploaded", url));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @PostMapping("/{id}/reset-password")
@@ -63,7 +84,8 @@ public class UserManagementController {
         private String username;
         private String password;
         private String displayName;
-        private String role; // SUPER_ADMIN | OPERATOR | VIEWER
+        private String role;
+        private String appName;   // white-label brand name shown in header
     }
 
     @Data
@@ -71,14 +93,20 @@ public class UserManagementController {
         private String  displayName;
         private String  role;
         private Boolean active;
+        private String  appName;
     }
 
-    public record UserResponse(Long id, String username, String displayName,
-                               String role, Boolean active, String createdAt) {
+    public record UserResponse(
+            Long id, String username, String displayName,
+            String role, Boolean active, String createdAt,
+            String appName, String appLogoUrl
+    ) {
         static UserResponse from(AppUser u) {
-            return new UserResponse(u.getId(), u.getUsername(), u.getDisplayName(),
+            return new UserResponse(
+                    u.getId(), u.getUsername(), u.getDisplayName(),
                     u.getRole().name(), u.getActive(),
-                    u.getCreatedAt() != null ? u.getCreatedAt().toString() : null);
+                    u.getCreatedAt() != null ? u.getCreatedAt().toString() : null,
+                    u.getAppName(), u.getAppLogoUrl());
         }
     }
 }

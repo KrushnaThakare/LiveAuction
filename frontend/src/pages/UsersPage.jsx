@@ -2,15 +2,21 @@ import { useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/auth';
 import Modal from '../components/common/Modal';
 import toast from 'react-hot-toast';
-import { Users, Plus, Edit, Trash2, Key, ShieldCheck, Eye, Crown } from 'lucide-react';
+import { Plus, Edit, Trash2, Key, ShieldCheck, Eye, Crown, Upload, Building2 } from 'lucide-react';
+
+const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
 
 const ROLES = [
-  { value: 'SUPER_ADMIN', label: 'Super Admin',     icon: Crown,        color: '#f59e0b', desc: 'Full access — create tournaments, form builder, manage users' },
-  { value: 'OPERATOR',    label: 'Operator',         icon: ShieldCheck,  color: '#3b82f6', desc: 'Run auction, manage teams/players, view registrations' },
-  { value: 'VIEWER',      label: 'Viewer (Broadcast)', icon: Eye,        color: '#10b981', desc: 'Read-only: live auction, teams, sold/unsold players' },
+  { value: 'SUPER_ADMIN', label: 'Super Admin',        icon: Crown,       color: '#f59e0b', desc: 'Full access — create tournaments, form builder, manage users' },
+  { value: 'OPERATOR',    label: 'Operator',            icon: Building2,   color: '#3b82f6', desc: 'Run auction, manage teams/players, view registrations. Gets own branded header.' },
+  { value: 'VIEWER',      label: 'Viewer (Broadcast)',  icon: Eye,         color: '#10b981', desc: 'Read-only: live auction, teams, sold/unsold — no editing' },
 ];
-
 const ROLE_MAP = Object.fromEntries(ROLES.map(r => [r.value, r]));
+
+function resolveLogoUrl(url) {
+  if (!url) return null;
+  return url.startsWith('/api') ? API_ORIGIN + url : url;
+}
 
 export default function UsersPage() {
   const [users, setUsers]           = useState([]);
@@ -19,10 +25,20 @@ export default function UsersPage() {
   const [showEdit, setShowEdit]     = useState(false);
   const [showPwd, setShowPwd]       = useState(false);
   const [selected, setSelected]     = useState(null);
-  const [createForm, setCreateForm] = useState({ username: '', password: '', displayName: '', role: 'OPERATOR' });
-  const [editForm, setEditForm]     = useState({ displayName: '', role: 'OPERATOR', active: true });
-  const [newPwd, setNewPwd]         = useState('');
   const [saving, setSaving]         = useState(false);
+  const [newPwd, setNewPwd]         = useState('');
+
+  const [createForm, setCreateForm] = useState({
+    username: '', password: '', displayName: '', role: 'OPERATOR', appName: '',
+  });
+  const [createLogoFile, setCreateLogoFile]   = useState(null);
+  const [createLogoPreview, setCreateLogoPreview] = useState(null);
+
+  const [editForm, setEditForm] = useState({
+    displayName: '', role: 'OPERATOR', active: true, appName: '',
+  });
+  const [editLogoFile, setEditLogoFile]     = useState(null);
+  const [editLogoPreview, setEditLogoPreview] = useState(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -34,26 +50,38 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
+  /* ── Create ── */
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!createForm.username || !createForm.password || !createForm.displayName) {
-      toast.error('All fields are required'); return;
+      toast.error('Username, password and display name are required');
+      return;
     }
     setSaving(true);
     try {
-      await authApi.createUser(createForm);
+      const res = await authApi.createUser(createForm);
+      const userId = res.data.data?.id;
+      if (createLogoFile && userId) {
+        await authApi.uploadUserLogo(userId, createLogoFile);
+      }
       toast.success('User created');
       setShowCreate(false);
-      setCreateForm({ username: '', password: '', displayName: '', role: 'OPERATOR' });
+      setCreateForm({ username: '', password: '', displayName: '', role: 'OPERATOR', appName: '' });
+      setCreateLogoFile(null);
+      setCreateLogoPreview(null);
       fetchUsers();
     } finally { setSaving(false); }
   };
 
+  /* ── Edit ── */
   const handleEdit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
       await authApi.updateUser(selected.id, editForm);
+      if (editLogoFile) {
+        await authApi.uploadUserLogo(selected.id, editLogoFile);
+      }
       toast.success('User updated');
       setShowEdit(false);
       fetchUsers();
@@ -73,21 +101,35 @@ export default function UsersPage() {
   };
 
   const handleDelete = async (user) => {
-    if (!confirm(`Delete user "${user.displayName}"? They will lose all access immediately.`)) return;
+    if (!confirm(`Delete user "${user.displayName}"? They lose all access immediately.`)) return;
     await authApi.deleteUser(user.id);
     toast.success('User deleted');
     fetchUsers();
+  };
+
+  const openEdit = (user) => {
+    setSelected(user);
+    setEditForm({ displayName: user.displayName, role: user.role, active: user.active, appName: user.appName || '' });
+    setEditLogoFile(null);
+    setEditLogoPreview(resolveLogoUrl(user.appLogoUrl));
+    setShowEdit(true);
+  };
+
+  const handleLogoChange = (file, setFile, setPreview) => {
+    if (!file) return;
+    setFile(file);
+    const reader = new FileReader();
+    reader.onload = e => setPreview(e.target.result);
+    reader.readAsDataURL(file);
   };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-            User Management
-          </h1>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>User Management</h1>
           <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            Super Admin only — create and manage access accounts
+            Create accounts for operators and broadcasters. Operators get a white-label branded header.
           </p>
         </div>
         <button className="btn-primary" onClick={() => setShowCreate(true)}>
@@ -114,35 +156,49 @@ export default function UsersPage() {
       ) : (
         <div className="space-y-2">
           {users.map(user => {
-            const roleInfo = ROLE_MAP[user.role] || ROLE_MAP.VIEWER;
+            const ri = ROLE_MAP[user.role] || ROLE_MAP.VIEWER;
+            const logoSrc = resolveLogoUrl(user.appLogoUrl);
             return (
               <div key={user.id}
-                className="flex items-center gap-4 px-4 py-3 rounded-xl"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl"
                 style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold flex-shrink-0"
-                  style={{ backgroundColor: roleInfo.color + '22', color: roleInfo.color }}>
-                  {user.displayName?.[0]?.toUpperCase() || 'U'}
+
+                {/* Avatar / logo */}
+                <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center font-bold flex-shrink-0"
+                  style={{ backgroundColor: ri.color + '22', color: ri.color }}>
+                  {logoSrc
+                    ? <img src={logoSrc} alt={user.displayName} className="w-full h-full object-cover" onError={e => e.target.style.display='none'} />
+                    : user.displayName?.[0]?.toUpperCase() || 'U'}
                 </div>
+
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                    {user.displayName}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                      {user.displayName}
+                    </p>
                     {!user.active && (
-                      <span className="ml-2 text-xs px-1.5 py-0.5 rounded"
+                      <span className="text-xs px-1.5 py-0.5 rounded"
                         style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: 'var(--color-danger)' }}>
                         Disabled
                       </span>
                     )}
-                  </p>
-                  <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    @{user.username}
-                  </p>
+                    {user.appName && (
+                      <span className="text-xs px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: 'rgba(59,130,246,0.1)', color: 'var(--color-primary)', border: '1px solid rgba(59,130,246,0.3)' }}>
+                        {user.appName}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>@{user.username}</p>
                 </div>
-                <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
-                  style={{ backgroundColor: roleInfo.color + '22', color: roleInfo.color }}>
-                  {roleInfo.label}
+
+                <span className="text-xs px-2.5 py-1 rounded-full font-semibold flex-shrink-0"
+                  style={{ backgroundColor: ri.color + '22', color: ri.color }}>
+                  {ri.label}
                 </span>
-                <div className="flex gap-1">
-                  <button title="Edit" onClick={() => { setSelected(user); setEditForm({ displayName: user.displayName, role: user.role, active: user.active }); setShowEdit(true); }}
+
+                <div className="flex gap-1 flex-shrink-0">
+                  <button title="Edit" onClick={() => openEdit(user)}
                     className="p-1.5 rounded-lg hover:bg-white/10"><Edit size={14} style={{ color: 'var(--color-primary)' }} /></button>
                   <button title="Reset password" onClick={() => { setSelected(user); setNewPwd(''); setShowPwd(true); }}
                     className="p-1.5 rounded-lg hover:bg-white/10"><Key size={14} style={{ color: 'var(--color-warning)' }} /></button>
@@ -155,29 +211,70 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Create user modal */}
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create User">
+      {/* ── Create Modal ── */}
+      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create User" size="lg">
         <form onSubmit={handleCreate} className="space-y-4">
+
+          {/* Brand section */}
+          <div className="rounded-xl p-4 space-y-3"
+            style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
+              White-label Branding (shown in app header)
+            </p>
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                Brand / App Name
+              </label>
+              <input className="input" value={createForm.appName}
+                placeholder="e.g. Live Vision Cricket Tracker"
+                onChange={e => setCreateForm(f => ({ ...f, appName: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                Brand Logo
+              </label>
+              <div className="flex items-center gap-3">
+                {createLogoPreview ? (
+                  <img src={createLogoPreview} alt="Logo" className="h-10 w-auto rounded-lg object-contain max-w-24" />
+                ) : (
+                  <div className="h-10 w-10 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                    <Building2 size={18} style={{ color: 'var(--color-text-secondary)' }} />
+                  </div>
+                )}
+                <label className="btn-secondary cursor-pointer text-xs">
+                  <Upload size={13} /> Upload Logo
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={e => handleLogoChange(e.target.files?.[0], setCreateLogoFile, setCreateLogoPreview)} />
+                </label>
+                {createLogoFile && <span className="text-xs" style={{ color: 'var(--color-success)' }}>✓ {createLogoFile.name}</span>}
+              </div>
+            </div>
+          </div>
+
+          {/* Account details */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Display Name *</label>
               <input className="input" value={createForm.displayName}
                 onChange={e => setCreateForm(f => ({ ...f, displayName: e.target.value }))}
-                placeholder="e.g. RCB Operator" />
+                placeholder="e.g. Live Vision" />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Username *</label>
               <input className="input" value={createForm.username}
                 onChange={e => setCreateForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/\s/g,'') }))}
-                placeholder="rcb_operator" />
+                placeholder="livevision" />
             </div>
           </div>
+
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Password *</label>
             <input className="input" type="password" value={createForm.password}
               onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
               placeholder="Min 6 characters" />
           </div>
+
           <div>
             <label className="block text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>Access Role *</label>
             <div className="space-y-2">
@@ -195,6 +292,7 @@ export default function UsersPage() {
               ))}
             </div>
           </div>
+
           <div className="flex gap-3 justify-end">
             <button type="button" className="btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Creating…' : 'Create User'}</button>
@@ -202,14 +300,48 @@ export default function UsersPage() {
         </form>
       </Modal>
 
-      {/* Edit modal */}
-      <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title={`Edit — ${selected?.displayName}`}>
+      {/* ── Edit Modal ── */}
+      <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title={`Edit — ${selected?.displayName}`} size="lg">
         <form onSubmit={handleEdit} className="space-y-4">
+
+          {/* Branding */}
+          <div className="rounded-xl p-4 space-y-3"
+            style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
+              White-label Branding
+            </p>
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Brand / App Name</label>
+              <input className="input" value={editForm.appName}
+                placeholder="e.g. Live Vision Cricket Tracker"
+                onChange={e => setEditForm(f => ({ ...f, appName: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>Brand Logo</label>
+              <div className="flex items-center gap-3">
+                {editLogoPreview ? (
+                  <img src={editLogoPreview} alt="Logo" className="h-10 w-auto rounded-lg object-contain max-w-24" />
+                ) : (
+                  <div className="h-10 w-10 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                    <Building2 size={18} style={{ color: 'var(--color-text-secondary)' }} />
+                  </div>
+                )}
+                <label className="btn-secondary cursor-pointer text-xs">
+                  <Upload size={13} /> Change Logo
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={e => handleLogoChange(e.target.files?.[0], setEditLogoFile, setEditLogoPreview)} />
+                </label>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Display Name</label>
             <input className="input" value={editForm.displayName}
               onChange={e => setEditForm(f => ({ ...f, displayName: e.target.value }))} />
           </div>
+
           <div>
             <label className="block text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>Role</label>
             <div className="space-y-2">
@@ -224,19 +356,21 @@ export default function UsersPage() {
               ))}
             </div>
           </div>
+
           <div className="flex items-center gap-2">
             <input type="checkbox" id="active" checked={editForm.active}
               onChange={e => setEditForm(f => ({ ...f, active: e.target.checked }))} />
             <label htmlFor="active" className="text-sm" style={{ color: 'var(--color-text-primary)' }}>Account Active</label>
           </div>
+
           <div className="flex gap-3 justify-end">
             <button type="button" className="btn-secondary" onClick={() => setShowEdit(false)}>Cancel</button>
-            <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+            <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</button>
           </div>
         </form>
       </Modal>
 
-      {/* Password reset modal */}
+      {/* ── Reset Password Modal ── */}
       <Modal isOpen={showPwd} onClose={() => setShowPwd(false)} title={`Reset Password — ${selected?.displayName}`}>
         <form onSubmit={handleResetPwd} className="space-y-4">
           <input className="input" type="password" value={newPwd}
