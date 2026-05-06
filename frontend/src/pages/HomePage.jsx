@@ -77,18 +77,29 @@ export default function HomePage() {
       </div>
 
       {/* Stats banner */}
-      <div className="rounded-2xl p-6 mb-8"
-        style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%)' }}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-white">
+      <div className="rounded-3xl p-6 mb-8 relative overflow-hidden"
+        style={{
+          background: 'var(--gradient-hero)',
+          border: '1px solid var(--color-border)',
+          boxShadow: 'var(--shadow-lg), 0 0 60px var(--color-primary-glow)',
+        }}>
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 rounded-3xl pointer-events-none"
+          style={{ background: 'var(--gradient-primary)', opacity: 0.12 }} />
+        {/* Decorative circles */}
+        <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full pointer-events-none"
+          style={{ background: 'var(--color-primary)', opacity: 0.06, filter: 'blur(30px)' }} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
           {[
-            { label: 'Tournaments', value: tournaments.length },
-            { label: 'Teams',       value: tournaments.reduce((s, t) => s + t.totalTeams, 0) },
-            { label: 'Players',     value: tournaments.reduce((s, t) => s + t.totalPlayers, 0) },
-            { label: 'Sold',        value: tournaments.reduce((s, t) => s + t.soldPlayers, 0) },
-          ].map(({ label, value }) => (
-            <div key={label} className="text-center">
-              <p className="text-3xl font-bold">{value}</p>
-              <p className="text-sm opacity-80">{label}</p>
+            { label: 'Tournaments', value: tournaments.length, emoji: '🏆' },
+            { label: 'Teams',       value: tournaments.reduce((s, t) => s + t.totalTeams, 0), emoji: '🛡️' },
+            { label: 'Players',     value: tournaments.reduce((s, t) => s + t.totalPlayers, 0), emoji: '🏏' },
+            { label: 'Sold',        value: tournaments.reduce((s, t) => s + t.soldPlayers, 0), emoji: '✅' },
+          ].map(({ label, value, emoji }) => (
+            <div key={label} className="text-center py-2">
+              <div className="text-2xl mb-1">{emoji}</div>
+              <p className="text-3xl font-black" style={{ color: 'var(--color-text-primary)', letterSpacing: '-0.03em' }}>{value}</p>
+              <p className="text-label mt-1" style={{ color: 'var(--color-text-secondary)' }}>{label}</p>
             </div>
           ))}
         </div>

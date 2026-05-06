@@ -320,7 +320,7 @@ export default function AuctionPage() {
 
   return (
     <div ref={containerRef} className="flex flex-col"
-      style={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'var(--color-background)' }}>
+      style={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'var(--color-background)', position: 'relative' }}>
 
       {/* ── Top bar ── */}
       <div className="flex-shrink-0 px-4 py-2.5 flex items-center justify-between"
@@ -456,43 +456,114 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
   const imgUrl    = driveImg(player.imageUrl);
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 pt-4 pb-2 gap-3">
-      {/* Photo — no badge overlaid */}
-      <div className="stage-scanlines relative rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center"
-        style={{
-          width: 'min(260px,34vw)', height: 'min(300px,38vw)', minWidth: 160, minHeight: 190,
-          background: `radial-gradient(circle at 50% 55%, ${roleBg} 0%, var(--color-surface-2) 80%)`,
-          border: `3px solid ${roleColor}`,
-          boxShadow: `0 0 40px ${roleColor}44, 0 0 80px ${roleColor}18`,
-        }}>
-        <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={roleColor} />
+    <div className="flex-1 flex flex-col items-center justify-center px-4 pt-4 pb-2 gap-3 relative">
+
+      {/* ── Stadium atmosphere background ───────────────────────────────────
+          The image is blurred + darkened so it reads as atmosphere, not photo.
+          Theme primary colour is blended via a gradient overlay, so it always
+          matches the current theme and never clashes with player card content.
+      ─────────────────────────────────────────────────────────────────────── */}
+      <div aria-hidden="true" style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+      }}>
+        {/* Stadium photo — heavily blurred */}
+        <div style={{
+          position: 'absolute',
+          inset: '-10%',      // slightly oversized so edges don't show after blur
+          backgroundImage: 'url(/stadium.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center 40%',
+          filter: 'blur(18px) saturate(0.7) brightness(0.28)',
+          transform: 'scale(1.1)',  // prevent blur edge artifacts
+        }} />
+
+        {/* Theme-colour gradient overlay — blends stadium with current theme */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: `
+            radial-gradient(ellipse 80% 60% at 50% 100%,
+              var(--color-background) 0%,
+              transparent 70%),
+            linear-gradient(
+              to bottom,
+              var(--color-background) 0%,
+              transparent 25%,
+              transparent 75%,
+              var(--color-background) 100%
+            )
+          `,
+        }} />
+
+        {/* Subtle primary-colour tint so stadium hue matches theme */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: `radial-gradient(ellipse 100% 50% at 50% 50%,
+            var(--color-primary-glow, rgba(59,130,246,0.18)) 0%,
+            transparent 70%)`,
+          mixBlendMode: 'screen',
+          opacity: 0.7,
+        }} />
+
+        {/* Floodlight rays — thin diagonal lines from top */}
+        {[-25, 0, 25].map((angle, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            top: 0,
+            left: `${25 + i * 25}%`,
+            width: 1,
+            height: '55%',
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.06), transparent)',
+            transform: `rotate(${angle}deg)`,
+            transformOrigin: 'top center',
+          }} />
+        ))}
       </div>
 
-      {/* Name */}
-      <div className="text-center">
-        <h1 className="font-black leading-tight text-shimmer"
-          style={{ fontSize: 'clamp(1.6rem,4vw,3rem)', letterSpacing: '-0.02em' }}>
-          {player.name}
-        </h1>
+      {/* ── All content above the backdrop, z-index 1 ── */}
+      <div className="relative z-10 flex flex-col items-center gap-3 w-full">
 
-        {/* Role badge — standalone, prominent, sport-style */}
-        <div className="flex items-center justify-center gap-2 mt-2">
-          <RoleBadge role={player.role} roleColor={roleColor} roleBg={roleBg} />
+        {/* Player photo card */}
+        <div className="stage-scanlines relative rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center"
+          style={{
+            width: 'min(260px,34vw)', height: 'min(300px,38vw)', minWidth: 160, minHeight: 190,
+            background: `radial-gradient(circle at 50% 55%, ${roleBg} 0%, rgba(0,0,0,0.7) 80%)`,
+            border: `3px solid ${roleColor}`,
+            boxShadow: `0 0 40px ${roleColor}55, 0 0 80px ${roleColor}22, 0 8px 32px rgba(0,0,0,0.6)`,
+          }}>
+          <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={roleColor} />
         </div>
 
-        <p className="text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
-          Base: <span style={{ color: 'var(--color-accent)', fontWeight: 700 }}>{formatCurrency(player.basePrice)}</span>
-        </p>
-      </div>
+        {/* Name */}
+        <div className="text-center">
+          <h1 className="font-black leading-tight text-shimmer"
+            style={{ fontSize: 'clamp(1.6rem,4vw,3rem)', letterSpacing: '-0.02em' }}>
+            {player.name}
+          </h1>
 
-      {/* Bid counter */}
-      <BidCounter
-        committedBid={committedBid}
-        proposedBid={proposedBid}
-        highestBidderTeamName={highestBidderTeamName}
-        bidFlash={bidFlash}
-        bidKey={bidKey}
-      />
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <RoleBadge role={player.role} roleColor={roleColor} roleBg={roleBg} />
+          </div>
+
+          <p className="text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
+            Base: <span style={{ color: 'var(--color-accent)', fontWeight: 700 }}>{formatCurrency(player.basePrice)}</span>
+          </p>
+        </div>
+
+        {/* Bid counter */}
+        <BidCounter
+          committedBid={committedBid}
+          proposedBid={proposedBid}
+          highestBidderTeamName={highestBidderTeamName}
+          bidFlash={bidFlash}
+          bidKey={bidKey}
+        />
+      </div>
     </div>
   );
 }
@@ -709,10 +780,17 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
 
   return (
     <div className="flex-1 flex flex-col p-4 gap-4">
-      {/* Status banner */}
-      <div className="rounded-3xl p-6 text-center flex flex-col items-center gap-3"
-        style={{ background: 'linear-gradient(135deg, var(--color-surface), var(--color-surface-2))', border: '1px solid var(--color-border)' }}>
-        <Gavel size={48} style={{ color: 'var(--color-primary)', opacity: 0.4 }} />
+      {/* Status banner — stadium atmosphere background */}
+      <div className="rounded-3xl p-6 text-center flex flex-col items-center gap-3 relative overflow-hidden"
+        style={{ border: '1px solid var(--color-border)' }}>
+        {/* Stadium blur behind banner */}
+        <div aria-hidden="true" style={{ position:'absolute',inset:0,zIndex:0,overflow:'hidden',borderRadius:'inherit',pointerEvents:'none' }}>
+          <div style={{ position:'absolute',inset:'-10%',backgroundImage:'url(/stadium.jpg)',backgroundSize:'cover',backgroundPosition:'center 40%',filter:'blur(22px) saturate(0.5) brightness(0.18)',transform:'scale(1.1)' }} />
+          <div style={{ position:'absolute',inset:0,background:'linear-gradient(135deg,var(--color-surface,rgba(15,25,50,0.92)) 0%,var(--color-surface-2,rgba(20,35,70,0.88)) 100%)',opacity:0.88 }} />
+        </div>
+        {/* Content above stadium bg */}
+        <div className="relative z-10 flex flex-col items-center gap-3">
+        <Gavel size={48} style={{ color: 'var(--color-primary)', opacity: 0.55 }} />
         <h2 className="text-2xl font-black" style={{ color: 'var(--color-text-primary)' }}>
           {auctionState?.status === 'SOLD'   ? '✅ SOLD! Select next player' :
            auctionState?.status === 'UNSOLD' ? '❌ UNSOLD. Select next player' :
@@ -744,6 +822,7 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
             </button>
           )}
         </div>
+        </div>{/* end z-10 content */}
       </div>
 
       {/* Available players list */}

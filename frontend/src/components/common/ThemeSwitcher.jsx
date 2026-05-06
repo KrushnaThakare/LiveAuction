@@ -15,57 +15,59 @@ export default function ThemeSwitcher() {
 
   return (
     <div className="relative">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="btn-secondary !px-3 !py-2 !gap-1.5"
-        title="Change Theme"
-      >
-        <Palette size={16} />
-        <span className="hidden sm:inline text-xs">Theme</span>
+      <button onClick={() => setOpen(o => !o)}
+        className="btn-secondary !px-3 !py-2 !gap-1.5 !rounded-xl"
+        title="Change Theme">
+        <Palette size={15} />
+        <span className="hidden sm:inline text-xs font-semibold">Theme</span>
       </button>
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 p-2 rounded-xl shadow-2xl z-50 w-52"
+          className="absolute right-0 top-full mt-2 rounded-2xl shadow-2xl z-50 w-56 overflow-hidden"
           style={{
-            backgroundColor: 'var(--color-surface)',
+            background: 'var(--color-surface)',
+            backdropFilter: 'blur(24px)',
             border: '1px solid var(--color-border)',
-          }}
-        >
-          {Object.entries(groups).map(([groupName, groupThemes]) => (
-            <div key={groupName}>
-              <p className="text-xs font-bold uppercase tracking-wide px-2 pt-2 pb-1"
-                style={{ color: 'var(--color-text-secondary)' }}>
-                {groupName}
-              </p>
-              {groupThemes.map(theme => (
-                <button
-                  key={theme.id}
-                  onClick={() => { changeTheme(theme.id); setOpen(false); }}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all"
-                  style={{
-                    color: currentTheme === theme.id ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                    backgroundColor: currentTheme === theme.id ? 'var(--color-surface-2)' : 'transparent',
-                  }}
-                >
-                  <span
-                    className="w-4 h-4 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: theme.primary }}
-                  />
-                  {theme.name}
-                  {currentTheme === theme.id && (
-                    <span className="ml-auto text-xs">✓</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          ))}
+            boxShadow: 'var(--shadow-lg)',
+          }}>
+          <div className="p-2 max-h-80 overflow-y-auto">
+            {Object.entries(groups).map(([groupName, groupThemes]) => (
+              <div key={groupName}>
+                <p className="text-label px-2 pt-2 pb-1.5"
+                  style={{ color: 'var(--color-text-secondary)' }}>
+                  {groupName}
+                </p>
+                {groupThemes.map(theme => (
+                  <button key={theme.id}
+                    onClick={() => { changeTheme(theme.id); setOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all duration-150"
+                    style={{
+                      color: currentTheme === theme.id ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                      background: currentTheme === theme.id ? 'rgba(255,255,255,0.07)' : 'transparent',
+                    }}>
+                    {/* Colour swatch */}
+                    <span className="w-5 h-5 rounded-full flex-shrink-0 relative overflow-hidden"
+                      style={{
+                        background: `linear-gradient(135deg, ${theme.primary}, ${theme.primary}88)`,
+                        boxShadow: currentTheme === theme.id
+                          ? `0 0 8px ${theme.primary}99`
+                          : 'none',
+                      }}>
+                      {currentTheme === theme.id && (
+                        <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">✓</span>
+                      )}
+                    </span>
+                    <span className="font-medium">{theme.name}</span>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {open && (
-        <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-      )}
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
     </div>
   );
 }
