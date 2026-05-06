@@ -1,226 +1,311 @@
 /* ============================================================
-   Theme Definitions — CSS Custom Properties
+   CRICKET AUCTION — Premium Sports Theme System
+   ============================================================ */
+
+/* ── Shared design tokens ───────────────────────────────────── */
+:root {
+  --radius-sm:  8px;
+  --radius-md:  14px;
+  --radius-lg:  20px;
+  --radius-xl:  28px;
+  --radius-full: 999px;
+
+  --shadow-sm:  0 2px 8px rgba(0,0,0,0.3);
+  --shadow-md:  0 4px 20px rgba(0,0,0,0.4);
+  --shadow-lg:  0 8px 40px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 24px var(--color-primary-glow, rgba(59,130,246,0.4));
+
+  --glass-bg:   rgba(255,255,255,0.05);
+  --glass-border: rgba(255,255,255,0.10);
+  --glass-blur: blur(16px);
+
+  --transition-fast:   150ms cubic-bezier(0.4,0,0.2,1);
+  --transition-normal: 250ms cubic-bezier(0.4,0,0.2,1);
+  --transition-slow:   400ms cubic-bezier(0.4,0,0.2,1);
+
+  --font-display: 'Inter', 'SF Pro Display', system-ui, sans-serif;
+}
+
+/* ============================================================
+   ORIGINAL 5 THEMES — kept + enhanced with gradient tokens
    ============================================================ */
 
 :root,
 [data-theme="midnight-blue"] {
-  --color-primary: #3b82f6;
-  --color-primary-dark: #1d4ed8;
-  --color-primary-light: #93c5fd;
-  --color-secondary: #8b5cf6;
-  --color-accent: #f59e0b;
-  --color-accent-dark: #d97706;
-  --color-background: #0f172a;
-  --color-surface: #1e293b;
-  --color-surface-2: #263347;
-  --color-border: #334155;
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-  --color-success: #10b981;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
-  --color-sold: #10b981;
-  --color-unsold: #ef4444;
-  --color-in-auction: #f59e0b;
+  --color-primary:        #3b82f6;
+  --color-primary-dark:   #1d4ed8;
+  --color-primary-light:  #93c5fd;
+  --color-primary-glow:   rgba(59,130,246,0.45);
+  --color-secondary:      #8b5cf6;
+  --color-accent:         #f59e0b;
+  --color-accent-dark:    #d97706;
+  --color-background:     #060d1a;
+  --color-bg-pattern:     url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233b82f6' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  --color-surface:        rgba(15,25,50,0.85);
+  --color-surface-2:      rgba(20,35,70,0.75);
+  --color-border:         rgba(59,130,246,0.2);
+  --color-text-primary:   #f0f6ff;
+  --color-text-secondary: #7ba3d4;
+  --color-success:        #10b981;
+  --color-danger:         #ef4444;
+  --color-warning:        #f59e0b;
+  --color-sold:           #10b981;
+  --color-unsold:         #ef4444;
+  --color-in-auction:     #f59e0b;
+  --gradient-primary:     linear-gradient(135deg, #3b82f6, #8b5cf6);
+  --gradient-card:        linear-gradient(145deg, rgba(15,25,50,0.9), rgba(20,35,70,0.8));
+  --gradient-hero:        linear-gradient(160deg, #060d1a 0%, #0a1530 40%, #0d1f3c 100%);
+  --texture: var(--color-bg-pattern);
 }
 
 [data-theme="emerald-night"] {
-  --color-primary: #10b981;
-  --color-primary-dark: #059669;
-  --color-primary-light: #6ee7b7;
-  --color-secondary: #0ea5e9;
-  --color-accent: #f59e0b;
-  --color-accent-dark: #d97706;
-  --color-background: #0a1628;
-  --color-surface: #0f2027;
-  --color-surface-2: #1a3040;
-  --color-border: #1e4060;
-  --color-text-primary: #ecfdf5;
-  --color-text-secondary: #6ee7b7;
-  --color-success: #10b981;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
-  --color-sold: #10b981;
-  --color-unsold: #ef4444;
-  --color-in-auction: #f59e0b;
+  --color-primary:        #10b981;
+  --color-primary-dark:   #059669;
+  --color-primary-light:  #6ee7b7;
+  --color-primary-glow:   rgba(16,185,129,0.45);
+  --color-secondary:      #0ea5e9;
+  --color-accent:         #f59e0b;
+  --color-accent-dark:    #d97706;
+  --color-background:     #020d08;
+  --color-bg-pattern:     url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2310b981' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  --color-surface:        rgba(5,20,12,0.88);
+  --color-surface-2:      rgba(8,28,18,0.78);
+  --color-border:         rgba(16,185,129,0.2);
+  --color-text-primary:   #ecfdf5;
+  --color-text-secondary: #4ade80;
+  --color-success:        #10b981;
+  --color-danger:         #ef4444;
+  --color-warning:        #f59e0b;
+  --color-sold:           #10b981;
+  --color-unsold:         #ef4444;
+  --color-in-auction:     #f59e0b;
+  --gradient-primary:     linear-gradient(135deg, #10b981, #0ea5e9);
+  --gradient-card:        linear-gradient(145deg, rgba(5,20,12,0.9), rgba(8,28,18,0.8));
+  --gradient-hero:        linear-gradient(160deg, #020d08 0%, #041208 40%, #071a10 100%);
+  --texture: var(--color-bg-pattern);
 }
 
 [data-theme="royal-gold"] {
-  --color-primary: #f59e0b;
-  --color-primary-dark: #d97706;
-  --color-primary-light: #fcd34d;
-  --color-secondary: #dc2626;
-  --color-accent: #7c3aed;
-  --color-accent-dark: #6d28d9;
-  --color-background: #1a0e00;
-  --color-surface: #2d1a00;
-  --color-surface-2: #3d2600;
-  --color-border: #5c3a00;
-  --color-text-primary: #fffbeb;
-  --color-text-secondary: #fcd34d;
-  --color-success: #10b981;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
-  --color-sold: #10b981;
-  --color-unsold: #ef4444;
-  --color-in-auction: #f59e0b;
+  --color-primary:        #f59e0b;
+  --color-primary-dark:   #d97706;
+  --color-primary-light:  #fcd34d;
+  --color-primary-glow:   rgba(245,158,11,0.5);
+  --color-secondary:      #dc2626;
+  --color-accent:         #7c3aed;
+  --color-accent-dark:    #6d28d9;
+  --color-background:     #0a0700;
+  --color-bg-pattern:     url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23f59e0b' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  --color-surface:        rgba(20,12,0,0.88);
+  --color-surface-2:      rgba(30,18,0,0.78);
+  --color-border:         rgba(245,158,11,0.2);
+  --color-text-primary:   #fffbeb;
+  --color-text-secondary: #d97706;
+  --color-success:        #10b981;
+  --color-danger:         #ef4444;
+  --color-warning:        #f59e0b;
+  --color-sold:           #10b981;
+  --color-unsold:         #ef4444;
+  --color-in-auction:     #f59e0b;
+  --gradient-primary:     linear-gradient(135deg, #f59e0b, #dc2626);
+  --gradient-card:        linear-gradient(145deg, rgba(20,12,0,0.9), rgba(30,18,0,0.8));
+  --gradient-hero:        linear-gradient(160deg, #0a0700 0%, #130a00 40%, #1a0e00 100%);
+  --texture: var(--color-bg-pattern);
 }
 
 [data-theme="crimson-fire"] {
-  --color-primary: #ef4444;
-  --color-primary-dark: #dc2626;
-  --color-primary-light: #fca5a5;
-  --color-secondary: #f97316;
-  --color-accent: #facc15;
-  --color-accent-dark: #eab308;
-  --color-background: #1a0505;
-  --color-surface: #2d0a0a;
-  --color-surface-2: #3d1010;
-  --color-border: #5c1a1a;
-  --color-text-primary: #fef2f2;
+  --color-primary:        #ef4444;
+  --color-primary-dark:   #dc2626;
+  --color-primary-light:  #fca5a5;
+  --color-primary-glow:   rgba(239,68,68,0.5);
+  --color-secondary:      #f97316;
+  --color-accent:         #facc15;
+  --color-accent-dark:    #eab308;
+  --color-background:     #0d0202;
+  --color-bg-pattern:     url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ef4444' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  --color-surface:        rgba(22,5,5,0.88);
+  --color-surface-2:      rgba(35,8,8,0.78);
+  --color-border:         rgba(239,68,68,0.2);
+  --color-text-primary:   #fef2f2;
   --color-text-secondary: #fca5a5;
-  --color-success: #10b981;
-  --color-danger: #ef4444;
-  --color-warning: #f97316;
-  --color-sold: #10b981;
-  --color-unsold: #7c3aed;
-  --color-in-auction: #f97316;
+  --color-success:        #10b981;
+  --color-danger:         #ef4444;
+  --color-warning:        #f97316;
+  --color-sold:           #10b981;
+  --color-unsold:         #7c3aed;
+  --color-in-auction:     #f97316;
+  --gradient-primary:     linear-gradient(135deg, #ef4444, #f97316);
+  --gradient-card:        linear-gradient(145deg, rgba(22,5,5,0.9), rgba(35,8,8,0.8));
+  --gradient-hero:        linear-gradient(160deg, #0d0202 0%, #150404 40%, #1c0606 100%);
+  --texture: var(--color-bg-pattern);
 }
 
 [data-theme="ocean-breeze"] {
-  --color-primary: #0ea5e9;
-  --color-primary-dark: #0284c7;
-  --color-primary-light: #7dd3fc;
-  --color-secondary: #6366f1;
-  --color-accent: #06b6d4;
-  --color-accent-dark: #0891b2;
-  --color-background: #020617;
-  --color-surface: #0c1a2e;
-  --color-surface-2: #162540;
-  --color-border: #1e3a5f;
-  --color-text-primary: #f0f9ff;
+  --color-primary:        #0ea5e9;
+  --color-primary-dark:   #0284c7;
+  --color-primary-light:  #7dd3fc;
+  --color-primary-glow:   rgba(14,165,233,0.45);
+  --color-secondary:      #6366f1;
+  --color-accent:         #06b6d4;
+  --color-accent-dark:    #0891b2;
+  --color-background:     #010a14;
+  --color-bg-pattern:     url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230ea5e9' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  --color-surface:        rgba(2,16,30,0.88);
+  --color-surface-2:      rgba(4,22,42,0.78);
+  --color-border:         rgba(14,165,233,0.2);
+  --color-text-primary:   #f0f9ff;
   --color-text-secondary: #7dd3fc;
-  --color-success: #10b981;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
-  --color-sold: #10b981;
-  --color-unsold: #ef4444;
-  --color-in-auction: #0ea5e9;
+  --color-success:        #10b981;
+  --color-danger:         #ef4444;
+  --color-warning:        #f59e0b;
+  --color-sold:           #10b981;
+  --color-unsold:         #ef4444;
+  --color-in-auction:     #0ea5e9;
+  --gradient-primary:     linear-gradient(135deg, #0ea5e9, #6366f1);
+  --gradient-card:        linear-gradient(145deg, rgba(2,16,30,0.9), rgba(4,22,42,0.8));
+  --gradient-hero:        linear-gradient(160deg, #010a14 0%, #02101e 40%, #031525 100%);
+  --texture: var(--color-bg-pattern);
 }
 
-/* ── SPORTY TEXTURED THEMES ─────────────────────────── */
+/* ============================================================
+   5 NEW PREMIUM SPORTS THEMES
+   ============================================================ */
 
-/* Stadium Floodlight — warm tungsten light on dark concrete */
-[data-theme="stadium"] {
-  --color-primary: #f97316;
-  --color-primary-dark: #ea580c;
-  --color-primary-light: #fed7aa;
-  --color-secondary: #fbbf24;
-  --color-accent: #fbbf24;
-  --color-accent-dark: #f59e0b;
-  --color-background: #0c0a09;
-  --color-surface: #1c1917;
-  --color-surface-2: #292524;
-  --color-border: #44403c;
-  --color-text-primary: #fafaf9;
-  --color-text-secondary: #a8a29e;
-  --color-success: #22c55e;
-  --color-danger: #ef4444;
-  --color-warning: #fbbf24;
-  --color-sold: #22c55e;
-  --color-unsold: #ef4444;
-  --color-in-auction: #f97316;
-  --texture: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23f97316' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+/* ── IPL Neon — electric blue-purple on near-black ── */
+[data-theme="ipl-neon"] {
+  --color-primary:        #7c3aed;
+  --color-primary-dark:   #6d28d9;
+  --color-primary-light:  #c4b5fd;
+  --color-primary-glow:   rgba(124,58,237,0.6);
+  --color-secondary:      #06b6d4;
+  --color-accent:         #f0abfc;
+  --color-accent-dark:    #e879f9;
+  --color-background:     #05010f;
+  --color-bg-pattern:     url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%237c3aed' fill-opacity='0.04'%3E%3Cpath d='M40 40m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  --color-surface:        rgba(10,4,28,0.88);
+  --color-surface-2:      rgba(16,6,42,0.78);
+  --color-border:         rgba(124,58,237,0.25);
+  --color-text-primary:   #faf5ff;
+  --color-text-secondary: #a78bfa;
+  --color-success:        #10b981;
+  --color-danger:         #ef4444;
+  --color-warning:        #f59e0b;
+  --color-sold:           #10b981;
+  --color-unsold:         #ef4444;
+  --color-in-auction:     #f0abfc;
+  --gradient-primary:     linear-gradient(135deg, #7c3aed, #06b6d4);
+  --gradient-card:        linear-gradient(145deg, rgba(10,4,28,0.92), rgba(16,6,42,0.82));
+  --gradient-hero:        linear-gradient(160deg, #05010f 0%, #0a0420 50%, #0e0630 100%);
+  --texture: var(--color-bg-pattern);
 }
 
-/* Pitch Green — deep cricket ground green, professional */
-[data-theme="pitch-green"] {
-  --color-primary: #16a34a;
-  --color-primary-dark: #15803d;
-  --color-primary-light: #86efac;
-  --color-secondary: #65a30d;
-  --color-accent: #facc15;
-  --color-accent-dark: #eab308;
-  --color-background: #030a05;
-  --color-surface: #071a0d;
-  --color-surface-2: #0d2b17;
-  --color-border: #1a4a2a;
-  --color-text-primary: #f0fdf4;
-  --color-text-secondary: #86efac;
-  --color-success: #22c55e;
-  --color-danger: #ef4444;
-  --color-warning: #facc15;
-  --color-sold: #22c55e;
-  --color-unsold: #ef4444;
-  --color-in-auction: #facc15;
-  --texture: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2316a34a' fill-opacity='0.04' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+/* ── Stadium Night — floodlit deep teal + warm gold ── */
+[data-theme="stadium-night"] {
+  --color-primary:        #14b8a6;
+  --color-primary-dark:   #0d9488;
+  --color-primary-light:  #5eead4;
+  --color-primary-glow:   rgba(20,184,166,0.5);
+  --color-secondary:      #f59e0b;
+  --color-accent:         #fbbf24;
+  --color-accent-dark:    #f59e0b;
+  --color-background:     #010c0b;
+  --color-bg-pattern:     url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z' fill='%2314b8a6' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
+  --color-surface:        rgba(2,18,16,0.88);
+  --color-surface-2:      rgba(3,26,24,0.78);
+  --color-border:         rgba(20,184,166,0.2);
+  --color-text-primary:   #f0fdfa;
+  --color-text-secondary: #5eead4;
+  --color-success:        #10b981;
+  --color-danger:         #ef4444;
+  --color-warning:        #f59e0b;
+  --color-sold:           #10b981;
+  --color-unsold:         #ef4444;
+  --color-in-auction:     #fbbf24;
+  --gradient-primary:     linear-gradient(135deg, #14b8a6, #f59e0b);
+  --gradient-card:        linear-gradient(145deg, rgba(2,18,16,0.92), rgba(3,26,24,0.82));
+  --gradient-hero:        linear-gradient(160deg, #010c0b 0%, #011410 40%, #011c18 100%);
+  --texture: var(--color-bg-pattern);
 }
 
-/* Trophy Gold — brass and leather, classic awards feel */
-[data-theme="trophy-gold"] {
-  --color-primary: #d97706;
-  --color-primary-dark: #b45309;
-  --color-primary-light: #fde68a;
-  --color-secondary: #92400e;
-  --color-accent: #fcd34d;
-  --color-accent-dark: #f59e0b;
-  --color-background: #0c0900;
-  --color-surface: #1c1300;
-  --color-surface-2: #2a1d00;
-  --color-border: #4d3500;
-  --color-text-primary: #fffbeb;
-  --color-text-secondary: #d97706;
-  --color-success: #22c55e;
-  --color-danger: #dc2626;
-  --color-warning: #f59e0b;
-  --color-sold: #22c55e;
-  --color-unsold: #dc2626;
-  --color-in-auction: #fcd34d;
-  --texture: url("data:image/svg+xml,%3Csvg width='52' height='26' viewBox='0 0 52 26' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d97706' fill-opacity='0.04'%3E%3Cpath d='M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6zm25.464-1.95l8.486 8.486-1.414 1.414-8.486-8.486 1.414-1.414z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+/* ── Cricket Fire — volcanic orange on charcoal ── */
+[data-theme="cricket-fire"] {
+  --color-primary:        #f97316;
+  --color-primary-dark:   #ea580c;
+  --color-primary-light:  #fed7aa;
+  --color-primary-glow:   rgba(249,115,22,0.55);
+  --color-secondary:      #facc15;
+  --color-accent:         #fb923c;
+  --color-accent-dark:    #f97316;
+  --color-background:     #0c0702;
+  --color-bg-pattern:     url("data:image/svg+xml,%3Csvg width='52' height='26' viewBox='0 0 52 26' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23f97316' fill-opacity='0.04'%3E%3Cpath d='M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  --color-surface:        rgba(22,10,3,0.88);
+  --color-surface-2:      rgba(34,16,5,0.78);
+  --color-border:         rgba(249,115,22,0.22);
+  --color-text-primary:   #fff7ed;
+  --color-text-secondary: #fdba74;
+  --color-success:        #22c55e;
+  --color-danger:         #ef4444;
+  --color-warning:        #facc15;
+  --color-sold:           #22c55e;
+  --color-unsold:         #ef4444;
+  --color-in-auction:     #facc15;
+  --gradient-primary:     linear-gradient(135deg, #f97316, #facc15);
+  --gradient-card:        linear-gradient(145deg, rgba(22,10,3,0.92), rgba(34,16,5,0.82));
+  --gradient-hero:        linear-gradient(160deg, #0c0702 0%, #140b03 40%, #1c0f04 100%);
+  --texture: var(--color-bg-pattern);
 }
 
-/* Carbon Dark — matte carbon fiber, premium tech feel */
-[data-theme="carbon"] {
-  --color-primary: #6366f1;
-  --color-primary-dark: #4f46e5;
-  --color-primary-light: #a5b4fc;
-  --color-secondary: #8b5cf6;
-  --color-accent: #c4b5fd;
-  --color-accent-dark: #7c3aed;
-  --color-background: #030303;
-  --color-surface: #0f0f0f;
-  --color-surface-2: #1a1a1a;
-  --color-border: #2d2d2d;
-  --color-text-primary: #f5f5f5;
-  --color-text-secondary: #737373;
-  --color-success: #22c55e;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
-  --color-sold: #22c55e;
-  --color-unsold: #ef4444;
-  --color-in-auction: #6366f1;
-  --texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='2' height='2' fill='%23ffffff' fill-opacity='0.02'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23ffffff' fill-opacity='0.02'/%3E%3C/svg%3E");
+/* ── Electric Blue — pure energy, tech sports ── */
+[data-theme="electric-blue"] {
+  --color-primary:        #38bdf8;
+  --color-primary-dark:   #0284c7;
+  --color-primary-light:  #bae6fd;
+  --color-primary-glow:   rgba(56,189,248,0.5);
+  --color-secondary:      #818cf8;
+  --color-accent:         #f0f9ff;
+  --color-accent-dark:    #e0f2fe;
+  --color-background:     #010610;
+  --color-bg-pattern:     url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%2338bdf8' fill-opacity='0.04'%3E%3Crect width='2' height='2'/%3E%3Crect x='30' y='30' width='2' height='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  --color-surface:        rgba(2,12,28,0.88);
+  --color-surface-2:      rgba(3,18,40,0.78);
+  --color-border:         rgba(56,189,248,0.2);
+  --color-text-primary:   #f0f9ff;
+  --color-text-secondary: #7dd3fc;
+  --color-success:        #34d399;
+  --color-danger:         #f87171;
+  --color-warning:        #fbbf24;
+  --color-sold:           #34d399;
+  --color-unsold:         #f87171;
+  --color-in-auction:     #38bdf8;
+  --gradient-primary:     linear-gradient(135deg, #38bdf8, #818cf8);
+  --gradient-card:        linear-gradient(145deg, rgba(2,12,28,0.92), rgba(3,18,40,0.82));
+  --gradient-hero:        linear-gradient(160deg, #010610 0%, #020c1c 40%, #030f26 100%);
+  --texture: var(--color-bg-pattern);
 }
 
-/* Midnight Steel — brushed metal slate, boardroom pro */
-[data-theme="midnight-steel"] {
-  --color-primary: #38bdf8;
-  --color-primary-dark: #0ea5e9;
-  --color-primary-light: #bae6fd;
-  --color-secondary: #94a3b8;
-  --color-accent: #e2e8f0;
-  --color-accent-dark: #cbd5e1;
-  --color-background: #060b14;
-  --color-surface: #0f1929;
-  --color-surface-2: #172035;
-  --color-border: #253348;
-  --color-text-primary: #e2e8f0;
+/* ── Dark Sports Arena — ultra dark slate, silver accents ── */
+[data-theme="dark-arena"] {
+  --color-primary:        #94a3b8;
+  --color-primary-dark:   #64748b;
+  --color-primary-light:  #e2e8f0;
+  --color-primary-glow:   rgba(148,163,184,0.4);
+  --color-secondary:      #f59e0b;
+  --color-accent:         #fbbf24;
+  --color-accent-dark:    #f59e0b;
+  --color-background:     #020304;
+  --color-bg-pattern:     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='2' height='2' fill='%23ffffff' fill-opacity='0.015'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23ffffff' fill-opacity='0.015'/%3E%3C/svg%3E");
+  --color-surface:        rgba(8,10,14,0.92);
+  --color-surface-2:      rgba(14,16,22,0.85);
+  --color-border:         rgba(148,163,184,0.12);
+  --color-text-primary:   #f8fafc;
   --color-text-secondary: #64748b;
-  --color-success: #34d399;
-  --color-danger: #f87171;
-  --color-warning: #fbbf24;
-  --color-sold: #34d399;
-  --color-unsold: #f87171;
-  --color-in-auction: #38bdf8;
-  --texture: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%2338bdf8' fill-opacity='0.02' fill-rule='evenodd'/%3E%3C/svg%3E");
+  --color-success:        #22c55e;
+  --color-danger:         #ef4444;
+  --color-warning:        #f59e0b;
+  --color-sold:           #22c55e;
+  --color-unsold:         #ef4444;
+  --color-in-auction:     #f59e0b;
+  --gradient-primary:     linear-gradient(135deg, #475569, #f59e0b);
+  --gradient-card:        linear-gradient(145deg, rgba(8,10,14,0.95), rgba(14,16,22,0.88));
+  --gradient-hero:        linear-gradient(160deg, #020304 0%, #050608 40%, #080a0e 100%);
+  --texture: var(--color-bg-pattern);
 }
