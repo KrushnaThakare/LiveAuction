@@ -1,12 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { registrationApi } from '../api/registration';
-import { tournamentApi } from '../api/tournaments';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 import { CheckCircle, ExternalLink, Upload } from 'lucide-react';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace('/api', '');
+
+function toSafePublicUrl(url) {
+  if (!url) return null;
+  const abs = url.startsWith('/api/')
+    ? `${API_ORIGIN}${url}`
+    : url.startsWith('/uploads/')
+      ? `${API_ORIGIN}/api${url}`
+      : url.startsWith('/images/')
+        ? `${API_ORIGIN}/api${url}`
+        : url;
+  if (typeof window !== 'undefined' && window.location?.protocol === 'https:' && abs.startsWith('http://')) {
+    return abs.replace('http://', 'https://');
+  }
+  return abs;
+}
 
 export default function PublicRegistrationPage() {
   const { tournamentId } = useParams();
@@ -23,13 +37,17 @@ export default function PublicRegistrationPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [tRes, fRes] = await Promise.all([
-          tournamentApi.getById(tournamentId),
-          registrationApi.getForm(tournamentId),
-        ]);
-        const t = tRes.data.data;
-        setTournament(t);
-        setSections(fRes.data.data || []);
+        const res = await registrationApi.getPublicForm(tournamentId);
+        const data = res.data.data;
+        setTournament({
+          id: data.tournamentId,
+          name: data.tournamentName,
+          registrationEnabled: data.registrationEnabled,
+          registrationMessage: data.registrationMessage,
+          registrationRedirectLink: data.registrationRedirectLink,
+          bannerUrl: data.bannerUrl,
+        });
+        setSections(data.sections || []);
       } catch (e) {
         toast.error('Failed to load registration form');
       } finally {
@@ -77,7 +95,7 @@ export default function PublicRegistrationPage() {
       const photo = photoField ? files[photoField.fieldKey] : null;
 
       const nameField = allFields.find(f => f.mapsToPlayerField === 'name');
-      const mobileField = allFields.find(f => f.type === 'PHONE');
+      const mobileField = allFields.find(f => f.mapsToPlayerField === 'mobile') || allFields.find(f => f.type === 'PHONE') || allFields.find(f => (f.fieldKey || '').toLowerCase().includes('mobile') || (f.fieldKey || '').toLowerCase().includes('phone'));
       const playerName = nameField ? values[nameField.fieldKey] : null;
       const mobile = mobileField ? values[mobileField.fieldKey] : null;
 
@@ -112,9 +130,7 @@ export default function PublicRegistrationPage() {
     />
   );
 
-  const bannerSrc = tournament.bannerUrl
-    ? (tournament.bannerUrl.startsWith('/api') ? API_ORIGIN + tournament.bannerUrl : tournament.bannerUrl)
-    : null;
+  const bannerSrc = toSafePublicUrl(tournament.bannerUrl);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0f172a', color: '#f1f5f9' }}>
@@ -280,7 +296,7 @@ function FieldRenderer({ field, value, filePreview, error, onChange, onFile }) {
         {field.type === 'STATIC_IMAGE' && field.defaultValue && (
           <div className="rounded-2xl overflow-hidden">
             <img
-              src={field.defaultValue}
+              src={toSafePublicUrl(field.defaultValue)}
               alt={field.label}
               className="w-full max-w-xs mx-auto block rounded-2xl"
               style={{ border: '1px solid #334155' }}
