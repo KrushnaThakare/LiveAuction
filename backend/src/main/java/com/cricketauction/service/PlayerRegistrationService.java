@@ -231,7 +231,7 @@ public class PlayerRegistrationService {
                 java.util.Map<String, Object> map = parsed.getOrDefault(reg.getId(), java.util.Map.of());
                 for (String key : orderedDynamic) {
                     Object v = map.get(key);
-                    row.createCell(i++).setCellValue(v == null ? "" : String.valueOf(v));
+                    row.createCell(i++).setCellValue(normalizeExportValue(v));
                 }
             }
 
@@ -257,6 +257,28 @@ public class PlayerRegistrationService {
         if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
         if (raw.startsWith("/")) return base + raw;
         return base + "/" + raw;
+    }
+
+
+
+    private String normalizeExportValue(Object rawValue) {
+        if (rawValue == null) return "";
+        if (rawValue instanceof java.util.List<?> list) {
+            return list.stream().map(this::normalizeExportValue).filter(v -> v != null && !v.isBlank())
+                    .collect(java.util.stream.Collectors.joining(", "));
+        }
+        if (rawValue instanceof java.util.Map<?, ?> map) {
+            return map.toString();
+        }
+
+        String s = String.valueOf(rawValue).trim();
+        if (s.isEmpty()) return "";
+
+        // Normalize common uploaded-file path styles to public URLs in export
+        if (s.startsWith("/api/uploads/") || s.startsWith("/api/images/")) return toPublicUrl(s);
+        if (s.startsWith("/uploads/")) return toPublicUrl("/api" + s);
+        if (s.startsWith("/images/"))  return toPublicUrl("/api" + s);
+        return s;
     }
 
     private RegistrationResponse mapToResponse(PlayerRegistration r) {
