@@ -22,12 +22,15 @@ export const registrationApi = {
   deleteField:    (tid, fid)     => api.delete(`/tournaments/${tid}/registration/fields/${fid}`),
 
   // Submissions
-  submit: (tid, formData, playerName, mobile, photo) => {
+  submit: (tid, formData, playerName, mobile, photo, extraFiles = {}) => {
     const fd = new FormData();
     fd.append('formData', JSON.stringify(formData));
     if (playerName) fd.append('playerName', playerName);
     if (mobile)     fd.append('mobile', mobile);
     if (photo)      fd.append('photo', photo);
+    Object.entries(extraFiles || {}).forEach(([key, file]) => {
+      if (file) fd.append(`file_${key}`, file);
+    });
     return api.post(`/registration/${tid}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   getRegistrations: (tid)             => api.get(`/registration/${tid}`),

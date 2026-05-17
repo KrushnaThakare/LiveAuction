@@ -107,7 +107,10 @@ export default function PublicRegistrationPage() {
       const playerName = nameField ? values[nameField.fieldKey] : null;
       const mobile = mobileField ? values[mobileField.fieldKey] : null;
 
-      await registrationApi.submit(tournamentId, values, playerName, mobile, photo);
+      const extraFiles = Object.fromEntries(
+        Object.entries(files).filter(([k]) => !photoField || k !== photoField.fieldKey)
+      );
+      await registrationApi.submit(tournamentId, values, playerName, mobile, photo, extraFiles);
       setSubmitted(true);
     } catch (err) {
       // interceptor handles toast

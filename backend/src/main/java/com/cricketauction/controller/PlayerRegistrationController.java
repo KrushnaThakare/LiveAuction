@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -55,8 +56,9 @@ public class PlayerRegistrationController {
             @RequestParam("formData") String formData,
             @RequestParam(value = "playerName", required = false) String playerName,
             @RequestParam(value = "mobile", required = false) String mobile,
-            @RequestParam(value = "photo", required = false) MultipartFile photo) {
-        RegistrationResponse resp = regService.submit(tournamentId, formData, playerName, mobile, photo);
+            @RequestParam(value = "photo", required = false) MultipartFile photo,
+            MultipartHttpServletRequest request) {
+        RegistrationResponse resp = regService.submit(tournamentId, formData, playerName, mobile, photo, request.getFileMap());
         return ResponseEntity.ok(ApiResponse.success("Registration submitted successfully", resp));
     }
 

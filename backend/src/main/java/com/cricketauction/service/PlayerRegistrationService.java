@@ -48,7 +48,8 @@ public class PlayerRegistrationService {
 
     public RegistrationResponse submit(Long tournamentId, String formData,
                                        String playerName, String mobile,
-                                       MultipartFile photo) {
+                                       MultipartFile photo,
+                                       java.util.Map<String, MultipartFile> fileMap) {
         Tournament t = tournamentService.findById(tournamentId);
         if (!Boolean.TRUE.equals(t.getRegistrationEnabled())) {
             throw new AuctionException("Registration is not open for this tournament");
@@ -67,8 +68,39 @@ public class PlayerRegistrationService {
             }
         }
 
+
+
+        // Store any additional FILE_UPLOAD fields and write back public URLs into formData map
+        String mergedFormData = formData;
+        try {
+            ObjectMapper om = new ObjectMapper();
+            java.util.Map<String, Object> data = om.readValue(
+                    formData == null ? "{}" : formData,
+                    new TypeReference<java.util.LinkedHashMap<String, Object>>() {}
+            );
+            if (fileMap != null) {
+                for (var entry : fileMap.entrySet()) {
+                    String param = entry.getKey();
+                    MultipartFile f = entry.getValue();
+                    if (f == null || f.isEmpty()) continue;
+                    if (!param.startsWith("file_")) continue;
+                    String fieldKey = param.substring("file_".length());
+                    try {
+                        String docUrl = fileStorage.savePlayerPhoto(tournamentId, f);
+                        data.put(fieldKey, docUrl);
+                    } catch (Exception e) {
+                        log.warn("Upload failed for field {}: {}", fieldKey, e.getMessage());
+                    }
+                }
+            }
+            mergedFormData = om.writeValueAsString(data);
+        } catch (Exception e) {
+            log.warn("Could not merge uploaded document URLs into formData: {}", e.getMessage());
+        }
+
+
         PlayerRegistration reg = PlayerRegistration.builder()
-                .tournament(t).formData(formData)
+                .tournament(t).formData(mergedFormData)
                 .playerName(playerName).mobile(mobile)
                 .photoUrl(photoUrl)
                 .status(PlayerRegistration.RegistrationStatus.PENDING)
