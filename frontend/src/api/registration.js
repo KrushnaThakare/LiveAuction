@@ -30,6 +30,8 @@ export const registrationApi = {
     return api.post(`/registration/${tid}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   getRegistrations: (tid)             => api.get(`/registration/${tid}`),
+
+  exportRegistrations: (tid) => api.get(`/registration/${tid}/export`, { responseType: 'blob' }),
   importOne:  (tid, rid) => api.post(`/registration/${tid}/import/${rid}`),
   importAll:  (tid)      => api.post(`/registration/${tid}/import-all`),
   deleteReg:  (tid, rid) => api.delete(`/registration/${tid}/${rid}`),

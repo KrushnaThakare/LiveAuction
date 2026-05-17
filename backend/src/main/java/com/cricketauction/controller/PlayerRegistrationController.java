@@ -4,6 +4,8 @@ import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.dto.PlayerResponse;
 import com.cricketauction.dto.RegistrationResponse;
 import com.cricketauction.service.PlayerRegistrationService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +40,18 @@ public class PlayerRegistrationController {
     public ResponseEntity<ApiResponse<List<RegistrationResponse>>> getAll(
             @PathVariable Long tournamentId) {
         return ResponseEntity.ok(ApiResponse.success(regService.getAll(tournamentId)));
+    }
+
+
+
+    /** Admin/Operator — export all registrations as Excel */
+    @GetMapping("/{tournamentId}/export")
+    public ResponseEntity<byte[]> exportExcel(@PathVariable Long tournamentId) {
+        byte[] bytes = regService.exportRegistrationsExcel(tournamentId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=registrations-" + tournamentId + ".xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(bytes);
     }
 
     /** Admin — import one registration to auction (no extra params, defaults to basePrice=1000) */
