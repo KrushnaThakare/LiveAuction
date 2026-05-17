@@ -7,6 +7,15 @@ import { CheckCircle, ExternalLink, Upload } from 'lucide-react';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace('/api', '');
 
+function toSafePublicUrl(url) {
+  if (!url) return null;
+  const abs = url.startsWith('/api/') ? `${API_ORIGIN}${url}` : url;
+  if (typeof window !== 'undefined' && window.location?.protocol === 'https:' && abs.startsWith('http://')) {
+    return abs.replace('http://', 'https://');
+  }
+  return abs;
+}
+
 export default function PublicRegistrationPage() {
   const { tournamentId } = useParams();
   const [tournament, setTournament] = useState(null);
@@ -115,9 +124,7 @@ export default function PublicRegistrationPage() {
     />
   );
 
-  const bannerSrc = tournament.bannerUrl
-    ? (tournament.bannerUrl.startsWith('/api') ? API_ORIGIN + tournament.bannerUrl : tournament.bannerUrl)
-    : null;
+  const bannerSrc = toSafePublicUrl(tournament.bannerUrl);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0f172a', color: '#f1f5f9' }}>
@@ -283,7 +290,7 @@ function FieldRenderer({ field, value, filePreview, error, onChange, onFile }) {
         {field.type === 'STATIC_IMAGE' && field.defaultValue && (
           <div className="rounded-2xl overflow-hidden">
             <img
-              src={field.defaultValue.startsWith('/api/') ? `${API_ORIGIN}${field.defaultValue}` : field.defaultValue}
+              src={toSafePublicUrl(field.defaultValue)}
               alt={field.label}
               className="w-full max-w-xs mx-auto block rounded-2xl"
               style={{ border: '1px solid #334155' }}

@@ -9,6 +9,8 @@ import com.cricketauction.exception.AuctionException;
 import com.cricketauction.exception.ResourceNotFoundException;
 import com.cricketauction.repository.PlayerRegistrationRepository;
 import com.cricketauction.repository.PlayerRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.poi.ss.usermodel.*;
@@ -180,23 +182,56 @@ public class PlayerRegistrationService {
     @Transactional(readOnly = true)
     public byte[] exportRegistrationsExcel(Long tournamentId) {
         List<PlayerRegistration> rows = regRepo.findByTournamentIdOrderBySubmittedAtDesc(tournamentId);
+        ObjectMapper om = new ObjectMapper();
+
+        java.util.LinkedHashSet<String> dynamicKeys = new java.util.LinkedHashSet<>();
+        java.util.Map<Long, java.util.Map<String, Object>> parsed = new java.util.HashMap<>();
+
+        for (PlayerRegistration reg : rows) {
+            try {
+                java.util.Map<String, Object> map = om.readValue(
+                        reg.getFormData() == null ? "{}" : reg.getFormData(),
+                        new TypeReference<java.util.LinkedHashMap<String, Object>>() {}
+                );
+                parsed.put(reg.getId(), map);
+                dynamicKeys.addAll(map.keySet());
+            } catch (Exception ignored) {
+                parsed.put(reg.getId(), java.util.Map.of());
+            }
+        }
+
         try (Workbook wb = new XSSFWorkbook(); java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
             Sheet sh = wb.createSheet("Registrations");
             Row h = sh.createRow(0);
-            String[] cols = {"ID", "Player Name", "Mobile", "Status", "Submitted At", "Photo URL", "Form Data"};
-            for (int i = 0; i < cols.length; i++) h.createCell(i).setCellValue(cols[i]);
+
+            java.util.List<String> baseCols = java.util.List.of(
+                    "ID", "Player Name", "Mobile", "Status", "Submitted At", "Photo URL"
+            );
+
+            int c = 0;
+            for (String col : baseCols) h.createCell(c++).setCellValue(col);
+            java.util.List<String> orderedDynamic = new java.util.ArrayList<>(dynamicKeys);
+            for (String key : orderedDynamic) h.createCell(c++).setCellValue(key);
+
             int r = 1;
             for (PlayerRegistration reg : rows) {
                 Row row = sh.createRow(r++);
-                row.createCell(0).setCellValue(reg.getId() != null ? reg.getId() : 0);
-                row.createCell(1).setCellValue(reg.getPlayerName() != null ? reg.getPlayerName() : "");
-                row.createCell(2).setCellValue(reg.getMobile() != null ? reg.getMobile() : "");
-                row.createCell(3).setCellValue(reg.getStatus() != null ? reg.getStatus().name() : "");
-                row.createCell(4).setCellValue(reg.getSubmittedAt() != null ? reg.getSubmittedAt().toString() : "");
-                row.createCell(5).setCellValue(reg.getPhotoUrl() != null ? reg.getPhotoUrl() : "");
-                row.createCell(6).setCellValue(reg.getFormData() != null ? reg.getFormData() : "");
+                int i = 0;
+                row.createCell(i++).setCellValue(reg.getId() != null ? reg.getId() : 0);
+                row.createCell(i++).setCellValue(reg.getPlayerName() != null ? reg.getPlayerName() : "");
+                row.createCell(i++).setCellValue(reg.getMobile() != null ? reg.getMobile() : "");
+                row.createCell(i++).setCellValue(reg.getStatus() != null ? reg.getStatus().name() : "");
+                row.createCell(i++).setCellValue(reg.getSubmittedAt() != null ? reg.getSubmittedAt().toString() : "");
+                row.createCell(i++).setCellValue(reg.getPhotoUrl() != null ? reg.getPhotoUrl() : "");
+
+                java.util.Map<String, Object> map = parsed.getOrDefault(reg.getId(), java.util.Map.of());
+                for (String key : orderedDynamic) {
+                    Object v = map.get(key);
+                    row.createCell(i++).setCellValue(v == null ? "" : String.valueOf(v));
+                }
             }
-            for (int i = 0; i < cols.length; i++) sh.autoSizeColumn(i);
+
+            for (int i = 0; i < baseCols.size() + orderedDynamic.size(); i++) sh.autoSizeColumn(i);
             wb.write(out);
             return out.toByteArray();
         } catch (Exception e) {
