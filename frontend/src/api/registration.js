@@ -2,7 +2,7 @@ import api from './axios';
 
 export const registrationApi = {
   // Form builder (admin)
-  getForm:        (tid)          => api.get(`/tournaments/${tid}/registration/form`),
+  getForm:        (tid)          => api.get(`/registration/${tid}/form`),
   getSettings:    (tid)          => api.get(`/tournaments/${tid}/registration/settings`),
   updateSettings: (tid, data)    => api.put(`/tournaments/${tid}/registration/settings`, data),
   uploadBanner: (tid, file) => {
@@ -30,6 +30,8 @@ export const registrationApi = {
     return api.post(`/registration/${tid}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   getRegistrations: (tid)             => api.get(`/registration/${tid}`),
+
+  exportRegistrations: (tid) => api.get(`/registration/${tid}/export`, { responseType: 'blob' }),
   importOne:  (tid, rid) => api.post(`/registration/${tid}/import/${rid}`),
   importAll:  (tid)      => api.post(`/registration/${tid}/import-all`),
   deleteReg:  (tid, rid) => api.delete(`/registration/${tid}/${rid}`),

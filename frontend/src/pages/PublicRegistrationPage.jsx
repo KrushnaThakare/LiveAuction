@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { registrationApi } from '../api/registration';
-import { tournamentApi } from '../api/tournaments';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 import { CheckCircle, ExternalLink, Upload } from 'lucide-react';
@@ -23,13 +22,17 @@ export default function PublicRegistrationPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [tRes, fRes] = await Promise.all([
-          tournamentApi.getById(tournamentId),
-          registrationApi.getForm(tournamentId),
-        ]);
-        const t = tRes.data.data;
-        setTournament(t);
-        setSections(fRes.data.data || []);
+        const res = await registrationApi.getForm(tournamentId);
+        const data = res.data.data;
+        setTournament({
+          id: data.tournamentId,
+          name: data.tournamentName,
+          registrationEnabled: data.registrationEnabled,
+          registrationMessage: data.registrationMessage,
+          registrationRedirectLink: data.registrationRedirectLink,
+          bannerUrl: data.bannerUrl,
+        });
+        setSections(data.sections || []);
       } catch (e) {
         toast.error('Failed to load registration form');
       } finally {
@@ -77,7 +80,7 @@ export default function PublicRegistrationPage() {
       const photo = photoField ? files[photoField.fieldKey] : null;
 
       const nameField = allFields.find(f => f.mapsToPlayerField === 'name');
-      const mobileField = allFields.find(f => f.type === 'PHONE');
+      const mobileField = allFields.find(f => f.mapsToPlayerField === 'mobile') || allFields.find(f => f.type === 'PHONE') || allFields.find(f => (f.fieldKey || '').toLowerCase().includes('mobile') || (f.fieldKey || '').toLowerCase().includes('phone'));
       const playerName = nameField ? values[nameField.fieldKey] : null;
       const mobile = mobileField ? values[mobileField.fieldKey] : null;
 
@@ -280,7 +283,7 @@ function FieldRenderer({ field, value, filePreview, error, onChange, onFile }) {
         {field.type === 'STATIC_IMAGE' && field.defaultValue && (
           <div className="rounded-2xl overflow-hidden">
             <img
-              src={field.defaultValue}
+              src={field.defaultValue.startsWith('/api/') ? `${API_ORIGIN}${field.defaultValue}` : field.defaultValue}
               alt={field.label}
               className="w-full max-w-xs mx-auto block rounded-2xl"
               style={{ border: '1px solid #334155' }}
