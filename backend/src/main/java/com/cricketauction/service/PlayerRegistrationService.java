@@ -9,8 +9,13 @@ import com.cricketauction.exception.AuctionException;
 import com.cricketauction.exception.ResourceNotFoundException;
 import com.cricketauction.repository.PlayerRegistrationRepository;
 import com.cricketauction.repository.PlayerRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,6 +25,9 @@ import java.util.List;
 @Service
 @Transactional
 public class PlayerRegistrationService {
+
+    @Value("${app.public-base-url:}")
+    private String publicBaseUrl;
 
     private static final Logger log = LoggerFactory.getLogger(PlayerRegistrationService.class);
 
@@ -40,7 +48,8 @@ public class PlayerRegistrationService {
 
     public RegistrationResponse submit(Long tournamentId, String formData,
                                        String playerName, String mobile,
-                                       MultipartFile photo) {
+                                       MultipartFile photo,
+                                       java.util.Map<String, MultipartFile> fileMap) {
         Tournament t = tournamentService.findById(tournamentId);
         if (!Boolean.TRUE.equals(t.getRegistrationEnabled())) {
             throw new AuctionException("Registration is not open for this tournament");
@@ -59,8 +68,39 @@ public class PlayerRegistrationService {
             }
         }
 
+
+
+        // Store any additional FILE_UPLOAD fields and write back public URLs into formData map
+        String mergedFormData = formData;
+        try {
+            ObjectMapper om = new ObjectMapper();
+            java.util.Map<String, Object> data = om.readValue(
+                    formData == null ? "{}" : formData,
+                    new TypeReference<java.util.LinkedHashMap<String, Object>>() {}
+            );
+            if (fileMap != null) {
+                for (var entry : fileMap.entrySet()) {
+                    String param = entry.getKey();
+                    MultipartFile f = entry.getValue();
+                    if (f == null || f.isEmpty()) continue;
+                    if (!param.startsWith("file_")) continue;
+                    String fieldKey = param.substring("file_".length());
+                    try {
+                        String docUrl = fileStorage.savePlayerPhoto(tournamentId, f);
+                        data.put(fieldKey, docUrl);
+                    } catch (Exception e) {
+                        log.warn("Upload failed for field {}: {}", fieldKey, e.getMessage());
+                    }
+                }
+            }
+            mergedFormData = om.writeValueAsString(data);
+        } catch (Exception e) {
+            log.warn("Could not merge uploaded document URLs into formData: {}", e.getMessage());
+        }
+
+
         PlayerRegistration reg = PlayerRegistration.builder()
-                .tournament(t).formData(formData)
+                .tournament(t).formData(mergedFormData)
                 .playerName(playerName).mobile(mobile)
                 .photoUrl(photoUrl)
                 .status(PlayerRegistration.RegistrationStatus.PENDING)
@@ -173,11 +213,104 @@ public class PlayerRegistrationService {
         return count;
     }
 
+
+
+    @Transactional(readOnly = true)
+    public byte[] exportRegistrationsExcel(Long tournamentId) {
+        List<PlayerRegistration> rows = regRepo.findByTournamentIdOrderBySubmittedAtDesc(tournamentId);
+        ObjectMapper om = new ObjectMapper();
+
+        java.util.LinkedHashSet<String> dynamicKeys = new java.util.LinkedHashSet<>();
+        java.util.Map<Long, java.util.Map<String, Object>> parsed = new java.util.HashMap<>();
+
+        for (PlayerRegistration reg : rows) {
+            try {
+                java.util.Map<String, Object> map = om.readValue(
+                        reg.getFormData() == null ? "{}" : reg.getFormData(),
+                        new TypeReference<java.util.LinkedHashMap<String, Object>>() {}
+                );
+                parsed.put(reg.getId(), map);
+                dynamicKeys.addAll(map.keySet());
+            } catch (Exception ignored) {
+                parsed.put(reg.getId(), java.util.Map.of());
+            }
+        }
+
+        try (Workbook wb = new XSSFWorkbook(); java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+            Sheet sh = wb.createSheet("Registrations");
+            Row h = sh.createRow(0);
+
+            java.util.List<String> baseCols = java.util.List.of(
+                    "ID", "Player Name", "Mobile", "Status", "Submitted At", "Photo URL"
+            );
+
+            int c = 0;
+            for (String col : baseCols) h.createCell(c++).setCellValue(col);
+            java.util.List<String> orderedDynamic = new java.util.ArrayList<>(dynamicKeys);
+            for (String key : orderedDynamic) h.createCell(c++).setCellValue(key);
+
+            int r = 1;
+            for (PlayerRegistration reg : rows) {
+                Row row = sh.createRow(r++);
+                int i = 0;
+                row.createCell(i++).setCellValue(reg.getId() != null ? reg.getId() : 0);
+                row.createCell(i++).setCellValue(reg.getPlayerName() != null ? reg.getPlayerName() : "");
+                row.createCell(i++).setCellValue(reg.getMobile() != null ? reg.getMobile() : "");
+                row.createCell(i++).setCellValue(reg.getStatus() != null ? reg.getStatus().name() : "");
+                row.createCell(i++).setCellValue(reg.getSubmittedAt() != null ? reg.getSubmittedAt().toString() : "");
+                row.createCell(i++).setCellValue(toPublicUrl(reg.getPhotoUrl()));
+
+                java.util.Map<String, Object> map = parsed.getOrDefault(reg.getId(), java.util.Map.of());
+                for (String key : orderedDynamic) {
+                    Object v = map.get(key);
+                    row.createCell(i++).setCellValue(normalizeExportValue(v));
+                }
+            }
+
+            for (int i = 0; i < baseCols.size() + orderedDynamic.size(); i++) sh.autoSizeColumn(i);
+            wb.write(out);
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new AuctionException("Failed to export registrations");
+        }
+    }
+
     public void deleteRegistration(Long id) {
         PlayerRegistration reg = regRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Registration", id));
         if (reg.getPhotoUrl() != null) fileStorage.deleteFile(reg.getPhotoUrl());
         regRepo.delete(reg);
+    }
+
+    private String toPublicUrl(String raw) {
+        if (raw == null || raw.isBlank()) return "";
+        if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+        String base = publicBaseUrl == null ? "" : publicBaseUrl.trim();
+        if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        if (raw.startsWith("/")) return base + raw;
+        return base + "/" + raw;
+    }
+
+
+
+    private String normalizeExportValue(Object rawValue) {
+        if (rawValue == null) return "";
+        if (rawValue instanceof java.util.List<?> list) {
+            return list.stream().map(this::normalizeExportValue).filter(v -> v != null && !v.isBlank())
+                    .collect(java.util.stream.Collectors.joining(", "));
+        }
+        if (rawValue instanceof java.util.Map<?, ?> map) {
+            return map.toString();
+        }
+
+        String s = String.valueOf(rawValue).trim();
+        if (s.isEmpty()) return "";
+
+        // Normalize common uploaded-file path styles to public URLs in export
+        if (s.startsWith("/api/uploads/") || s.startsWith("/api/images/")) return toPublicUrl(s);
+        if (s.startsWith("/uploads/")) return toPublicUrl("/api" + s);
+        if (s.startsWith("/images/"))  return toPublicUrl("/api" + s);
+        return s;
     }
 
     private RegistrationResponse mapToResponse(PlayerRegistration r) {
