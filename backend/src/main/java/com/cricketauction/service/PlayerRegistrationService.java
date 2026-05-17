@@ -11,6 +11,8 @@ import com.cricketauction.repository.PlayerRegistrationRepository;
 import com.cricketauction.repository.PlayerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -171,6 +173,35 @@ public class PlayerRegistrationService {
             }
         }
         return count;
+    }
+
+
+
+    @Transactional(readOnly = true)
+    public byte[] exportRegistrationsExcel(Long tournamentId) {
+        List<PlayerRegistration> rows = regRepo.findByTournamentIdOrderBySubmittedAtDesc(tournamentId);
+        try (Workbook wb = new XSSFWorkbook(); java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+            Sheet sh = wb.createSheet("Registrations");
+            Row h = sh.createRow(0);
+            String[] cols = {"ID", "Player Name", "Mobile", "Status", "Submitted At", "Photo URL", "Form Data"};
+            for (int i = 0; i < cols.length; i++) h.createCell(i).setCellValue(cols[i]);
+            int r = 1;
+            for (PlayerRegistration reg : rows) {
+                Row row = sh.createRow(r++);
+                row.createCell(0).setCellValue(reg.getId() != null ? reg.getId() : 0);
+                row.createCell(1).setCellValue(reg.getPlayerName() != null ? reg.getPlayerName() : "");
+                row.createCell(2).setCellValue(reg.getMobile() != null ? reg.getMobile() : "");
+                row.createCell(3).setCellValue(reg.getStatus() != null ? reg.getStatus().name() : "");
+                row.createCell(4).setCellValue(reg.getSubmittedAt() != null ? reg.getSubmittedAt().toString() : "");
+                row.createCell(5).setCellValue(reg.getPhotoUrl() != null ? reg.getPhotoUrl() : "");
+                row.createCell(6).setCellValue(reg.getFormData() != null ? reg.getFormData() : "");
+            }
+            for (int i = 0; i < cols.length; i++) sh.autoSizeColumn(i);
+            wb.write(out);
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new AuctionException("Failed to export registrations");
+        }
     }
 
     public void deleteRegistration(Long id) {
