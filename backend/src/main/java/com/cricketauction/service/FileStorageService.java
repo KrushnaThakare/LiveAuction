@@ -72,7 +72,7 @@ public class FileStorageService {
         String ext = (originalName != null && originalName.contains("."))
                 ? originalName.substring(originalName.lastIndexOf(".")).toLowerCase()
                 : ".jpg";
-        if (!ext.matches("\.(jpg|jpeg|png|gif|webp)")) ext = ".jpg";
+        if (!ext.matches("\\.(jpg|jpeg|png|gif|webp)")) ext = ".jpg";
 
         if (cloudinary != null) {
             try {
