@@ -9,16 +9,24 @@ const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api')
 
 function toSafePublicUrl(url) {
   if (!url) return null;
-  const abs = url.startsWith('/api/')
+
+  let abs = url.startsWith('/api/')
     ? `${API_ORIGIN}${url}`
     : url.startsWith('/uploads/')
       ? `${API_ORIGIN}/api${url}`
       : url.startsWith('/images/')
         ? `${API_ORIGIN}/api${url}`
         : url;
+
+  // Fix legacy stored localhost URLs from older uploads/config
+  // e.g. http://localhost:8080/api/uploads/... -> https://<backend>/api/uploads/...
+  abs = abs.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i, `${API_ORIGIN}/`);
+
+  // If backend URL is configured as http, upgrade when current page is https
   if (typeof window !== 'undefined' && window.location?.protocol === 'https:' && abs.startsWith('http://')) {
-    return abs.replace('http://', 'https://');
+    abs = abs.replace('http://', 'https://');
   }
+
   return abs;
 }
 
