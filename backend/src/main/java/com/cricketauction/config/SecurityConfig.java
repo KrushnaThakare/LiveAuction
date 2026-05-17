@@ -53,7 +53,9 @@ public class SecurityConfig {
                 // ── Fully public — no token needed ───────────────────────────
                 .requestMatchers("/api/auth/**").permitAll()
                 // Public registration form
-                .requestMatchers("/api/registration/*/form").permitAll()
+.requestMatchers("/api/registration/*/form").permitAll()
+                .requestMatchers("/api/tournaments/*/registration/form").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/tournaments/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/registration/*").permitAll()
                 // File serving
                 .requestMatchers("/api/uploads/**", "/api/images/**").permitAll()

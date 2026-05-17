@@ -77,7 +77,7 @@ export default function PublicRegistrationPage() {
       const photo = photoField ? files[photoField.fieldKey] : null;
 
       const nameField = allFields.find(f => f.mapsToPlayerField === 'name');
-      const mobileField = allFields.find(f => f.type === 'PHONE');
+      const mobileField = allFields.find(f => f.mapsToPlayerField === 'mobile') || allFields.find(f => f.type === 'PHONE');
       const playerName = nameField ? values[nameField.fieldKey] : null;
       const mobile = mobileField ? values[mobileField.fieldKey] : null;
 
@@ -280,7 +280,7 @@ function FieldRenderer({ field, value, filePreview, error, onChange, onFile }) {
         {field.type === 'STATIC_IMAGE' && field.defaultValue && (
           <div className="rounded-2xl overflow-hidden">
             <img
-              src={field.defaultValue}
+              src={field.defaultValue.startsWith('/api/') ? `${API_ORIGIN}${field.defaultValue}` : field.defaultValue}
               alt={field.label}
               className="w-full max-w-xs mx-auto block rounded-2xl"
               style={{ border: '1px solid #334155' }}
