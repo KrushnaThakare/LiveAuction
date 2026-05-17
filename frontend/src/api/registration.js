@@ -2,7 +2,8 @@ import api from './axios';
 
 export const registrationApi = {
   // Form builder (admin)
-  getForm:        (tid)          => api.get(`/registration/${tid}/form`),
+  getForm:        (tid)          => api.get(`/tournaments/${tid}/registration/form`),
+  getPublicForm:  (tid)          => api.get(`/registration/${tid}/form`),
   getSettings:    (tid)          => api.get(`/tournaments/${tid}/registration/settings`),
   updateSettings: (tid, data)    => api.put(`/tournaments/${tid}/registration/settings`, data),
   uploadBanner: (tid, file) => {

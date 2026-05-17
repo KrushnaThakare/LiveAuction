@@ -37,7 +37,7 @@ export default function PublicRegistrationPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await registrationApi.getForm(tournamentId);
+        const res = await registrationApi.getPublicForm(tournamentId);
         const data = res.data.data;
         setTournament({
           id: data.tournamentId,
