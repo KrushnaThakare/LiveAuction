@@ -9,7 +9,13 @@ const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api')
 
 function toSafePublicUrl(url) {
   if (!url) return null;
-  const abs = url.startsWith('/api/') ? `${API_ORIGIN}${url}` : url;
+  const abs = url.startsWith('/api/')
+    ? `${API_ORIGIN}${url}`
+    : url.startsWith('/uploads/')
+      ? `${API_ORIGIN}/api${url}`
+      : url.startsWith('/images/')
+        ? `${API_ORIGIN}/api${url}`
+        : url;
   if (typeof window !== 'undefined' && window.location?.protocol === 'https:' && abs.startsWith('http://')) {
     return abs.replace('http://', 'https://');
   }

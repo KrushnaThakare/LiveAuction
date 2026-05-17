@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,6 +25,9 @@ import java.util.List;
 @Service
 @Transactional
 public class PlayerRegistrationService {
+
+    @Value("${app.public-base-url:}")
+    private String publicBaseUrl;
 
     private static final Logger log = LoggerFactory.getLogger(PlayerRegistrationService.class);
 
@@ -222,7 +226,7 @@ public class PlayerRegistrationService {
                 row.createCell(i++).setCellValue(reg.getMobile() != null ? reg.getMobile() : "");
                 row.createCell(i++).setCellValue(reg.getStatus() != null ? reg.getStatus().name() : "");
                 row.createCell(i++).setCellValue(reg.getSubmittedAt() != null ? reg.getSubmittedAt().toString() : "");
-                row.createCell(i++).setCellValue(reg.getPhotoUrl() != null ? reg.getPhotoUrl() : "");
+                row.createCell(i++).setCellValue(toPublicUrl(reg.getPhotoUrl()));
 
                 java.util.Map<String, Object> map = parsed.getOrDefault(reg.getId(), java.util.Map.of());
                 for (String key : orderedDynamic) {
@@ -244,6 +248,15 @@ public class PlayerRegistrationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Registration", id));
         if (reg.getPhotoUrl() != null) fileStorage.deleteFile(reg.getPhotoUrl());
         regRepo.delete(reg);
+    }
+
+    private String toPublicUrl(String raw) {
+        if (raw == null || raw.isBlank()) return "";
+        if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+        String base = publicBaseUrl == null ? "" : publicBaseUrl.trim();
+        if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        if (raw.startsWith("/")) return base + raw;
+        return base + "/" + raw;
     }
 
     private RegistrationResponse mapToResponse(PlayerRegistration r) {
