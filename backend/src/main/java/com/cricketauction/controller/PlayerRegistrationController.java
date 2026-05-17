@@ -3,7 +3,13 @@ package com.cricketauction.controller;
 import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.dto.PlayerResponse;
 import com.cricketauction.dto.RegistrationResponse;
+import com.cricketauction.dto.FormSectionDto;
+import com.cricketauction.entity.Tournament;
 import com.cricketauction.service.PlayerRegistrationService;
+import com.cricketauction.service.RegistrationFormService;
+import com.cricketauction.service.TournamentService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,9 +22,30 @@ import java.util.Map;
 public class PlayerRegistrationController {
 
     private final PlayerRegistrationService regService;
+    private final RegistrationFormService formService;
+    private final TournamentService tournamentService;
 
-    public PlayerRegistrationController(PlayerRegistrationService regService) {
+    public PlayerRegistrationController(PlayerRegistrationService regService,
+                                        RegistrationFormService formService,
+                                        TournamentService tournamentService) {
         this.regService = regService;
+        this.formService = formService;
+        this.tournamentService = tournamentService;
+    }
+
+
+
+    /** Public — fetch registration page data in one call */
+    @GetMapping("/{tournamentId}/form")
+    public ResponseEntity<ApiResponse<PublicRegistrationPayload>> publicForm(@PathVariable Long tournamentId) {
+        Tournament t = tournamentService.findById(tournamentId);
+        List<FormSectionDto> sections = formService.getForm(tournamentId);
+        PublicRegistrationPayload payload = new PublicRegistrationPayload(
+                t.getId(), t.getName(), t.getRegistrationEnabled(),
+                t.getRegistrationMessage(), t.getRegistrationRedirectLink(), t.getBannerUrl(),
+                sections
+        );
+        return ResponseEntity.ok(ApiResponse.success(payload));
     }
 
     /** Public — submit registration form */
@@ -38,6 +65,18 @@ public class PlayerRegistrationController {
     public ResponseEntity<ApiResponse<List<RegistrationResponse>>> getAll(
             @PathVariable Long tournamentId) {
         return ResponseEntity.ok(ApiResponse.success(regService.getAll(tournamentId)));
+    }
+
+
+
+    /** Admin/Operator — export all registrations as Excel */
+    @GetMapping("/{tournamentId}/export")
+    public ResponseEntity<byte[]> exportExcel(@PathVariable Long tournamentId) {
+        byte[] bytes = regService.exportRegistrationsExcel(tournamentId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=registrations-" + tournamentId + ".xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(bytes);
     }
 
     /** Admin — import one registration to auction (no extra params, defaults to basePrice=1000) */
@@ -78,4 +117,15 @@ public class PlayerRegistrationController {
         regService.deleteRegistration(registrationId);
         return ResponseEntity.ok(ApiResponse.success("Registration deleted", null));
     }
+
+    record PublicRegistrationPayload(
+            Long tournamentId,
+            String tournamentName,
+            Boolean registrationEnabled,
+            String registrationMessage,
+            String registrationRedirectLink,
+            String bannerUrl,
+            List<FormSectionDto> sections
+    ) {}
 }
+
