@@ -17,6 +17,11 @@ import RegisteredPlayersPage from './pages/RegisteredPlayersPage';
 import PublicRegistrationPage from './pages/PublicRegistrationPage';
 import UsersPage from './pages/UsersPage';
 import PublicViewPage from './pages/PublicViewPage';
+import OverlayMainPage from './pages/OverlayMainPage';
+import OverlayTeamBudgetPage from './pages/OverlayTeamBudgetPage';
+import OverlayTeamListPage from './pages/OverlayTeamListPage';
+import OverlayTickerPage from './pages/OverlayTickerPage';
+import BroadcastControlPage from './pages/BroadcastControlPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
 const toastOpts = {
@@ -67,6 +72,10 @@ function AppRoutes() {
       {/* Fully public — no auth needed */}
       <Route path="/register/:tournamentId" element={<PublicRegistrationPage />} />
       <Route path="/view/:tournamentId"     element={<PublicViewPage />} />
+      <Route path="/overlay/main" element={<OverlayMainPage />} />
+      <Route path="/overlay/team-budget" element={<OverlayTeamBudgetPage />} />
+      <Route path="/overlay/team-list" element={<OverlayTeamListPage />} />
+      <Route path="/overlay/ticker" element={<OverlayTickerPage />} />
 
       {/* Auth */}
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
@@ -100,6 +109,9 @@ function AppRoutes() {
               } />
               <Route path="/users" element={
                 <Protected requireSuperAdmin><UsersPage /></Protected>
+              } />
+              <Route path="/broadcast" element={
+                <Protected requireOperator><BroadcastControlPage /></Protected>
               } />
             </Routes>
           </main>

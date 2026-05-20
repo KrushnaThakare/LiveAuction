@@ -35,15 +35,18 @@ public class PlayerRegistrationService {
     private final PlayerRepository playerRepo;
     private final TournamentService tournamentService;
     private final FileStorageService fileStorage;
+    private final RegistrationSheetSyncService sheetSyncService;
 
     public PlayerRegistrationService(PlayerRegistrationRepository regRepo,
                                      PlayerRepository playerRepo,
                                      TournamentService tournamentService,
-                                     FileStorageService fileStorage) {
+                                     FileStorageService fileStorage,
+                                     RegistrationSheetSyncService sheetSyncService) {
         this.regRepo = regRepo;
         this.playerRepo = playerRepo;
         this.tournamentService = tournamentService;
         this.fileStorage = fileStorage;
+        this.sheetSyncService = sheetSyncService;
     }
 
     public RegistrationResponse submit(Long tournamentId, String formData,
@@ -106,7 +109,9 @@ public class PlayerRegistrationService {
                 .status(PlayerRegistration.RegistrationStatus.PENDING)
                 .build();
 
-        return mapToResponse(regRepo.save(reg));
+        PlayerRegistration saved = regRepo.save(reg);
+        sheetSyncService.push("updated", saved);
+        return mapToResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -141,7 +146,9 @@ public class PlayerRegistrationService {
             }
         }
 
-        return mapToResponse(regRepo.save(reg));
+        PlayerRegistration saved = regRepo.save(reg);
+        sheetSyncService.push("submitted", saved);
+        return mapToResponse(saved);
     }
 
     /** Import a single registration as an auction player.
@@ -279,6 +286,7 @@ public class PlayerRegistrationService {
         PlayerRegistration reg = regRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Registration", id));
         if (reg.getPhotoUrl() != null) fileStorage.deleteFile(reg.getPhotoUrl());
+        sheetSyncService.push("deleted", reg);
         regRepo.delete(reg);
     }
 
@@ -300,6 +308,10 @@ public class PlayerRegistrationService {
                     .collect(java.util.stream.Collectors.joining(", "));
         }
         if (rawValue instanceof java.util.Map<?, ?> map) {
+            Object url = map.get("url");
+            if (url == null) url = map.get("secure_url");
+            if (url == null) url = map.get("fileUrl");
+            if (url != null) return normalizeExportValue(url);
             return map.toString();
         }
 
