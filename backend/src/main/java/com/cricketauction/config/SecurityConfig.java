@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.*;
+import org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -49,14 +50,22 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .headers(headers -> headers
+                .crossOriginResourcePolicy(corp -> corp
+                    .policy(CrossOriginResourcePolicyHeaderWriter.CrossOriginResourcePolicy.CROSS_ORIGIN))
+            )
             .authorizeHttpRequests(auth -> auth
                 // ── Fully public — no token needed ───────────────────────────
                 .requestMatchers("/api/auth/**").permitAll()
                 // Public registration form
-                .requestMatchers("/api/registration/*/form").permitAll()
+.requestMatchers("/api/registration/*/form").permitAll()
+                .requestMatchers("/api/tournaments/*/registration/form").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/tournaments/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/registration/*").permitAll()
                 // File serving
                 .requestMatchers("/api/uploads/**", "/api/images/**").permitAll()
+                .requestMatchers("/ws-overlay/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/overlay/**").permitAll()
                 // Public view mode: read-only tournament data (for broadcast links)
                 .requestMatchers(HttpMethod.GET, "/api/tournaments").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*").permitAll()
@@ -90,6 +99,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT,  "/api/tournaments/*").hasRole("SUPER_ADMIN")
                 .requestMatchers(HttpMethod.DELETE,"/api/tournaments/*").hasRole("SUPER_ADMIN")
                 .requestMatchers("/api/tournaments/*/registration/**").hasRole("SUPER_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/tournaments/*/broadcast/settings").hasAnyRole("OPERATOR","SUPER_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/tournaments/*/broadcast/settings").hasAnyRole("OPERATOR","SUPER_ADMIN")
                 .requestMatchers("/api/users/**").hasRole("SUPER_ADMIN")
 
                 // Everything else requires at least login
