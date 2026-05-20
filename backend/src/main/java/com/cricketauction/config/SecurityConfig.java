@@ -64,7 +64,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/registration/*").permitAll()
                 // File serving
                 .requestMatchers("/api/uploads/**", "/api/images/**").permitAll()
-                .requestMatchers("/ws-overlay/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/overlay/**").permitAll()
                 // Public view mode: read-only tournament data (for broadcast links)
                 .requestMatchers(HttpMethod.GET, "/api/tournaments").permitAll()
@@ -99,8 +98,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT,  "/api/tournaments/*").hasRole("SUPER_ADMIN")
                 .requestMatchers(HttpMethod.DELETE,"/api/tournaments/*").hasRole("SUPER_ADMIN")
                 .requestMatchers("/api/tournaments/*/registration/**").hasRole("SUPER_ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/tournaments/*/broadcast/settings").hasAnyRole("OPERATOR","SUPER_ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/tournaments/*/broadcast/settings").hasAnyRole("OPERATOR","SUPER_ADMIN")
                 .requestMatchers("/api/users/**").hasRole("SUPER_ADMIN")
 
                 // Everything else requires at least login

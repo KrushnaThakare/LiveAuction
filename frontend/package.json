@@ -15,9 +15,7 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-hot-toast": "^2.6.0",
-    "react-router-dom": "^7.14.2",
-    "@stomp/stompjs": "^7.2.1",
-    "sockjs-client": "^1.6.1"
+    "react-router-dom": "^7.14.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
