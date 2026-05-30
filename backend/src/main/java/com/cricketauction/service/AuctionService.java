@@ -105,11 +105,8 @@ public class AuctionService {
                 throw new AuctionException(
                         "Bid amount must be greater than current bid of " + (long) currentBid);
             }
-        } else if (session.getHighestBidderTeam() == null) {
-            // First bid — team confirms at base price (no increment yet)
-            newBid = currentBid;
         } else {
-            // Subsequent bid — apply tournament-specific increment rule
+            // Recalculate the tournament-specific slab on every bid click.
             newBid = currentBid + bidRuleService.getIncrement(tournamentId, currentBid);
         }
 
@@ -350,9 +347,7 @@ public class AuctionService {
 
     private AuctionStateResponse mapToResponse(AuctionSession session) {
         double current = session.getCurrentBid();
-        double next = (session.getHighestBidderTeam() == null)
-                ? current
-                : current + bidRuleService.getIncrement(session.getTournament().getId(), current);
+        double next = current + bidRuleService.getIncrement(session.getTournament().getId(), current);
 
         // A session is undoable if it is SOLD or UNSOLD and has undo metadata
         boolean undoable = (session.getStatus() == AuctionSession.AuctionStatus.SOLD

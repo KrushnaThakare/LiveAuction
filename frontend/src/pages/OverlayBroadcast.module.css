@@ -1,0 +1,571 @@
+.stage {
+  min-height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  color: #ffffff;
+  background: transparent;
+  font-family: Inter, Rajdhani, "Arial Black", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  pointer-events: none;
+}
+
+.auctionDock {
+  position: fixed;
+  left: 32px;
+  right: 32px;
+  bottom: 24px;
+  height: clamp(218px, 28vh, 312px);
+  display: grid;
+  grid-template-columns: minmax(330px, 1fr) clamp(230px, 18vw, 336px) minmax(360px, 1fr);
+  align-items: stretch;
+  gap: 18px;
+  padding: 16px;
+  border-radius: 30px;
+  background:
+    linear-gradient(135deg, rgba(255, 199, 44, 0.14), transparent 24%),
+    linear-gradient(180deg, rgba(11, 16, 32, 0.92), rgba(5, 9, 20, 0.88));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(18px) saturate(1.25);
+}
+
+.auctionDock::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 199, 44, 0.18), transparent),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 72px);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent 95%);
+  pointer-events: none;
+}
+
+.infoStack,
+.bidPanel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 10px;
+  min-width: 0;
+}
+
+.glassCard {
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.045)),
+    rgba(6, 12, 28, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255,255,255,0.12);
+  backdrop-filter: blur(16px);
+}
+
+.playerNameCard {
+  padding: 14px 18px;
+  overflow: hidden;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffc72c;
+  font-size: clamp(11px, 0.78vw, 14px);
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.liveDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #00d26a;
+  box-shadow: 0 0 16px rgba(0, 210, 106, 0.95);
+}
+
+.playerName {
+  margin: 6px 0 0;
+  font-size: clamp(30px, 3.8vw, 58px);
+  line-height: 0.98;
+  font-weight: 1000;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  text-shadow: 0 8px 28px rgba(0,0,0,0.52);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.statCard {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.statIcon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 11px;
+  color: #ffc72c;
+  background: rgba(255, 199, 44, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(255, 199, 44, 0.23);
+}
+
+.statLabel {
+  color: rgba(255,255,255,0.58);
+  font-size: clamp(10px, 0.72vw, 12px);
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.statValue {
+  margin-top: 2px;
+  color: #ffffff;
+  font-size: clamp(14px, 1.15vw, 22px);
+  font-weight: 950;
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imageWrap {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  justify-self: center;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 28px;
+  padding: 4px;
+  background: linear-gradient(135deg, rgba(255,199,44,0.85), rgba(0,210,106,0.72), rgba(255,255,255,0.22));
+  box-shadow: 0 0 34px rgba(255, 199, 44, 0.34), 0 0 68px rgba(0, 210, 106, 0.18);
+  animation: borderPulse 2.8s ease-in-out infinite;
+}
+
+.playerImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 24px;
+  background: radial-gradient(circle at 50% 20%, #24345f, #050914 72%);
+}
+
+.imageFallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 24px;
+  background: radial-gradient(circle at 50% 25%, #23345f, #050914 74%);
+  color: rgba(255, 255, 255, 0.62);
+  font-size: clamp(70px, 7vw, 126px);
+  font-weight: 1000;
+}
+
+.bidPanel {
+  grid-template-rows: auto 1fr auto;
+}
+
+.liveBadge {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  border-radius: 999px;
+  color: #07101f;
+  background: #ffc72c;
+  font-size: clamp(11px, 0.8vw, 14px);
+  font-weight: 1000;
+  box-shadow: 0 0 26px rgba(255, 199, 44, 0.45);
+  animation: badgePulse 1.7s ease-in-out infinite;
+}
+
+.amountCard {
+  display: grid;
+  align-content: center;
+  padding: 15px 18px;
+}
+
+.bidLabel {
+  color: rgba(255,255,255,0.62);
+  font-size: clamp(12px, 0.85vw, 15px);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.bidAmount {
+  margin-top: 5px;
+  color: #00d26a;
+  font-size: clamp(42px, 5.1vw, 86px);
+  line-height: 0.92;
+  font-weight: 1000;
+  text-shadow: 0 0 26px rgba(0, 210, 106, 0.5);
+  animation: bidScale 0.42s ease both;
+}
+
+.teamBid {
+  display: grid;
+  grid-template-columns: 58px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.teamLogo {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  object-fit: contain;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  filter: drop-shadow(0 0 14px rgba(255,255,255,0.18));
+  animation: logoPulse 1.8s ease-in-out infinite;
+}
+
+.teamLogoFallback {
+  display: grid;
+  place-items: center;
+  color: #ffc72c;
+  font-size: 24px;
+  font-weight: 1000;
+}
+
+.teamLabel {
+  color: rgba(255,255,255,0.58);
+  font-size: clamp(10px, 0.72vw, 12px);
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.teamName {
+  margin-top: 2px;
+  color: #ffffff;
+  font-size: clamp(18px, 1.45vw, 28px);
+  font-weight: 1000;
+  line-height: 1.02;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.increment {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  color: #ffc72c;
+  font-size: clamp(13px, 0.9vw, 16px);
+  font-weight: 950;
+}
+
+.status {
+  color: rgba(255,255,255,0.62);
+  font-size: clamp(12px, 0.85vw, 14px);
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.budgetBoard {
+  position: fixed;
+  top: 26px;
+  left: 26px;
+  width: min(760px, calc(100vw - 52px));
+  padding: 14px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(11,16,32,0.9), rgba(5,9,20,0.76));
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: 0 22px 64px rgba(0,0,0,0.44);
+  backdrop-filter: blur(18px);
+}
+
+.boardTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px 10px;
+  color: #ffc72c;
+  font-size: 16px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.budgetRows {
+  display: grid;
+  gap: 8px;
+}
+
+.budgetRow {
+  display: grid;
+  grid-template-columns: 46px minmax(130px, 1fr) minmax(138px, auto) 86px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 11px;
+  border-radius: 18px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.11), rgba(255,255,255,0.045));
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.budgetLogo {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  object-fit: contain;
+  background: rgba(255,255,255,0.1);
+}
+
+.budgetTeamName {
+  font-size: 19px;
+  font-weight: 1000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.money {
+  color: #00d26a;
+  font-size: 22px;
+  font-weight: 1000;
+  text-align: right;
+  text-shadow: 0 0 16px rgba(0,210,106,0.34);
+}
+
+.playersCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  color: rgba(255,255,255,0.72);
+  font-size: 14px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.progressTrack {
+  grid-column: 2 / -1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.11);
+}
+
+.progressFill {
+  position: relative;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffc72c, #00d26a);
+}
+
+.progressFill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.75), transparent);
+  animation: progressSweep 2.2s linear infinite;
+}
+
+.squadStage {
+  min-height: 100vh;
+  padding: 34px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255,199,44,0.14), transparent 38%),
+    linear-gradient(135deg, rgba(11,16,32,0.92), rgba(3,7,18,0.94));
+}
+
+.squadGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  gap: 18px;
+}
+
+.squadCard {
+  min-height: 420px;
+  padding: 16px;
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.045));
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 20px 56px rgba(0,0,0,0.35);
+  backdrop-filter: blur(18px);
+  overflow: hidden;
+}
+
+.squadHeader {
+  display: grid;
+  grid-template-columns: 58px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.squadLogo {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  object-fit: contain;
+  background: rgba(255,255,255,0.1);
+}
+
+.squadTeam {
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 1000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.squadCount {
+  padding: 8px 10px;
+  border-radius: 999px;
+  color: #07101f;
+  background: #ffc72c;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.squadRows {
+  margin-top: 12px;
+  max-height: 322px;
+  overflow: hidden;
+}
+
+.squadRowsInner {
+  display: grid;
+  gap: 7px;
+}
+
+.squadRowsInner.scrolling {
+  animation: squadScroll 14s ease-in-out infinite;
+}
+
+.playerRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 900;
+  background: rgba(255,255,255,0.075);
+}
+
+.playerRow:nth-child(even) {
+  background: rgba(255, 199, 44, 0.095);
+}
+
+.roleBadge {
+  min-width: 48px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #ffc72c;
+  background: rgba(255,199,44,0.12);
+  border: 1px solid rgba(255,199,44,0.24);
+  font-size: 12px;
+  text-align: center;
+  font-weight: 1000;
+}
+
+.rowPrice {
+  color: #00d26a;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+@keyframes borderPulse {
+  0%, 100% { filter: brightness(1); box-shadow: 0 0 34px rgba(255, 199, 44, 0.34), 0 0 68px rgba(0, 210, 106, 0.18); }
+  50% { filter: brightness(1.14); box-shadow: 0 0 48px rgba(255, 199, 44, 0.52), 0 0 86px rgba(0, 210, 106, 0.26); }
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
+}
+
+@keyframes bidScale {
+  0% { transform: scale(0.94); opacity: 0.8; }
+  72% { transform: scale(1.035); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.055); }
+}
+
+@keyframes progressSweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+@keyframes squadScroll {
+  0%, 18% { transform: translateY(0); }
+  50%, 68% { transform: translateY(calc(-100% + 322px)); }
+  100% { transform: translateY(0); }
+}
+
+@media (max-width: 1400px) {
+  .auctionDock {
+    left: 22px;
+    right: 22px;
+    bottom: 18px;
+    gap: 12px;
+    grid-template-columns: minmax(280px, 1fr) clamp(200px, 18vw, 280px) minmax(300px, 1fr);
+  }
+
+  .statsGrid {
+    gap: 8px;
+  }
+
+  .teamBid {
+    grid-template-columns: 50px 1fr auto;
+  }
+
+  .teamLogo {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media (max-width: 900px) {
+  .auctionDock {
+    height: 30vh;
+    grid-template-columns: 1fr 0.72fr 1fr;
+    padding: 10px;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statCard:nth-child(n+4) {
+    display: none;
+  }
+
+  .budgetRow {
+    grid-template-columns: 40px minmax(92px, 1fr) auto;
+  }
+
+  .playersCount {
+    display: none;
+  }
+
+  .progressTrack {
+    grid-column: 2 / -1;
+  }
+}

@@ -1,0 +1,7 @@
+### Create Tournament
+POST http://localhost:8080/api/tournaments
+Content-Type: application/json
+
+{
+  "name": "IPL Auction"
+}
