@@ -1,0 +1,301 @@
+.screen {
+  min-height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255, 199, 44, 0.18), transparent 30%),
+    radial-gradient(circle at 82% 58%, rgba(0, 210, 106, 0.13), transparent 30%),
+    linear-gradient(135deg, #0b1020 0%, #060b18 48%, #02040b 100%);
+  font-family: Inter, Rajdhani, "Arial Black", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.screen,
+.screen *,
+.screen *::before,
+.screen *::after {
+  box-sizing: border-box;
+}
+
+.shell {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: clamp(16px, 2vh, 28px);
+  padding: clamp(28px, 3vw, 52px);
+}
+
+.topBar,
+.statusBar,
+.glass {
+  background: linear-gradient(145deg, rgba(255,255,255,0.13), rgba(255,255,255,0.045));
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.12);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.topBar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 24px;
+  min-height: 92px;
+  padding: 18px 26px;
+  border-radius: 28px;
+}
+
+.brandKicker,
+.label {
+  color: rgba(255,255,255,0.62);
+  font-size: clamp(13px, 0.9vw, 17px);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.title {
+  margin-top: 4px;
+  color: #ffc72c;
+  font-size: clamp(34px, 3.5vw, 64px);
+  line-height: 0.95;
+  font-weight: 1000;
+  text-transform: uppercase;
+  text-shadow: 0 0 28px rgba(255,199,44,0.32);
+}
+
+.sponsor {
+  min-width: 260px;
+  padding: 14px 20px;
+  border-radius: 999px;
+  text-align: center;
+  color: #06101f;
+  background: linear-gradient(90deg, #ffc72c, #ffe082);
+  font-weight: 1000;
+  text-transform: uppercase;
+  box-shadow: 0 0 34px rgba(255,199,44,0.34);
+}
+
+.mainGrid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(310px, 0.9fr) minmax(430px, 1.22fr) minmax(340px, 0.98fr);
+  gap: clamp(18px, 2vw, 32px);
+  align-items: stretch;
+}
+
+.detailsPanel,
+.bidPanel {
+  display: grid;
+  gap: 16px;
+  align-content: center;
+  min-width: 0;
+}
+
+.playerNameCard,
+.detailCard,
+.bidCard,
+.teamCard {
+  border-radius: 28px;
+  padding: clamp(18px, 2vw, 28px);
+}
+
+.playerName {
+  margin: 8px 0 0;
+  font-size: clamp(44px, 4.6vw, 84px);
+  line-height: 0.92;
+  font-weight: 1000;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  text-shadow: 0 12px 36px rgba(0,0,0,0.48);
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.detailCard {
+  min-height: 112px;
+}
+
+.value {
+  margin-top: 8px;
+  color: #ffffff;
+  font-size: clamp(24px, 2vw, 38px);
+  line-height: 1;
+  font-weight: 1000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imageFrame {
+  position: relative;
+  min-height: 0;
+  align-self: stretch;
+  padding: 6px;
+  border-radius: 42px;
+  background: linear-gradient(135deg, rgba(255,199,44,0.92), rgba(0,210,106,0.75), rgba(255,255,255,0.2));
+  box-shadow: 0 0 52px rgba(255,199,44,0.35), 0 0 96px rgba(0,210,106,0.18);
+  animation: frameGlow 3s ease-in-out infinite;
+}
+
+.playerImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 36px;
+  background: radial-gradient(circle at 50% 24%, #263a68, #050914 72%);
+}
+
+.imageFallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  border-radius: 36px;
+  color: rgba(255,255,255,0.58);
+  background: radial-gradient(circle at 50% 24%, #263a68, #050914 72%);
+}
+
+.bidCard {
+  text-align: right;
+}
+
+.bidAmount {
+  margin-top: 8px;
+  color: #00d26a;
+  font-size: clamp(64px, 7vw, 132px);
+  line-height: 0.88;
+  font-weight: 1000;
+  text-shadow: 0 0 38px rgba(0,210,106,0.48);
+  animation: bidPulse 0.55s ease both;
+}
+
+.teamCard {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  align-items: center;
+  gap: 18px;
+}
+
+.teamLogo {
+  width: 96px;
+  height: 96px;
+  border-radius: 26px;
+  object-fit: contain;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.16);
+  filter: drop-shadow(0 0 22px rgba(255,255,255,0.22));
+  animation: logoPulse 1.8s ease-in-out infinite;
+}
+
+.logoFallback {
+  display: grid;
+  place-items: center;
+  color: #ffc72c;
+  font-size: 42px;
+  font-weight: 1000;
+}
+
+.teamName {
+  margin-top: 6px;
+  font-size: clamp(30px, 3vw, 56px);
+  line-height: 0.95;
+  font-weight: 1000;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusBar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 20px;
+  min-height: 92px;
+  padding: 16px 26px;
+  border-radius: 28px;
+}
+
+.livePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  border-radius: 999px;
+  color: #07101f;
+  background: #ffc72c;
+  font-size: clamp(16px, 1.1vw, 22px);
+  font-weight: 1000;
+  text-transform: uppercase;
+  box-shadow: 0 0 34px rgba(255,199,44,0.4);
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #00d26a;
+  box-shadow: 0 0 18px rgba(0,210,106,0.9);
+}
+
+.statusText {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: clamp(30px, 3vw, 58px);
+  line-height: 1;
+  font-weight: 1000;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.nextBid {
+  color: rgba(255,255,255,0.68);
+  font-size: clamp(18px, 1.35vw, 28px);
+  font-weight: 950;
+  text-align: right;
+}
+
+@keyframes frameGlow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.14); }
+}
+
+@keyframes bidPulse {
+  0% { transform: scale(0.95); opacity: 0.78; }
+  68% { transform: scale(1.035); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.055); }
+}
+
+@media (max-width: 1400px) {
+  .shell {
+    padding: 24px;
+    gap: 16px;
+  }
+
+  .mainGrid {
+    grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 1.12fr) minmax(300px, 0.95fr);
+  }
+
+  .teamCard {
+    grid-template-columns: 76px 1fr;
+  }
+
+  .teamLogo {
+    width: 76px;
+    height: 76px;
+  }
+}

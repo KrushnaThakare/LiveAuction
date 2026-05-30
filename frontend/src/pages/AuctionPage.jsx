@@ -3,6 +3,7 @@ import { useTournament } from '../contexts/TournamentContext';
 import { auctionApi } from '../api/auction';
 import { playerApi } from '../api/players';
 import { teamApi } from '../api/teams';
+import { bidRuleApi } from '../api/bidRules';
 import {
   announceAuctionStart, announceBid,
   announcePlayerSold, announcePlayerUnsold, stopSpeaking,
@@ -20,6 +21,15 @@ import {
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
   Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw,
 } from 'lucide-react';
+
+function getDynamicIncrement(rules, amount, fallbackNextBid) {
+  if (Array.isArray(rules) && rules.length) {
+    const sorted = [...rules].sort((a, b) => Number(a.minAmount || 0) - Number(b.minAmount || 0));
+    const rule = sorted.find(r => amount < Number(r.maxAmount)) || sorted[sorted.length - 1];
+    return Math.max(1, Number(rule?.incrementAmount || 0));
+  }
+  return Math.max(1, Number(fallbackNextBid || amount + 1000) - amount);
+}
 
 /* ── Image component using sequential loader ── */
 function PlayerImage({ imgUrl, name, roleColor }) {
@@ -48,6 +58,7 @@ export default function AuctionPage() {
   const [availablePlayers, setAvailablePlayers] = useState([]);
   const [unsoldPlayers, setUnsoldPlayers]       = useState([]);
   const [teams, setTeams]                       = useState([]);
+  const [bidRules, setBidRules]                 = useState([]);
   const [loading, setLoading]                   = useState(true);
   const [actionLoading, setActionLoading]       = useState(false);
   const [fullscreen, setFullscreen]             = useState(false);
@@ -64,16 +75,18 @@ export default function AuctionPage() {
   const fetchAll = useCallback(async () => {
     if (!activeTournament) return;
     try {
-      const [sRes, pRes, uRes, tRes] = await Promise.all([
+      const [sRes, pRes, uRes, tRes, rRes] = await Promise.all([
         auctionApi.getState(activeTournament.id),
         playerApi.getAll(activeTournament.id, 'AVAILABLE'),
         playerApi.getAll(activeTournament.id, 'UNSOLD'),
         teamApi.getAll(activeTournament.id),
+        bidRuleApi.getRules(activeTournament.id),
       ]);
       setAuctionState(sRes.data.data);
       setAvailablePlayers(pRes.data.data || []);
       setUnsoldPlayers(uRes.data.data || []);
       setTeams(tRes.data.data || []);
+      setBidRules(rRes.data.data || []);
     } finally {
       setLoading(false);
     }
@@ -274,23 +287,23 @@ export default function AuctionPage() {
     setProposedBid(prev => {
       const current = auctionState?.currentBid ?? 0;
       const base = prev ?? current;
-      const step = Math.max(1, (auctionState?.nextBidAmount ?? (current + 1000)) - current);
+      const step = getDynamicIncrement(bidRules, base, auctionState?.nextBidAmount);
       return base + step;
     });
     setBidKey(k => k + 1);
-  }, [auctionState?.currentBid, auctionState?.nextBidAmount]);
+  }, [auctionState?.currentBid, auctionState?.nextBidAmount, bidRules]);
 
   const stepDown = useCallback(() => {
     setProposedBid(prev => {
       const current = auctionState?.currentBid ?? 0;
       const base = prev ?? current;
-      const step = Math.max(1, (auctionState?.nextBidAmount ?? (current + 1000)) - current);
+      const step = getDynamicIncrement(bidRules, Math.max(current, base - 1), auctionState?.nextBidAmount);
       const next = base - step;
       const floor = current;
       return next <= floor ? null : next;
     });
     setBidKey(k => k + 1);
-  }, [auctionState?.currentBid, auctionState?.nextBidAmount]);
+  }, [auctionState?.currentBid, auctionState?.nextBidAmount, bidRules]);
 
   /* ── fullscreen ── */
   const toggleFullscreen = useCallback(() => {

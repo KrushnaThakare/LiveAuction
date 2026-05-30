@@ -1,4 +1,5 @@
 .stage {
+  box-sizing: border-box;
   min-height: 100vh;
   width: 100vw;
   overflow: hidden;
@@ -8,12 +9,20 @@
   pointer-events: none;
 }
 
+.stage *,
+.stage *::before,
+.stage *::after {
+  box-sizing: border-box;
+}
+
 .auctionDock {
   position: fixed;
-  left: 32px;
-  right: 32px;
-  bottom: 24px;
-  height: clamp(218px, 28vh, 312px);
+  left: clamp(18px, 1.7vw, 32px);
+  right: clamp(18px, 1.7vw, 32px);
+  bottom: clamp(18px, 2.1vh, 24px);
+  height: min(28vh, calc(100vh - 48px));
+  min-height: 0;
+  max-height: 312px;
   display: grid;
   grid-template-columns: minmax(330px, 1fr) clamp(230px, 18vw, 336px) minmax(360px, 1fr);
   align-items: stretch;
@@ -521,9 +530,6 @@
 
 @media (max-width: 1400px) {
   .auctionDock {
-    left: 22px;
-    right: 22px;
-    bottom: 18px;
     gap: 12px;
     grid-template-columns: minmax(280px, 1fr) clamp(200px, 18vw, 280px) minmax(300px, 1fr);
   }
@@ -544,7 +550,7 @@
 
 @media (max-width: 900px) {
   .auctionDock {
-    height: 30vh;
+    height: min(30vh, calc(100vh - 36px));
     grid-template-columns: 1fr 0.72fr 1fr;
     padding: 10px;
   }
