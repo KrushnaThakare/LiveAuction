@@ -315,3 +315,56 @@ html.overlay-html #root {
   from { background-position: 0 -100px, 0 -160px, 0 -220px; }
   to { background-position: 0 900px, 0 1000px, 0 1100px; }
 }
+
+@media (max-width: 640px) {
+  .overlay-verdict-card {
+    width: calc(100vw - 24px);
+    padding: 28px 18px;
+    border-radius: 28px;
+  }
+
+  .overlay-verdict-card h1 {
+    font-size: clamp(58px, 19vw, 96px);
+  }
+
+  .overlay-verdict-card p {
+    font-size: 20px;
+  }
+
+  .overlay-verdict-logo {
+    width: 92px;
+    height: 92px;
+  }
+
+  .overlay-verdict-amount {
+    font-size: clamp(44px, 13vw, 72px);
+  }
+
+  .overlay-unsold-player {
+    right: -12vw;
+    height: 58vh;
+    max-width: 62vw;
+  }
+
+  .overlay-break-card {
+    width: calc(100vw - 24px);
+    padding: 34px 18px;
+    border-radius: 28px;
+  }
+
+  .overlay-sponsor-strip {
+    margin-top: 24px;
+    padding: 13px 16px;
+    font-size: 17px;
+    white-space: normal;
+  }
+
+  .overlay-ticker {
+    bottom: 16px;
+  }
+
+  .overlay-ticker-text {
+    font-size: 22px;
+    padding: 12px 0;
+  }
+}
