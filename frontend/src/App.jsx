@@ -24,6 +24,7 @@ import OverlayTickerPage from './pages/OverlayTickerPage';
 import OverlaySoldPage from './pages/OverlaySoldPage';
 import OverlayUnsoldPage from './pages/OverlayUnsoldPage';
 import OverlayBreakScreenPage from './pages/OverlayBreakScreenPage';
+import AuctionDisplayPage from './pages/AuctionDisplayPage';
 import BroadcastControlPage from './pages/BroadcastControlPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import './styles/overlay.css';
@@ -84,6 +85,8 @@ function AppRoutes() {
       <Route path="/overlay/sold" element={<OverlaySoldPage />} />
       <Route path="/overlay/unsold" element={<OverlayUnsoldPage />} />
       <Route path="/overlay/break-screen" element={<OverlayBreakScreenPage />} />
+      <Route path="/auction-display" element={<AuctionDisplayPage />} />
+      <Route path="/display-screen" element={<AuctionDisplayPage />} />
 
       {/* Auth */}
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
@@ -132,11 +135,12 @@ function AppRoutes() {
 function AppShell() {
   const location = useLocation();
   const isOverlay = location.pathname.startsWith('/overlay/');
+  const isDisplay = location.pathname === '/auction-display' || location.pathname === '/display-screen';
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: isOverlay ? 'transparent' : 'var(--color-background)' }}>
       <AppRoutes />
-      {!isOverlay && <Toaster position="top-right" toastOptions={toastOpts} />}
+      {!isOverlay && !isDisplay && <Toaster position="top-right" toastOptions={toastOpts} />}
     </div>
   );
 }
