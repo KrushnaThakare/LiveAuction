@@ -248,23 +248,25 @@ export default function AuctionPage() {
   /* ── bid step helpers ── */
   const stepUp = useCallback(() => {
     setProposedBid(prev => {
-      const base = prev ?? auctionState?.currentBid ?? 0;
-      const step = base < 10000 ? 1000 : 2000;
+      const current = auctionState?.currentBid ?? 0;
+      const base = prev ?? current;
+      const step = Math.max(1, (auctionState?.nextBidAmount ?? (current + 1000)) - current);
       return base + step;
     });
     setBidKey(k => k + 1);
-  }, [auctionState?.currentBid]);
+  }, [auctionState?.currentBid, auctionState?.nextBidAmount]);
 
   const stepDown = useCallback(() => {
     setProposedBid(prev => {
-      const base = prev ?? auctionState?.currentBid ?? 0;
-      const step = base < 10000 ? 1000 : 2000;
+      const current = auctionState?.currentBid ?? 0;
+      const base = prev ?? current;
+      const step = Math.max(1, (auctionState?.nextBidAmount ?? (current + 1000)) - current);
       const next = base - step;
-      const floor = auctionState?.currentBid ?? 0;
+      const floor = current;
       return next <= floor ? null : next;
     });
     setBidKey(k => k + 1);
-  }, [auctionState?.currentBid]);
+  }, [auctionState?.currentBid, auctionState?.nextBidAmount]);
 
   /* ── keyboard shortcuts ── */
   useEffect(() => {
@@ -679,7 +681,7 @@ function BidStrip({ proposedBid, setProposedBid, setBidKey, committedBid, nextBi
           placeholder={`${nextBid} (auto-step)`}
           value={proposedBid ?? ''}
           min={committedBid + 1}
-          step={committedBid < 10000 ? 1000 : 2000}
+          step={Math.max(1, (nextBid || committedBid + 1000) - committedBid)}
           onChange={handleInputChange}
           onKeyDown={handleInputKey}
           disabled={disabled} />

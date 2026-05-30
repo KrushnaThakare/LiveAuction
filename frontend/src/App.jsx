@@ -21,6 +21,9 @@ import OverlayMainPage from './pages/OverlayMainPage';
 import OverlayTeamBudgetPage from './pages/OverlayTeamBudgetPage';
 import OverlayTeamListPage from './pages/OverlayTeamListPage';
 import OverlayTickerPage from './pages/OverlayTickerPage';
+import OverlaySoldPage from './pages/OverlaySoldPage';
+import OverlayUnsoldPage from './pages/OverlayUnsoldPage';
+import OverlayBreakScreenPage from './pages/OverlayBreakScreenPage';
 import BroadcastControlPage from './pages/BroadcastControlPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import './styles/overlay.css';
@@ -76,7 +79,11 @@ function AppRoutes() {
       <Route path="/overlay/main" element={<OverlayMainPage />} />
       <Route path="/overlay/team-budget" element={<OverlayTeamBudgetPage />} />
       <Route path="/overlay/team-list" element={<OverlayTeamListPage />} />
+      <Route path="/overlay/team-squad" element={<OverlayTeamListPage />} />
       <Route path="/overlay/ticker" element={<OverlayTickerPage />} />
+      <Route path="/overlay/sold" element={<OverlaySoldPage />} />
+      <Route path="/overlay/unsold" element={<OverlayUnsoldPage />} />
+      <Route path="/overlay/break-screen" element={<OverlayBreakScreenPage />} />
 
       {/* Auth */}
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />

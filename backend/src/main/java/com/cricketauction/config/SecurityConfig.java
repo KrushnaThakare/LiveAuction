@@ -75,6 +75,8 @@ public class SecurityConfig {
 
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*/broadcast/settings").hasAnyRole("OPERATOR","SUPER_ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/tournaments/*/broadcast/settings").hasAnyRole("OPERATOR","SUPER_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/tournaments/*/bid-rules").hasAnyRole("OPERATOR","SUPER_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/tournaments/*/bid-rules").hasAnyRole("OPERATOR","SUPER_ADMIN")
 
                 // ── READ-ONLY for authenticated users ─────────────────────────
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/**").authenticated()

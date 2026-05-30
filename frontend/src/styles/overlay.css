@@ -199,3 +199,119 @@ html.overlay-html #root {
   55% { transform: scale(1.08) rotate(2deg); opacity: 1; }
   100% { transform: scale(1) rotate(0); opacity: 1; }
 }
+
+.overlay-full-celebration {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at center, rgba(251, 191, 36, 0.16), rgba(2, 6, 23, 0.62));
+}
+
+.overlay-verdict-card {
+  position: relative;
+  z-index: 1;
+  width: min(980px, 86vw);
+  text-align: center;
+  padding: 56px;
+  border-radius: 44px;
+  background: linear-gradient(135deg, rgba(2,6,23,0.9), rgba(15,23,42,0.78));
+  border: 1px solid rgba(255,255,255,0.24);
+  box-shadow: 0 34px 100px rgba(0,0,0,0.58);
+  backdrop-filter: blur(20px);
+}
+
+.overlay-verdict-card h1 {
+  margin: 10px 0;
+  font-size: clamp(72px, 11vw, 160px);
+  line-height: 0.9;
+  font-weight: 1000;
+  letter-spacing: -0.07em;
+}
+
+.overlay-verdict-card.sold h1 { color: #ffc72c; text-shadow: 0 0 44px rgba(255,199,44,0.55); }
+.overlay-verdict-card.unsold h1 { color: #e2e8f0; text-shadow: 0 0 32px rgba(148,163,184,0.42); }
+
+.overlay-verdict-card p {
+  margin: 0;
+  font-size: 32px;
+  color: #cbd5e1;
+  font-weight: 800;
+}
+
+.overlay-verdict-logo {
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+  margin: 28px auto 8px;
+  filter: drop-shadow(0 0 28px rgba(255,255,255,0.28));
+}
+
+.overlay-verdict-amount {
+  margin-top: 18px;
+  font-size: 76px;
+  font-weight: 1000;
+  color: #00d26a;
+}
+
+.overlay-confetti {
+  position: fixed;
+  inset: 0;
+  opacity: 0.65;
+  background-image:
+    radial-gradient(circle, #ffc72c 0 4px, transparent 5px),
+    radial-gradient(circle, #00d26a 0 3px, transparent 4px),
+    radial-gradient(circle, #38bdf8 0 3px, transparent 4px);
+  background-size: 130px 130px, 170px 170px, 210px 210px;
+  animation: overlay-confetti 8s linear infinite;
+}
+
+.overlay-unsold-player {
+  position: fixed;
+  right: 7vw;
+  bottom: 0;
+  height: 82vh;
+  max-width: 34vw;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.05) opacity(0.42);
+}
+
+.unsold-bg {
+  background: radial-gradient(circle at 70% 40%, rgba(100,116,139,0.18), rgba(2,6,23,0.78));
+}
+
+.overlay-break-screen {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at top, rgba(255,199,44,0.14), rgba(11,16,32,0.95));
+}
+
+.overlay-break-card {
+  text-align: center;
+  width: min(1040px, 90vw);
+  padding: 64px;
+  border-radius: 46px;
+  background: rgba(2, 6, 23, 0.72);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 30px 90px rgba(0,0,0,0.52);
+}
+
+.overlay-break-card h1 {
+  margin: 14px 0;
+  font-size: clamp(56px, 8vw, 122px);
+  line-height: 0.95;
+  font-weight: 1000;
+}
+
+.overlay-sponsor-strip {
+  margin-top: 38px;
+  padding: 18px 24px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  color: #f8fafc;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+@keyframes overlay-confetti {
+  from { background-position: 0 -100px, 0 -160px, 0 -220px; }
+  to { background-position: 0 900px, 0 1000px, 0 1100px; }
+}
