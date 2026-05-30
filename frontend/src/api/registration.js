@@ -3,6 +3,7 @@ import api from './axios';
 export const registrationApi = {
   // Form builder (admin)
   getForm:        (tid)          => api.get(`/tournaments/${tid}/registration/form`),
+  getPublicForm:  (tid)          => api.get(`/registration/${tid}/form`),
   getSettings:    (tid)          => api.get(`/tournaments/${tid}/registration/settings`),
   updateSettings: (tid, data)    => api.put(`/tournaments/${tid}/registration/settings`, data),
   uploadBanner: (tid, file) => {
@@ -21,15 +22,20 @@ export const registrationApi = {
   deleteField:    (tid, fid)     => api.delete(`/tournaments/${tid}/registration/fields/${fid}`),
 
   // Submissions
-  submit: (tid, formData, playerName, mobile, photo) => {
+  submit: (tid, formData, playerName, mobile, photo, extraFiles = {}) => {
     const fd = new FormData();
     fd.append('formData', JSON.stringify(formData));
     if (playerName) fd.append('playerName', playerName);
     if (mobile)     fd.append('mobile', mobile);
     if (photo)      fd.append('photo', photo);
+    Object.entries(extraFiles || {}).forEach(([key, file]) => {
+      if (file) fd.append(`file_${key}`, file);
+    });
     return api.post(`/registration/${tid}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   getRegistrations: (tid)             => api.get(`/registration/${tid}`),
+
+  exportRegistrations: (tid) => api.get(`/registration/${tid}/export`, { responseType: 'blob' }),
   importOne:  (tid, rid) => api.post(`/registration/${tid}/import/${rid}`),
   importAll:  (tid)      => api.post(`/registration/${tid}/import-all`),
   deleteReg:  (tid, rid) => api.delete(`/registration/${tid}/${rid}`),

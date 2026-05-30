@@ -7,7 +7,7 @@ import TournamentSelector from './TournamentSelector';
 import { resolveUrl } from '../../utils/resolveUrl';
 import {
   Trophy, Users, Gavel, ShieldCheck, XCircle, Home,
-  ClipboardList, Settings, UserCog, LogOut, Crown,
+  ClipboardList, Settings, UserCog, LogOut, Crown, Radio,
 } from 'lucide-react';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
@@ -26,6 +26,7 @@ export default function Navbar() {
     { to: '/registrations', label: 'Registrations',  icon: ClipboardList, show: isOperator },
     { to: '/registration',  label: 'Form Builder',   icon: Settings,      show: isSuperAdmin },
     { to: '/users',         label: 'Users',          icon: UserCog,       show: isSuperAdmin },
+    { to: '/broadcast',     label: 'Broadcast',      icon: Radio,         show: isOperator },
   ].filter(l => l.show);
 
   const roleColor = user?.role === 'SUPER_ADMIN' ? 'var(--color-warning)'

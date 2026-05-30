@@ -59,6 +59,30 @@ public class Tournament {
     @Column(name = "registration_redirect_link", length = 500)
     private String registrationRedirectLink;
 
+    // Broadcast overlay settings
+    @Column(name = "overlay_enabled")
+    @Builder.Default
+    private Boolean overlayEnabled = true;
+
+    @Column(name = "overlay_theme", length = 50)
+    @Builder.Default
+    private String overlayTheme = "classic";
+
+    @Column(name = "overlay_show_team_budget")
+    @Builder.Default
+    private Boolean overlayShowTeamBudget = true;
+
+    @Column(name = "overlay_show_team_list")
+    @Builder.Default
+    private Boolean overlayShowTeamList = true;
+
+    @Column(name = "overlay_show_ticker")
+    @Builder.Default
+    private Boolean overlayShowTicker = true;
+
+    @Column(name = "overlay_secret_token", length = 120)
+    private String overlaySecretToken;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
