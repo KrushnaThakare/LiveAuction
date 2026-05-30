@@ -55,7 +55,7 @@ public class BidRuleService {
         List<BidRule> rules = bidRuleRepository.findByTournamentIdOrderByPositionAscMinAmountAsc(tournamentId);
         if (rules.isEmpty()) rules = defaultRules();
         return rules.stream()
-                .filter(r -> currentBid >= r.getMinAmount() && currentBid <= r.getMaxAmount())
+                .filter(r -> currentBid < r.getMaxAmount())
                 .findFirst()
                 .orElse(rules.get(rules.size() - 1))
                 .getIncrementAmount();

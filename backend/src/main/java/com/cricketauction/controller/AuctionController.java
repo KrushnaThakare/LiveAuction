@@ -51,7 +51,7 @@ public class AuctionController {
     /**
      * Assign the current bid to a team.
      * Send { teamId, customBidAmount } — if customBidAmount is null the backend
-     * applies the standard auto-increment rule.
+     * recalculates and applies the active tournament bid slab.
      */
     @PostMapping("/bid")
     public ResponseEntity<ApiResponse<AuctionStateResponse>> assignBid(

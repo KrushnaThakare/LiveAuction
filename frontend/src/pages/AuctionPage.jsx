@@ -81,6 +81,30 @@ export default function AuctionPage() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  useEffect(() => {
+    if (!activeTournament) return;
+    const onStorage = (event) => {
+      if (event.key !== 'auction-bid-rules-updated') return;
+      if (event.newValue?.startsWith(`${activeTournament.id}:`)) fetchAll();
+    };
+    window.addEventListener('storage', onStorage);
+
+    let channel;
+    try {
+      channel = new BroadcastChannel('auction-bid-rules');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'rules-updated' && event.data?.tournamentId === activeTournament.id) {
+          fetchAll();
+        }
+      };
+    } catch { /* BroadcastChannel is not required for OBS/browser compatibility. */ }
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      channel?.close();
+    };
+  }, [activeTournament, fetchAll]);
+
   /* ── poll while active ── */
   useEffect(() => {
     if (auctionState?.status !== 'ACTIVE') return;
@@ -181,7 +205,7 @@ export default function AuctionPage() {
     } finally {
       setActionLoading(false);
     }
-  }, [activeTournament, actionLoading, auctionState, voiceEnabled]);
+  }, [activeTournament, actionLoading, auctionState, voiceEnabled, teams]);
 
   /* ── unsold ── */
   const handleUnsold = useCallback(async () => {
@@ -268,6 +292,12 @@ export default function AuctionPage() {
     setBidKey(k => k + 1);
   }, [auctionState?.currentBid, auctionState?.nextBidAmount]);
 
+  /* ── fullscreen ── */
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) containerRef.current?.requestFullscreen();
+    else document.exitFullscreen();
+  }, []);
+
   /* ── keyboard shortcuts ── */
   useEffect(() => {
     const onKey = (e) => {
@@ -292,13 +322,8 @@ export default function AuctionPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [auctionState, teams, handleSell, handleUnsold, handleStartRandom, handleAssignBid, stepUp, stepDown]);
+  }, [auctionState, teams, handleSell, handleUnsold, handleStartRandom, handleAssignBid, stepUp, stepDown, toggleFullscreen]);
 
-  /* ── fullscreen ── */
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) containerRef.current?.requestFullscreen();
-    else document.exitFullscreen();
-  };
   useEffect(() => {
     const h = () => setFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', h);

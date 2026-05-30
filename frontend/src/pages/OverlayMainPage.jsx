@@ -1,8 +1,29 @@
 import { useSearchParams } from 'react-router-dom';
+import { Calendar, IndianRupee, Radio, Shield, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
+import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
+
+const roleLabel = (role) => ({
+  BATSMAN: 'BAT',
+  BOWLER: 'BOWL',
+  ALL_ROUNDER: 'AR',
+  WICKET_KEEPER: 'WK',
+}[role] || role || 'ROLE');
+
+function Stat({ icon: Icon, label, value }) {
+  return (
+    <div className={`${styles.glassCard} ${styles.statCard}`}>
+      <span className={styles.statIcon}><Icon size={17} /></span>
+      <span>
+        <span className={styles.statLabel}>{label}</span>
+        <span className={styles.statValue}>{value}</span>
+      </span>
+    </div>
+  );
+}
 
 export default function OverlayMainPage() {
   const [params] = useSearchParams();
@@ -12,29 +33,73 @@ export default function OverlayMainPage() {
   const auction = data?.auction;
   const player = auction?.currentPlayer;
   const teams = data?.teams || [];
-  const team = teams.find(t => t.id === auction?.highestBidderTeamId);
+  const team = teams.find(t => t.id === auction?.highestBidderTeamId || t.name === auction?.highestBidderTeamName);
+  const increment = Math.max(0, Number(auction?.nextBidAmount || 0) - Number(auction?.currentBid || 0));
+  const status = auction?.status || 'IDLE';
 
   if (config && config.overlayEnabled === false) return null;
 
-  return <div className="overlay-stage">
-    {auction?.status === 'SOLD' && <div className="overlay-status">SOLD</div>}
-    <section className="overlay-main-card">
-      {player?.imageUrl ? (
-        <img className="overlay-player-photo" src={resolveUrl(player.imageUrl)} alt={player.name} />
-      ) : <div className="overlay-player-photo" />}
-      <div>
-        <div className="overlay-kicker">Live Auction {connected ? '●' : '○'}</div>
-        <h1 className="overlay-player-name">{player?.name || 'Waiting for Player'}</h1>
-        <div className="overlay-muted">{player?.role || 'Auction standby'}</div>
-        <div className="overlay-price-row">
-          <span className="overlay-pill">Base {money(player?.basePrice)}</span>
-          <span className="overlay-pill bid">Bid {money(auction?.currentBid)}</span>
+  return (
+    <div className={styles.stage}>
+      <section className={styles.auctionDock}>
+        <div className={styles.infoStack}>
+          <div className={`${styles.glassCard} ${styles.playerNameCard}`}>
+            <div className={styles.eyebrow}>
+              <span className={styles.liveDot} />
+              IPL Auction Graphics {connected ? 'Live' : 'Syncing'}
+            </div>
+            <h1 className={styles.playerName}>{player?.name || 'Waiting for Player'}</h1>
+          </div>
+
+          <div className={styles.statsGrid}>
+            <Stat icon={Shield} label="Role" value={roleLabel(player?.role)} />
+            <Stat icon={IndianRupee} label="Base Price" value={money(player?.basePrice)} />
+            <Stat icon={Calendar} label="Age" value={player?.age || 'Auction Pool'} />
+            <Stat icon={Trophy} label="History" value={player?.teamName || player?.stats || 'Fresh pick'} />
+          </div>
         </div>
-        <div className="overlay-team-chip">
-          {team?.logoUrl && <img className="overlay-team-logo" src={resolveUrl(team.logoUrl)} alt={team.name} />}
-          {auction?.highestBidderTeamName || 'Awaiting first bid'}
+
+        <div className={styles.imageWrap}>
+          {player?.imageUrl ? (
+            <img className={styles.playerImage} src={resolveUrl(player.imageUrl)} alt={player.name} />
+          ) : (
+            <div className={styles.imageFallback}><UserRound size={96} /></div>
+          )}
         </div>
-      </div>
-    </section>
-  </div>;
+
+        <div className={styles.bidPanel}>
+          <div className={styles.liveBadge}>
+            <Radio size={15} />
+            LIVE BID
+          </div>
+
+          <div className={`${styles.glassCard} ${styles.amountCard}`}>
+            <div className={styles.bidLabel}>Current Bid</div>
+            <div key={`${auction?.sessionId}-${auction?.currentBid}`} className={styles.bidAmount}>
+              {money(auction?.currentBid)}
+            </div>
+            <div className={styles.status}>{status === 'ACTIVE' ? 'Auction Active' : status}</div>
+          </div>
+
+          <div className={`${styles.glassCard} ${styles.teamBid}`}>
+            {team?.logoUrl ? (
+              <img className={styles.teamLogo} src={resolveUrl(team.logoUrl)} alt={team.name} />
+            ) : (
+              <div className={`${styles.teamLogo} ${styles.teamLogoFallback}`}>
+                {(auction?.highestBidderTeamName || 'A')[0]}
+              </div>
+            )}
+            <div>
+              <div className={styles.teamLabel}>Currently Bidding</div>
+              <div className={styles.teamName}>{auction?.highestBidderTeamName || 'Awaiting Bidder'}</div>
+            </div>
+            <div className={styles.increment}>
+              <TrendingUp size={18} />
+              +{money(increment)}
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 }

@@ -20,6 +20,13 @@ export default function BroadcastControlPage() {
     if (!tid) return;
     await broadcastApi.updateSettings(tid, settings);
     await bidRuleApi.updateRules(tid, bidRules);
+    try {
+      const channel = new BroadcastChannel('auction-bid-rules');
+      channel.postMessage({ tournamentId: tid, type: 'rules-updated' });
+      channel.close();
+    } catch {
+      localStorage.setItem('auction-bid-rules-updated', `${tid}:${Date.now()}`);
+    }
     toast.success('Broadcast settings saved');
   };
 
