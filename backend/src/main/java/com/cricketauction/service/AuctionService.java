@@ -22,26 +22,25 @@ import java.util.concurrent.ThreadLocalRandom;
 @Transactional
 public class AuctionService {
 
-    private static final double BID_THRESHOLD    = 10000.0;
-    private static final double BID_INC_LOW      = 1000.0;
-    private static final double BID_INC_HIGH     = 2000.0;
-
     private final AuctionSessionRepository auctionSessionRepository;
     private final PlayerRepository         playerRepository;
     private final TeamRepository           teamRepository;
     private final TournamentService        tournamentService;
     private final PlayerService            playerService;
+    private final BidRuleService           bidRuleService;
 
     public AuctionService(AuctionSessionRepository auctionSessionRepository,
                           PlayerRepository playerRepository,
                           TeamRepository teamRepository,
                           TournamentService tournamentService,
-                          PlayerService playerService) {
+                          PlayerService playerService,
+                          BidRuleService bidRuleService) {
         this.auctionSessionRepository = auctionSessionRepository;
         this.playerRepository         = playerRepository;
         this.teamRepository           = teamRepository;
         this.tournamentService        = tournamentService;
         this.playerService            = playerService;
+        this.bidRuleService           = bidRuleService;
     }
 
     /* ── start auction for a specific player ── */
@@ -110,9 +109,8 @@ public class AuctionService {
             // First bid — team confirms at base price (no increment yet)
             newBid = currentBid;
         } else {
-            // Subsequent bid — apply standard increment
-            double step = currentBid < BID_THRESHOLD ? BID_INC_LOW : BID_INC_HIGH;
-            newBid = currentBid + step;
+            // Subsequent bid — apply tournament-specific increment rule
+            newBid = currentBid + bidRuleService.getIncrement(tournamentId, currentBid);
         }
 
         if (team.getRemainingBudget() < newBid) {
@@ -354,7 +352,7 @@ public class AuctionService {
         double current = session.getCurrentBid();
         double next = (session.getHighestBidderTeam() == null)
                 ? current
-                : (current < BID_THRESHOLD ? current + BID_INC_LOW : current + BID_INC_HIGH);
+                : current + bidRuleService.getIncrement(session.getTournament().getId(), current);
 
         // A session is undoable if it is SOLD or UNSOLD and has undo metadata
         boolean undoable = (session.getStatus() == AuctionSession.AuctionStatus.SOLD

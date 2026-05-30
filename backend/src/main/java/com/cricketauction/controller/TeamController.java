@@ -7,6 +7,7 @@ import com.cricketauction.entity.Team;
 import com.cricketauction.repository.TeamRepository;
 import com.cricketauction.service.FileStorageService;
 import com.cricketauction.service.TeamService;
+import com.cricketauction.service.OverlayPushService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,22 +23,26 @@ public class TeamController {
     private final TeamService        teamService;
     private final FileStorageService fileStorage;
     private final TeamRepository     teamRepository;
+    private final OverlayPushService overlayPushService;
 
     public TeamController(TeamService teamService,
                           FileStorageService fileStorage,
-                          TeamRepository teamRepository) {
+                          TeamRepository teamRepository,
+                          OverlayPushService overlayPushService) {
         this.teamService    = teamService;
         this.fileStorage    = fileStorage;
         this.teamRepository = teamRepository;
+        this.overlayPushService = overlayPushService;
     }
 
     @PostMapping
     public ResponseEntity<ApiResponse<TeamResponse>> createTeam(
             @PathVariable Long tournamentId,
             @Valid @RequestBody TeamRequest request) {
+        TeamResponse response = teamService.createTeam(tournamentId, request);
+        overlayPushService.pushSnapshot(tournamentId);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Team created successfully",
-                        teamService.createTeam(tournamentId, request)));
+                .body(ApiResponse.success("Team created successfully", response));
     }
 
     @GetMapping
@@ -55,8 +60,9 @@ public class TeamController {
     public ResponseEntity<ApiResponse<TeamResponse>> updateTeam(
             @PathVariable Long tournamentId, @PathVariable Long teamId,
             @Valid @RequestBody TeamRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Team updated",
-                teamService.updateTeam(teamId, request)));
+        TeamResponse response = teamService.updateTeam(teamId, request);
+        overlayPushService.pushSnapshot(tournamentId);
+        return ResponseEntity.ok(ApiResponse.success("Team updated", response));
     }
 
     /** Upload / replace a team logo */
@@ -71,6 +77,7 @@ public class TeamController {
                     .orElseThrow(() -> new RuntimeException("Team not found"));
             team.setLogoUrl(url);
             teamRepository.save(team);
+            overlayPushService.pushSnapshot(tournamentId);
             return ResponseEntity.ok(ApiResponse.success("Logo uploaded", url));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -81,6 +88,7 @@ public class TeamController {
     public ResponseEntity<ApiResponse<Void>> deleteTeam(
             @PathVariable Long tournamentId, @PathVariable Long teamId) {
         teamService.deleteTeam(teamId);
+        overlayPushService.pushSnapshot(tournamentId);
         return ResponseEntity.ok(ApiResponse.success("Team deleted", null));
     }
 }

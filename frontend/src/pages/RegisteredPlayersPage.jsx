@@ -5,7 +5,7 @@ import Modal from '../components/common/Modal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import toast from 'react-hot-toast';
-import { Users, Import, Trash2, Search, CheckCircle, Clock, Edit, Upload } from 'lucide-react';
+import { Users, Import, Trash2, Search, CheckCircle, Clock, Edit, Upload, FileSpreadsheet } from 'lucide-react';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace('/api', '');
 
@@ -51,6 +51,24 @@ export default function RegisteredPlayersPage() {
   };
 
   /* ── Import all — direct confirm ── */
+  const handleExportExcel = async () => {
+    try {
+      const res = await registrationApi.exportRegistrations(activeTournament.id);
+      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `registrations-${activeTournament.id}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Excel downloaded');
+    } catch {
+      toast.error('Failed to export registrations');
+    }
+  };
+
   const handleImportAll = async () => {
     const pending = registrations.filter(r => r.status === 'PENDING');
     if (pending.length === 0) { toast.error('No pending registrations to import'); return; }
@@ -132,11 +150,16 @@ export default function RegisteredPlayersPage() {
             {activeTournament.name} · {registrations.length} total · {pendingCount} pending
           </p>
         </div>
-        {pendingCount > 0 && (
-          <button onClick={handleImportAll} disabled={importing} className="btn-primary">
-            <Import size={15} /> Import All ({pendingCount}) to Auction
+        <div className="flex items-center gap-2">
+          <button onClick={handleExportExcel} className="btn-secondary">
+            <FileSpreadsheet size={15} /> Export Excel
           </button>
-        )}
+          {pendingCount > 0 && (
+            <button onClick={handleImportAll} disabled={importing} className="btn-primary">
+              <Import size={15} /> Import All ({pendingCount}) to Auction
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats */}

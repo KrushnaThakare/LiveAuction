@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -17,7 +17,16 @@ import RegisteredPlayersPage from './pages/RegisteredPlayersPage';
 import PublicRegistrationPage from './pages/PublicRegistrationPage';
 import UsersPage from './pages/UsersPage';
 import PublicViewPage from './pages/PublicViewPage';
+import OverlayMainPage from './pages/OverlayMainPage';
+import OverlayTeamBudgetPage from './pages/OverlayTeamBudgetPage';
+import OverlayTeamListPage from './pages/OverlayTeamListPage';
+import OverlayTickerPage from './pages/OverlayTickerPage';
+import OverlaySoldPage from './pages/OverlaySoldPage';
+import OverlayUnsoldPage from './pages/OverlayUnsoldPage';
+import OverlayBreakScreenPage from './pages/OverlayBreakScreenPage';
+import BroadcastControlPage from './pages/BroadcastControlPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import './styles/overlay.css';
 
 const toastOpts = {
   style: {
@@ -67,6 +76,14 @@ function AppRoutes() {
       {/* Fully public — no auth needed */}
       <Route path="/register/:tournamentId" element={<PublicRegistrationPage />} />
       <Route path="/view/:tournamentId"     element={<PublicViewPage />} />
+      <Route path="/overlay/main" element={<OverlayMainPage />} />
+      <Route path="/overlay/team-budget" element={<OverlayTeamBudgetPage />} />
+      <Route path="/overlay/team-list" element={<OverlayTeamListPage />} />
+      <Route path="/overlay/team-squad" element={<OverlayTeamListPage />} />
+      <Route path="/overlay/ticker" element={<OverlayTickerPage />} />
+      <Route path="/overlay/sold" element={<OverlaySoldPage />} />
+      <Route path="/overlay/unsold" element={<OverlayUnsoldPage />} />
+      <Route path="/overlay/break-screen" element={<OverlayBreakScreenPage />} />
 
       {/* Auth */}
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
@@ -101,11 +118,26 @@ function AppRoutes() {
               <Route path="/users" element={
                 <Protected requireSuperAdmin><UsersPage /></Protected>
               } />
+              <Route path="/broadcast" element={
+                <Protected requireOperator><BroadcastControlPage /></Protected>
+              } />
             </Routes>
           </main>
         </Protected>
       } />
     </Routes>
+  );
+}
+
+function AppShell() {
+  const location = useLocation();
+  const isOverlay = location.pathname.startsWith('/overlay/');
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: isOverlay ? 'transparent' : 'var(--color-background)' }}>
+      <AppRoutes />
+      {!isOverlay && <Toaster position="top-right" toastOptions={toastOpts} />}
+    </div>
   );
 }
 
@@ -115,10 +147,7 @@ export default function App() {
       <AuthProvider>
         <TournamentProvider>
           <BrowserRouter>
-            <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
-              <AppRoutes />
-              <Toaster position="top-right" toastOptions={toastOpts} />
-            </div>
+            <AppShell />
           </BrowserRouter>
         </TournamentProvider>
       </AuthProvider>
