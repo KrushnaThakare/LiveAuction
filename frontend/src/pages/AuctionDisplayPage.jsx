@@ -26,9 +26,10 @@ export default function AuctionDisplayPage() {
   const team = teams.find(t => t.id === auction?.highestBidderTeamId || t.name === auction?.highestBidderTeamName);
   const status = auction?.status || 'IDLE';
   const liveText = status === 'ACTIVE' ? 'Auction Live' : status === 'SOLD' ? 'Sold' : status === 'UNSOLD' ? 'Unsold' : 'Auction Standby';
+  const isResult = status === 'SOLD' || status === 'UNSOLD';
 
   return (
-    <main className={styles.screen}>
+    <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''}`}>
       <div className={styles.shell}>
         <header className={styles.topBar}>
           <div>
@@ -102,6 +103,28 @@ export default function AuctionDisplayPage() {
           <div className={styles.nextBid}>Next: {money(auction?.nextBidAmount)}</div>
         </footer>
       </div>
+
+      {isResult && (
+        <section className={styles.resultLayer}>
+          <div className={styles.resultBursts} />
+          <div className={styles.resultCard}>
+            <div className={styles.resultKicker}>Auction Result</div>
+            <div className={styles.resultTitle}>{status}</div>
+            <div className={styles.resultPlayer}>{player?.name || 'Player'}</div>
+            {status === 'SOLD' ? (
+              <>
+                <div className={styles.resultTeam}>
+                  {team?.logoUrl && <img src={resolveUrl(team.logoUrl)} alt={team.name} />}
+                  <span>{auction?.highestBidderTeamName || 'Winning Team'}</span>
+                </div>
+                <div className={styles.resultAmount}>{money(auction?.currentBid)}</div>
+              </>
+            ) : (
+              <div className={styles.resultSubcopy}>Returns to the auction pool</div>
+            )}
+          </div>
+        </section>
+      )}
     </main>
   );
 }
