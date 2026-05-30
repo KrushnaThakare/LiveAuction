@@ -1,32 +1,40 @@
-import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { overlayApi } from '../api/overlay';
+import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
+import { resolveUrl } from '../utils/resolveUrl';
 
-function useOverlayData(tournamentId) {
-  const [data, setData] = useState(null);
-  useEffect(() => {
-    if (!tournamentId) return;
-    let on = true;
-    const load = async () => {
-      const res = await overlayApi.getSnapshot(tournamentId);
-      if (on) setData(res.data.data);
-    };
-    load();
-    const id = setInterval(load, 3000);
-    return () => { on = false; clearInterval(id); };
-  }, [tournamentId]);
-  return data;
-}
+const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 
 export default function OverlayMainPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
-  const data = useOverlayData(tid);
-  const a = data?.auction;
-  return <div style={{background:'transparent',color:'white',padding:20,minHeight:'100vh'}}>
-    <h2>LIVE AUCTION</h2>
-    <h1>{a?.currentPlayer?.name || 'Waiting...'}</h1>
-    <p>Base: ₹{a?.currentPlayer?.basePrice || 0} | Current: ₹{a?.currentBid || 0}</p>
-    <p>{a?.highestBidderTeamName || 'No bidder yet'}</p>
+  const token = params.get('token');
+  const { data, config, connected } = useOverlayRealtime(tid, token);
+  const auction = data?.auction;
+  const player = auction?.currentPlayer;
+  const teams = data?.teams || [];
+  const team = teams.find(t => t.id === auction?.highestBidderTeamId);
+
+  if (config && config.overlayEnabled === false) return null;
+
+  return <div className="overlay-stage">
+    {auction?.status === 'SOLD' && <div className="overlay-status">SOLD</div>}
+    <section className="overlay-main-card">
+      {player?.imageUrl ? (
+        <img className="overlay-player-photo" src={resolveUrl(player.imageUrl)} alt={player.name} />
+      ) : <div className="overlay-player-photo" />}
+      <div>
+        <div className="overlay-kicker">Live Auction {connected ? '●' : '○'}</div>
+        <h1 className="overlay-player-name">{player?.name || 'Waiting for Player'}</h1>
+        <div className="overlay-muted">{player?.role || 'Auction standby'}</div>
+        <div className="overlay-price-row">
+          <span className="overlay-pill">Base {money(player?.basePrice)}</span>
+          <span className="overlay-pill bid">Bid {money(auction?.currentBid)}</span>
+        </div>
+        <div className="overlay-team-chip">
+          {team?.logoUrl && <img className="overlay-team-logo" src={resolveUrl(team.logoUrl)} alt={team.name} />}
+          {auction?.highestBidderTeamName || 'Awaiting first bid'}
+        </div>
+      </div>
+    </section>
   </div>;
 }

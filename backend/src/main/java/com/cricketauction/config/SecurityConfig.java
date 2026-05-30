@@ -58,12 +58,13 @@ public class SecurityConfig {
                 // ── Fully public — no token needed ───────────────────────────
                 .requestMatchers("/api/auth/**").permitAll()
                 // Public registration form
-.requestMatchers("/api/registration/*/form").permitAll()
+                .requestMatchers("/api/registration/*/form").permitAll()
                 .requestMatchers("/api/tournaments/*/registration/form").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/registration/*").permitAll()
                 // File serving
                 .requestMatchers("/api/uploads/**", "/api/images/**").permitAll()
+                .requestMatchers("/ws-overlay/**", "/ws-overlay-native/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/overlay/**").permitAll()
                 // Public view mode: read-only tournament data (for broadcast links)
                 .requestMatchers(HttpMethod.GET, "/api/tournaments").permitAll()
@@ -71,6 +72,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*/auction/state").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*/teams").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*/players").permitAll()
+
+                .requestMatchers(HttpMethod.GET, "/api/tournaments/*/broadcast/settings").hasAnyRole("OPERATOR","SUPER_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/tournaments/*/broadcast/settings").hasAnyRole("OPERATOR","SUPER_ADMIN")
 
                 // ── READ-ONLY for authenticated users ─────────────────────────
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/**").authenticated()

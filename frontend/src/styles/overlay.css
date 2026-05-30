@@ -1,0 +1,201 @@
+html.overlay-html,
+html.overlay-html body,
+html.overlay-html #root {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+  background: transparent !important;
+  overflow: hidden;
+}
+
+.overlay-stage {
+  min-height: 100vh;
+  width: 100vw;
+  background: transparent;
+  color: #fff;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.overlay-main-card {
+  position: fixed;
+  left: 48px;
+  bottom: 58px;
+  width: min(900px, calc(100vw - 96px));
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 24px;
+  padding: 24px;
+  border-radius: 30px;
+  background: linear-gradient(135deg, rgba(8, 15, 31, 0.92), rgba(19, 31, 61, 0.78));
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.15);
+  backdrop-filter: blur(18px);
+}
+
+.overlay-player-photo {
+  width: 210px;
+  height: 250px;
+  object-fit: cover;
+  border-radius: 24px;
+  background: radial-gradient(circle at 30% 20%, #334155, #020617);
+  border: 2px solid rgba(255,255,255,0.25);
+}
+
+.overlay-kicker {
+  color: #fbbf24;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  font-size: 15px;
+  text-transform: uppercase;
+}
+
+.overlay-player-name {
+  margin: 8px 0 14px;
+  font-size: clamp(44px, 5vw, 72px);
+  line-height: 0.95;
+  font-weight: 1000;
+  letter-spacing: -0.04em;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.45);
+}
+
+.overlay-price-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.overlay-pill {
+  border-radius: 999px;
+  padding: 10px 18px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.overlay-pill.bid {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  box-shadow: 0 0 28px rgba(34, 197, 94, 0.4);
+}
+
+.overlay-team-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148,163,184,0.3);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.overlay-team-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+}
+
+.overlay-status {
+  position: fixed;
+  right: 60px;
+  top: 60px;
+  padding: 16px 28px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #dc2626, #f97316);
+  font-size: 54px;
+  line-height: 1;
+  font-weight: 1000;
+  box-shadow: 0 0 42px rgba(249,115,22,0.55);
+  animation: overlay-pop 0.75s ease both;
+}
+
+.overlay-panel {
+  width: min(980px, calc(100vw - 80px));
+  margin: 42px auto;
+  padding: 26px;
+  border-radius: 30px;
+  background: rgba(2, 6, 23, 0.82);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 26px 80px rgba(0,0,0,0.48);
+  backdrop-filter: blur(18px);
+}
+
+.overlay-panel h2 {
+  margin: 0 0 18px;
+  font-size: 36px;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+}
+
+.overlay-row {
+  display: grid;
+  grid-template-columns: 58px 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255,255,255,0.11);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.overlay-squad-row {
+  padding: 14px 0;
+  border-top: 1px solid rgba(255,255,255,0.11);
+}
+
+.overlay-squad-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 26px;
+  font-weight: 1000;
+  color: #e2e8f0;
+}
+
+.overlay-squad-list {
+  margin-top: 8px;
+  color: #cbd5e1;
+  font-size: 18px;
+}
+
+.overlay-ticker {
+  position: fixed;
+  bottom: 34px;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  background: linear-gradient(90deg, rgba(2,6,23,0), rgba(2,6,23,0.94) 8%, rgba(2,6,23,0.94) 92%, rgba(2,6,23,0));
+  border-block: 1px solid rgba(251,191,36,0.45);
+}
+
+.overlay-ticker-text {
+  white-space: nowrap;
+  display: inline-block;
+  padding: 16px 0;
+  font-size: 34px;
+  font-weight: 1000;
+  color: #f8fafc;
+  animation: overlay-marquee 18s linear infinite;
+}
+
+.overlay-muted {
+  color: #94a3b8;
+}
+
+@keyframes overlay-marquee {
+  from { transform: translateX(100vw); }
+  to { transform: translateX(-100%); }
+}
+
+@keyframes overlay-pop {
+  0% { transform: scale(0.75) rotate(-5deg); opacity: 0; }
+  55% { transform: scale(1.08) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}

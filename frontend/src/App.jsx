@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -23,6 +23,7 @@ import OverlayTeamListPage from './pages/OverlayTeamListPage';
 import OverlayTickerPage from './pages/OverlayTickerPage';
 import BroadcastControlPage from './pages/BroadcastControlPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import './styles/overlay.css';
 
 const toastOpts = {
   style: {
@@ -121,16 +122,25 @@ function AppRoutes() {
   );
 }
 
+function AppShell() {
+  const location = useLocation();
+  const isOverlay = location.pathname.startsWith('/overlay/');
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: isOverlay ? 'transparent' : 'var(--color-background)' }}>
+      <AppRoutes />
+      {!isOverlay && <Toaster position="top-right" toastOptions={toastOpts} />}
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <TournamentProvider>
           <BrowserRouter>
-            <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
-              <AppRoutes />
-              <Toaster position="top-right" toastOptions={toastOpts} />
-            </div>
+            <AppShell />
           </BrowserRouter>
         </TournamentProvider>
       </AuthProvider>
