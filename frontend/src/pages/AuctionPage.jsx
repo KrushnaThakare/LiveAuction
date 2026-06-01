@@ -176,21 +176,34 @@ export default function AuctionPage() {
    */
   const handleAssignBid = useCallback(async (teamId) => {
     if (!activeTournament || actionLoading) return;
+    const team = teams.find(t => t.id === teamId);
+    const optimisticBid = proposedBid ?? auctionState?.nextBidAmount ?? auctionState?.currentBid ?? 0;
+    const previousState = auctionState;
     setActionLoading(true);
+    setAuctionState(state => state ? ({
+      ...state,
+      currentBid: optimisticBid,
+      highestBidderTeamId: teamId,
+      highestBidderTeamName: team?.name || state.highestBidderTeamName,
+    }) : state);
+    setProposedBid(null);
+    setBidFlash(true);
+    setBidKey(k => k + 1);
+    setTimeout(() => setBidFlash(false), 800);
     try {
       const amount = proposedBid ?? undefined;
       const res = await auctionApi.assignBid(activeTournament.id, teamId, amount);
       setAuctionState(res.data.data);
-      setProposedBid(null);   // clear after assignment
-      setBidFlash(true);
       setBidKey(k => k + 1);
-      setTimeout(() => setBidFlash(false), 800);
-      const team = teams.find(t => t.id === teamId);
       if (voiceEnabled && team) announceBid(team.name, res.data.data.currentBid);
+    } catch (error) {
+      setAuctionState(previousState);
+      setProposedBid(proposedBid ?? null);
+      throw error;
     } finally {
       setActionLoading(false);
     }
-  }, [activeTournament, actionLoading, proposedBid, voiceEnabled, teams]);
+  }, [activeTournament, actionLoading, proposedBid, voiceEnabled, teams, auctionState]);
 
   /* ── sell ── */
   const handleSell = useCallback(async () => {
