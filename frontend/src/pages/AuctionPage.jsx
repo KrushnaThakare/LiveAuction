@@ -70,6 +70,7 @@ export default function AuctionPage() {
   const [showKeyHelp, setShowKeyHelp]           = useState(false);
   const [soldOverlay, setSoldOverlay]           = useState(null); // { verdict, name, team, teamLogo, amount }
   const containerRef = useRef(null);
+  const bidUpdateSeq = useRef(0);
 
   /* ── fetch all data ── */
   const fetchAll = useCallback(async () => {
@@ -296,28 +297,51 @@ export default function AuctionPage() {
     }
   }, [activeTournament, actionLoading, fetchAll]);
 
+  const updateCallingBid = useCallback(async (amount) => {
+    if (!activeTournament || !auctionState || auctionState.status !== 'ACTIVE') return;
+    const previousState = auctionState;
+    const seq = bidUpdateSeq.current + 1;
+    bidUpdateSeq.current = seq;
+    const nextBidAmount = amount + getDynamicIncrement(bidRules, amount, auctionState.nextBidAmount);
+
+    setAuctionState(state => state ? ({
+      ...state,
+      currentBid: amount,
+      nextBidAmount,
+      highestBidderTeamId: null,
+      highestBidderTeamName: null,
+      currentPlayer: state.currentPlayer ? { ...state.currentPlayer, currentBid: amount } : state.currentPlayer,
+    }) : state);
+    setProposedBid(null);
+    setBidKey(k => k + 1);
+
+    try {
+      const res = await auctionApi.updateCallingBid(activeTournament.id, amount);
+      if (bidUpdateSeq.current === seq) {
+        setAuctionState(res.data.data);
+      }
+    } catch (error) {
+      if (bidUpdateSeq.current === seq) {
+        setAuctionState(previousState);
+      }
+      throw error;
+    }
+  }, [activeTournament, auctionState, bidRules]);
+
   /* ── bid step helpers ── */
   const stepUp = useCallback(() => {
-    setProposedBid(prev => {
-      const current = auctionState?.currentBid ?? 0;
-      const base = prev ?? current;
-      const step = getDynamicIncrement(bidRules, base, auctionState?.nextBidAmount);
-      return base + step;
-    });
-    setBidKey(k => k + 1);
-  }, [auctionState?.currentBid, auctionState?.nextBidAmount, bidRules]);
+    const current = proposedBid ?? auctionState?.currentBid ?? 0;
+    const step = getDynamicIncrement(bidRules, current, auctionState?.nextBidAmount);
+    updateCallingBid(current + step);
+  }, [auctionState?.currentBid, auctionState?.nextBidAmount, bidRules, proposedBid, updateCallingBid]);
 
   const stepDown = useCallback(() => {
-    setProposedBid(prev => {
-      const current = auctionState?.currentBid ?? 0;
-      const base = prev ?? current;
-      const step = getDynamicIncrement(bidRules, Math.max(current, base - 1), auctionState?.nextBidAmount);
-      const next = base - step;
-      const floor = current;
-      return next <= floor ? null : next;
-    });
-    setBidKey(k => k + 1);
-  }, [auctionState?.currentBid, auctionState?.nextBidAmount, bidRules]);
+    const current = proposedBid ?? auctionState?.currentBid ?? 0;
+    const floor = auctionState?.currentPlayer?.basePrice ?? 0;
+    const step = getDynamicIncrement(bidRules, Math.max(floor, current - 1), auctionState?.nextBidAmount);
+    const next = Math.max(floor, current - step);
+    if (next !== current) updateCallingBid(next);
+  }, [auctionState?.currentBid, auctionState?.currentPlayer?.basePrice, auctionState?.nextBidAmount, bidRules, proposedBid, updateCallingBid]);
 
   /* ── fullscreen ── */
   const toggleFullscreen = useCallback(() => {

@@ -9,6 +9,7 @@ export const auctionApi = {
       teamId,
       ...(customBidAmount != null ? { customBidAmount } : {}),
     }),
+  updateCallingBid:  (tid, amount)       => api.post(`/tournaments/${tid}/auction/calling-bid`, { amount }),
   sellPlayer:        (tid)             => api.post(`/tournaments/${tid}/auction/sell`),
   markUnsold:        (tid)             => api.post(`/tournaments/${tid}/auction/unsold`),
   stopAuction:       (tid)             => api.post(`/tournaments/${tid}/auction/stop`),

@@ -36,12 +36,14 @@ export default function OverlayMainPage() {
   const team = teams.find(t => t.id === auction?.highestBidderTeamId || t.name === auction?.highestBidderTeamName);
   const increment = Math.max(0, Number(auction?.nextBidAmount || 0) - Number(auction?.currentBid || 0));
   const status = auction?.status || 'IDLE';
+  const isSold = status === 'SOLD';
+  const isUnsold = status === 'UNSOLD';
 
   if (config && config.overlayEnabled === false) return null;
 
   return (
     <div className={styles.stage}>
-      <section className={styles.auctionDock}>
+      <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
         <div className={styles.infoStack}>
           <div className={`${styles.glassCard} ${styles.playerNameCard}`}>
             <div className={styles.eyebrow}>
@@ -66,6 +68,13 @@ export default function OverlayMainPage() {
             <div className={styles.imageFallback}><UserRound size={96} /></div>
           )}
         </div>
+
+        {(isSold || isUnsold) && (
+          <div className={styles.resultStamp}>
+            {isSold && <img src="/gavel.png" alt="" />}
+            <span>{isSold ? 'SOLD' : 'UNSOLD'}</span>
+          </div>
+        )}
 
         <div className={styles.bidPanel}>
           <div className={styles.liveBadge}>
