@@ -2,6 +2,7 @@ package com.cricketauction.controller;
 
 import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.dto.AuctionStateResponse;
+import com.cricketauction.dto.BidAmountRequest;
 import com.cricketauction.dto.BidRequest;
 import com.cricketauction.service.AuctionService;
 import com.cricketauction.service.OverlayPushService;
@@ -35,7 +36,7 @@ public class AuctionController {
             @PathVariable Long tournamentId,
             @PathVariable Long playerId) {
         var r = auctionService.startAuction(tournamentId, playerId);
-        overlayPushService.pushSnapshot(tournamentId);
+        overlayPushService.pushSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Auction started", r));
     }
 
@@ -44,7 +45,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionStateResponse>> startRandomAuction(
             @PathVariable Long tournamentId) {
         var r = auctionService.startRandomAuction(tournamentId);
-        overlayPushService.pushSnapshot(tournamentId);
+        overlayPushService.pushSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Random auction started", r));
     }
 
@@ -58,8 +59,18 @@ public class AuctionController {
             @PathVariable Long tournamentId,
             @Valid @RequestBody BidRequest bidRequest) {
         var r = auctionService.assignBid(tournamentId, bidRequest);
-        overlayPushService.pushSnapshot(tournamentId);
+        overlayPushService.pushSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Bid assigned", r));
+    }
+
+    /** Update the visible calling bid without selecting/changing the bidding team. */
+    @PostMapping("/calling-bid")
+    public ResponseEntity<ApiResponse<AuctionStateResponse>> updateCallingBid(
+            @PathVariable Long tournamentId,
+            @Valid @RequestBody BidAmountRequest request) {
+        var r = auctionService.updateCallingBid(tournamentId, request);
+        overlayPushService.pushSnapshot(tournamentId, r);
+        return ResponseEntity.ok(ApiResponse.success("Calling bid updated", r));
     }
 
     /** Sell to highest bidder, deduct budget */
@@ -67,7 +78,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionStateResponse>> sellPlayer(
             @PathVariable Long tournamentId) {
         var r = auctionService.sellPlayer(tournamentId);
-        overlayPushService.pushSnapshot(tournamentId);
+        overlayPushService.pushSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Player sold", r));
     }
 
@@ -76,7 +87,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionStateResponse>> markUnsold(
             @PathVariable Long tournamentId) {
         var r = auctionService.markUnsold(tournamentId);
-        overlayPushService.pushSnapshot(tournamentId);
+        overlayPushService.pushSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Player marked unsold", r));
     }
 
@@ -85,7 +96,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionStateResponse>> stopAuction(
             @PathVariable Long tournamentId) {
         var r = auctionService.stopAuction(tournamentId);
-        overlayPushService.pushSnapshot(tournamentId);
+        overlayPushService.pushSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Auction stopped", r));
     }
 
@@ -94,7 +105,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionStateResponse>> undoLastDecision(
             @PathVariable Long tournamentId) {
         var r = auctionService.undoLastDecision(tournamentId);
-        overlayPushService.pushSnapshot(tournamentId);
+        overlayPushService.pushSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Decision reversed", r));
     }
 

@@ -1,6 +1,7 @@
 package com.cricketauction.service;
 
 import com.cricketauction.dto.AuctionStateResponse;
+import com.cricketauction.dto.BidAmountRequest;
 import com.cricketauction.dto.BidRequest;
 import com.cricketauction.entity.AuctionSession;
 import com.cricketauction.entity.Player;
@@ -120,6 +121,29 @@ public class AuctionService {
         session.setHighestBidderTeam(team);
         session.getCurrentPlayer().setCurrentBid(newBid);
         playerRepository.save(session.getCurrentPlayer());
+        session = auctionSessionRepository.save(session);
+        return mapToResponse(session);
+    }
+
+    /* ── update visible calling amount without selecting a bidder ── */
+    public AuctionStateResponse updateCallingBid(Long tournamentId, BidAmountRequest request) {
+        AuctionSession session = requireActiveSession(tournamentId);
+        Player player = session.getCurrentPlayer();
+        double amount = request.getAmount();
+        double floor = player != null && player.getBasePrice() != null ? player.getBasePrice() : 0.0;
+
+        if (amount < floor) {
+            throw new AuctionException("Bid amount must not be less than base price of " + (long) floor);
+        }
+
+        if (Double.compare(amount, session.getCurrentBid()) != 0) {
+            session.setHighestBidderTeam(null);
+        }
+        session.setCurrentBid(amount);
+        if (player != null) {
+            player.setCurrentBid(amount);
+            playerRepository.save(player);
+        }
         session = auctionSessionRepository.save(session);
         return mapToResponse(session);
     }

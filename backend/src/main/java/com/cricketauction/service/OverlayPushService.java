@@ -24,6 +24,15 @@ public class OverlayPushService {
     @Async
     public void pushSnapshot(Long tournamentId) {
         AuctionStateResponse auction = auctionService.getAuctionState(tournamentId);
+        pushSnapshotPayload(tournamentId, auction);
+    }
+
+    @Async
+    public void pushSnapshot(Long tournamentId, AuctionStateResponse auction) {
+        pushSnapshotPayload(tournamentId, auction);
+    }
+
+    private void pushSnapshotPayload(Long tournamentId, AuctionStateResponse auction) {
         List<TeamResponse> teams = teamService.getTeamsByTournament(tournamentId);
         Map<String, Object> payload = Map.of("auction", auction, "teams", teams);
         messagingTemplate.convertAndSend("/topic/overlay/" + tournamentId + "/snapshot", payload);
