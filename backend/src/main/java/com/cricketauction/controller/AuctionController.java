@@ -49,9 +49,9 @@ public class AuctionController {
     }
 
     /**
-     * Assign the current bid to a team.
+     * Assign the visible bid amount to a team.
      * Send { teamId, customBidAmount } — if customBidAmount is null the backend
-     * recalculates and applies the active tournament bid slab.
+     * keeps the current bid amount and only changes the bidder.
      */
     @PostMapping("/bid")
     public ResponseEntity<ApiResponse<AuctionStateResponse>> assignBid(

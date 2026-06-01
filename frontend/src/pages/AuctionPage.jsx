@@ -170,14 +170,15 @@ export default function AuctionPage() {
    * ── assign bid to a team ──────────────────────────────────────────
    * Rules:
    *   • If host has set a proposedBid → use that exact amount, then clear it
-   *   • If no proposedBid → use the backend auto-increment (send no customBidAmount)
-   * The team button NEVER raises the bid on its own when a proposedBid is set;
-   * it only records which team is bidding at the host-chosen price.
+   *   • If no proposedBid → assign the team at the current committed bid
+   * The team button NEVER raises the bid on its own; it only records which team
+   * is bidding at the visible price.
    */
   const handleAssignBid = useCallback(async (teamId) => {
     if (!activeTournament || actionLoading) return;
     const team = teams.find(t => t.id === teamId);
-    const optimisticBid = proposedBid ?? auctionState?.nextBidAmount ?? auctionState?.currentBid ?? 0;
+    const currentBid = auctionState?.currentBid ?? 0;
+    const optimisticBid = proposedBid ?? currentBid;
     const previousState = auctionState;
     setActionLoading(true);
     setAuctionState(state => state ? ({
@@ -191,7 +192,7 @@ export default function AuctionPage() {
     setBidKey(k => k + 1);
     setTimeout(() => setBidFlash(false), 800);
     try {
-      const amount = proposedBid ?? undefined;
+      const amount = proposedBid ?? currentBid;
       const res = await auctionApi.assignBid(activeTournament.id, teamId, amount);
       setAuctionState(res.data.data);
       setBidKey(k => k + 1);
@@ -368,7 +369,7 @@ export default function AuctionPage() {
   }
 
   const isActive   = auctionState?.status === 'ACTIVE';
-  const displayBid = proposedBid ?? auctionState?.nextBidAmount ?? 0;
+  const displayBid = proposedBid ?? auctionState?.currentBid ?? 0;
   const allDone    = availablePlayers.length === 0 && !isActive && unsoldPlayers.length > 0;
 
   return (
@@ -764,7 +765,7 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
     <div className="px-4 pb-4">
       <p className="text-xs font-semibold mb-2 flex items-center gap-2"
         style={{ color: 'var(--color-text-secondary)' }}>
-        <span>{proposedBid !== null ? '→ Confirm bid at' : 'Auto-step bid at'}</span>
+        <span>{proposedBid !== null ? '→ Confirm bid at' : 'Assign bidder at'}</span>
         <span style={{ color: proposedBid !== null ? 'var(--color-accent)' : 'var(--color-primary)', fontWeight: 700 }}>
           {formatCurrency(displayBid)}
         </span>

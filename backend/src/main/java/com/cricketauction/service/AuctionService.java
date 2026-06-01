@@ -101,13 +101,13 @@ public class AuctionService {
 
         if (bidRequest.getCustomBidAmount() != null) {
             newBid = bidRequest.getCustomBidAmount();
-            if (newBid <= currentBid && session.getHighestBidderTeam() != null) {
+            if (newBid < currentBid) {
                 throw new AuctionException(
-                        "Bid amount must be greater than current bid of " + (long) currentBid);
+                        "Bid amount must not be less than current bid of " + (long) currentBid);
             }
         } else {
-            // Recalculate the tournament-specific slab on every bid click.
-            newBid = currentBid + bidRuleService.getIncrement(tournamentId, currentBid);
+            // Team selection only assigns the current price to that team.
+            newBid = currentBid;
         }
 
         if (team.getRemainingBudget() < newBid) {
