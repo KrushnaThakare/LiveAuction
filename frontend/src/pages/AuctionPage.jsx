@@ -31,6 +31,23 @@ function getDynamicIncrement(rules, amount, fallbackNextBid) {
   return Math.max(1, Number(fallbackNextBid || amount + 1000) - amount);
 }
 
+function publishOverlayAuctionUpdate(tournamentId, auction) {
+  if (!tournamentId || !auction) return;
+  const payload = {
+    type: 'auction-state-updated',
+    tournamentId,
+    auction,
+    sentAt: Date.now(),
+  };
+  try {
+    const channel = new BroadcastChannel('auction-overlay-state');
+    channel.postMessage(payload);
+    channel.close();
+  } catch {
+    localStorage.setItem('auction-overlay-state-updated', JSON.stringify(payload));
+  }
+}
+
 /* ── Image component using sequential loader ── */
 function PlayerImage({ imgUrl, name, roleColor }) {
   return (
@@ -312,6 +329,14 @@ export default function AuctionPage() {
       highestBidderTeamName: null,
       currentPlayer: state.currentPlayer ? { ...state.currentPlayer, currentBid: amount } : state.currentPlayer,
     }) : state);
+    publishOverlayAuctionUpdate(activeTournament.id, {
+      ...auctionState,
+      currentBid: amount,
+      nextBidAmount,
+      highestBidderTeamId: null,
+      highestBidderTeamName: null,
+      currentPlayer: auctionState.currentPlayer ? { ...auctionState.currentPlayer, currentBid: amount } : auctionState.currentPlayer,
+    });
     setProposedBid(null);
     setBidKey(k => k + 1);
 
@@ -319,6 +344,7 @@ export default function AuctionPage() {
       const res = await auctionApi.updateCallingBid(activeTournament.id, amount);
       if (bidUpdateSeq.current === seq) {
         setAuctionState(res.data.data);
+        publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
       }
     } catch (error) {
       if (bidUpdateSeq.current === seq) {
@@ -488,6 +514,7 @@ export default function AuctionPage() {
                 nextBid={auctionState.nextBidAmount}
                 onStepUp={stepUp}
                 onStepDown={stepDown}
+                onCommitBid={updateCallingBid}
                 disabled={actionLoading}
               />
 
@@ -731,7 +758,7 @@ function BidCounter({ committedBid, proposedBid, highestBidderTeamName, bidFlash
 /* ═══════════════════════════════════════════════════════════
    BID AMOUNT STRIP — arrows + input
 ═══════════════════════════════════════════════════════════ */
-function BidStrip({ proposedBid, setProposedBid, setBidKey, committedBid, nextBid, onStepUp, onStepDown, disabled }) {
+function BidStrip({ proposedBid, setProposedBid, setBidKey, committedBid, nextBid, onStepUp, onStepDown, onCommitBid, disabled }) {
   const handleInputChange = (e) => {
     const v = e.target.value;
     if (v === '') { setProposedBid(null); return; }
@@ -741,6 +768,13 @@ function BidStrip({ proposedBid, setProposedBid, setBidKey, committedBid, nextBi
   const handleInputKey = (e) => {
     if (e.key === 'ArrowUp')   { e.preventDefault(); onStepUp();   }
     if (e.key === 'ArrowDown') { e.preventDefault(); onStepDown(); }
+    if (e.key === 'Enter' && proposedBid !== null) {
+      e.preventDefault();
+      onCommitBid(proposedBid);
+    }
+  };
+  const handleInputBlur = () => {
+    if (proposedBid !== null) onCommitBid(proposedBid);
   };
 
   return (
@@ -760,6 +794,7 @@ function BidStrip({ proposedBid, setProposedBid, setBidKey, committedBid, nextBi
           step={Math.max(1, (nextBid || committedBid + 1000) - committedBid)}
           onChange={handleInputChange}
           onKeyDown={handleInputKey}
+          onBlur={handleInputBlur}
           disabled={disabled} />
         <button onClick={onStepUp} disabled={disabled} className="btn-secondary !p-2 flex-shrink-0">
           <Plus size={14} />
