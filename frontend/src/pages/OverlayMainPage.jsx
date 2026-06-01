@@ -69,13 +69,6 @@ export default function OverlayMainPage() {
           )}
         </div>
 
-        {(isSold || isUnsold) && (
-          <div className={styles.resultStamp}>
-            {isSold && <img src="/gavel.png" alt="" />}
-            <span>{isSold ? 'SOLD' : 'UNSOLD'}</span>
-          </div>
-        )}
-
         <div className={styles.bidPanel}>
           <div className={styles.liveBadge}>
             <Radio size={15} />
@@ -89,6 +82,13 @@ export default function OverlayMainPage() {
             </div>
             <div className={styles.status}>{status === 'ACTIVE' ? 'Auction Active' : status}</div>
           </div>
+
+          {(isSold || isUnsold) && (
+            <div className={`${styles.glassCard} ${styles.resultStamp}`}>
+              {isSold && <img src="/gavel.png" alt="" />}
+              <span>{isSold ? 'SOLD' : 'UNSOLD'}</span>
+            </div>
+          )}
 
           <div className={`${styles.glassCard} ${styles.teamBid}`}>
             {team?.logoUrl ? (

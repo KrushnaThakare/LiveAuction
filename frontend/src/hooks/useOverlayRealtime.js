@@ -115,5 +115,38 @@ export function useOverlayRealtime(tournamentId, token) {
     };
   }, [tournamentId, token]);
 
+  useEffect(() => {
+    if (!tournamentId) return;
+
+    const applyAuctionUpdate = (payload) => {
+      if (String(payload?.tournamentId) !== String(tournamentId) || !payload?.auction) return;
+      setData(current => ({
+        ...(current || {}),
+        auction: payload.auction,
+      }));
+    };
+
+    const onStorage = (event) => {
+      if (event.key !== 'auction-overlay-state-updated' || !event.newValue) return;
+      try {
+        applyAuctionUpdate(JSON.parse(event.newValue));
+      } catch (e) {
+        setError(e);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    let channel;
+    try {
+      channel = new BroadcastChannel('auction-overlay-state');
+      channel.onmessage = (event) => applyAuctionUpdate(event.data);
+    } catch { /* BroadcastChannel is optional. */ }
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      channel?.close();
+    };
+  }, [tournamentId]);
+
   return { data, config, connected, error };
 }
