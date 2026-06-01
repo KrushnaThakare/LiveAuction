@@ -7,9 +7,9 @@ import styles from './OverlayBroadcast.module.css';
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 
 const roleLabel = (role) => ({
-  BATSMAN: 'BAT',
-  BOWLER: 'BOWL',
-  ALL_ROUNDER: 'AR',
+  BATSMAN: 'BATSMAN',
+  BOWLER: 'BOWLER',
+  ALL_ROUNDER: 'ALL ROUNDER',
   WICKET_KEEPER: 'WK',
 }[role] || role || 'ROLE');
 
@@ -46,7 +46,7 @@ export default function OverlayMainPage() {
           <div className={`${styles.glassCard} ${styles.playerNameCard}`}>
             <div className={styles.eyebrow}>
               <span className={styles.liveDot} />
-              IPL Auction Graphics {connected ? 'Live' : 'Syncing'}
+              Player Name {connected ? 'Live' : 'Syncing'}
             </div>
             <h1 className={styles.playerName}>{player?.name || 'Waiting for Player'}</h1>
           </div>

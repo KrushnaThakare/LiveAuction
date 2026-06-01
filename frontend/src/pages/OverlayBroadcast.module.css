@@ -156,11 +156,16 @@
   z-index: 2;
   align-self: center;
   justify-self: center;
-  width: 100%;
+  width: min(100%, calc((25.5vh - 28px) * 0.82));
   height: 100%;
+  aspect-ratio: 4 / 5;
+  min-width: 0;
+  min-height: 0;
   max-height: 100%;
   border-radius: 24px;
   padding: 4px;
+  overflow: hidden;
+  contain: paint;
   background: linear-gradient(135deg, rgba(255,199,44,0.85), rgba(0,210,106,0.72), rgba(255,255,255,0.22));
   box-shadow: 0 0 34px rgba(255, 199, 44, 0.34), 0 0 68px rgba(0, 210, 106, 0.18);
   animation: borderPulse 2.8s ease-in-out infinite;
@@ -170,6 +175,8 @@
   display: block;
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: cover;
   object-position: top center;
   border-radius: 20px;
@@ -181,6 +188,8 @@
   place-items: center;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   border-radius: 24px;
   background: radial-gradient(circle at 50% 25%, #23345f, #050914 74%);
   color: rgba(255, 255, 255, 0.62);
@@ -580,6 +589,7 @@
 
   .imageWrap {
     height: 150px;
+    width: 120px;
   }
 
   .bidAmount {
