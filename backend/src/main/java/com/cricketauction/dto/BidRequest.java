@@ -9,8 +9,8 @@ public class BidRequest {
     private Long teamId;
 
     /**
-     * Optional manual bid amount. If null the engine recalculates and applies
-     * the active tournament bid slab from the current bid amount.
+     * Optional manual bid amount. If null, team selection keeps the current
+     * bid amount and only changes the bidder.
      */
     private Double customBidAmount;
 }
