@@ -3,7 +3,6 @@ package com.cricketauction.service;
 import com.cricketauction.dto.AuctionStateResponse;
 import com.cricketauction.dto.TeamResponse;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,13 +20,11 @@ public class OverlayPushService {
         this.messagingTemplate = messagingTemplate;
     }
 
-    @Async
     public void pushSnapshot(Long tournamentId) {
         AuctionStateResponse auction = auctionService.getAuctionState(tournamentId);
         pushSnapshotPayload(tournamentId, auction);
     }
 
-    @Async
     public void pushSnapshot(Long tournamentId, AuctionStateResponse auction) {
         pushSnapshotPayload(tournamentId, auction);
     }
