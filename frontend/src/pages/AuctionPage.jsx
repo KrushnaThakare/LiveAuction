@@ -350,6 +350,7 @@ export default function AuctionPage() {
       if (bidUpdateSeq.current === seq) {
         setAuctionState(previousState);
       }
+      toast.error('Could not update live overlay bid. Restart backend if this began after the latest update.');
       throw error;
     }
   }, [activeTournament, auctionState, bidRules]);
