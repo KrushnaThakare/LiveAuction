@@ -124,19 +124,19 @@
 
 .statCard {
   display: grid;
-  grid-template-columns: clamp(24px, 1.7vw, 30px) 1fr;
+  grid-template-columns: clamp(27px, 1.9vw, 34px) 1fr;
   align-items: center;
   gap: 8px;
   min-width: 0;
   min-height: 0;
-  padding: clamp(7px, 0.75vw, 10px);
+  padding: clamp(8px, 0.85vw, 12px);
 }
 
 .statIcon {
   display: grid;
   place-items: center;
-  width: clamp(24px, 1.7vw, 30px);
-  height: clamp(24px, 1.7vw, 30px);
+  width: clamp(27px, 1.9vw, 34px);
+  height: clamp(27px, 1.9vw, 34px);
   border-radius: 11px;
   color: #ffc72c;
   background: rgba(255, 199, 44, 0.13);
@@ -145,7 +145,7 @@
 
 .statLabel {
   color: rgba(255,255,255,0.58);
-  font-size: clamp(9px, 0.65vw, 11px);
+  font-size: clamp(10px, 0.75vw, 13px);
   font-weight: 850;
   text-transform: uppercase;
 }
@@ -153,7 +153,7 @@
 .statValue {
   margin-top: 2px;
   color: #ffffff;
-  font-size: clamp(12px, 1vw, 19px);
+  font-size: clamp(14px, 1.18vw, 23px);
   font-weight: 950;
   line-height: 1.05;
   overflow: hidden;
