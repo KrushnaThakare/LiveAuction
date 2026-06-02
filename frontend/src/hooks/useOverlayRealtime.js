@@ -42,6 +42,7 @@ export function useOverlayRealtime(tournamentId, token) {
     let ws;
     let stopped = false;
     let reconnectTimer;
+    let snapshotTimer;
 
     const loadInitial = async () => {
       const [snapshotRes, configRes] = await Promise.all([
@@ -60,6 +61,16 @@ export function useOverlayRealtime(tournamentId, token) {
       } catch (e) {
         if (!stopped) setError(e);
       }
+
+      clearInterval(snapshotTimer);
+      snapshotTimer = setInterval(async () => {
+        try {
+          const snapshotRes = await overlayApi.getSnapshot(tournamentId, token);
+          if (!stopped) setData(snapshotRes.data.data);
+        } catch (e) {
+          if (!stopped) setError(e);
+        }
+      }, 900);
 
       if (stopped) return;
       ws = new WebSocket(`${WS_BASE}/ws-overlay-native`);
@@ -108,8 +119,13 @@ export function useOverlayRealtime(tournamentId, token) {
     return () => {
       stopped = true;
       clearTimeout(reconnectTimer);
+      clearInterval(snapshotTimer);
       if (ws && ws.readyState <= 1) {
-        try { ws.send(buildFrame('DISCONNECT', { receipt: 'close' })); } catch {}
+        try {
+          ws.send(buildFrame('DISCONNECT', { receipt: 'close' }));
+        } catch {
+          // Socket may already be closing; close() below is enough.
+        }
         ws.close();
       }
     };
