@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { overlayApi } from '../api/overlay';
 
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
@@ -30,6 +30,7 @@ export function useOverlayRealtime(tournamentId, token) {
   const [config, setConfig] = useState(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(null);
+  const freshLocalAuctionRef = useRef(null);
 
   useEffect(() => {
     document.documentElement.classList.add('overlay-html');
@@ -44,13 +45,37 @@ export function useOverlayRealtime(tournamentId, token) {
     let reconnectTimer;
     let snapshotTimer;
 
+    const mergeSnapshot = (snapshot) => {
+      setData(current => {
+        const fresh = freshLocalAuctionRef.current;
+        const incomingAuction = snapshot?.auction;
+        if (
+          fresh &&
+          Date.now() < fresh.until &&
+          incomingAuction?.status === 'ACTIVE' &&
+          fresh.auction?.status === 'ACTIVE' &&
+          incomingAuction?.sessionId === fresh.auction?.sessionId &&
+          Number(incomingAuction?.currentBid) !== Number(fresh.auction?.currentBid)
+        ) {
+          return {
+            ...snapshot,
+            auction: fresh.auction,
+          };
+        }
+        if (fresh && Number(incomingAuction?.currentBid) === Number(fresh.auction?.currentBid)) {
+          freshLocalAuctionRef.current = null;
+        }
+        return snapshot || current;
+      });
+    };
+
     const loadInitial = async () => {
       const [snapshotRes, configRes] = await Promise.all([
         overlayApi.getSnapshot(tournamentId, token),
         overlayApi.getConfig(tournamentId, token),
       ]);
       if (!stopped) {
-        setData(snapshotRes.data.data);
+        mergeSnapshot(snapshotRes.data.data);
         setConfig(configRes.data.data);
       }
     };
@@ -66,7 +91,7 @@ export function useOverlayRealtime(tournamentId, token) {
       snapshotTimer = setInterval(async () => {
         try {
           const snapshotRes = await overlayApi.getSnapshot(tournamentId, token);
-          if (!stopped) setData(snapshotRes.data.data);
+          if (!stopped) mergeSnapshot(snapshotRes.data.data);
         } catch (e) {
           if (!stopped) setError(e);
         }
@@ -93,7 +118,7 @@ export function useOverlayRealtime(tournamentId, token) {
           }
           if (frame.command === 'MESSAGE' && frame.body) {
             try {
-              setData(JSON.parse(frame.body));
+              mergeSnapshot(JSON.parse(frame.body));
             } catch (e) {
               setError(e);
             }
@@ -136,6 +161,10 @@ export function useOverlayRealtime(tournamentId, token) {
 
     const applyAuctionUpdate = (payload) => {
       if (String(payload?.tournamentId) !== String(tournamentId) || !payload?.auction) return;
+      freshLocalAuctionRef.current = {
+        auction: payload.auction,
+        until: Date.now() + 3000,
+      };
       setData(current => ({
         ...(current || {}),
         auction: payload.auction,
