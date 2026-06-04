@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Radio, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
+import { playerIdLabel } from '../utils/playerSearch';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -42,7 +43,7 @@ export default function AuctionDisplayPage() {
         <section className={styles.mainGrid}>
           <aside className={styles.detailsPanel}>
             <div className={`${styles.glass} ${styles.playerNameCard}`}>
-              <div className={styles.label}>Player On Auction</div>
+              <div className={styles.label}>{player?.id ? playerIdLabel(player) : 'Player On Auction'}</div>
               <h1 className={styles.playerName}>{player?.name || 'Waiting for Player'}</h1>
             </div>
             <div className={styles.detailGrid}>

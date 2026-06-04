@@ -11,6 +11,7 @@ import {
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
 import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
+import { matchesPlayerIdOrName, playerIdLabel } from '../utils/playerSearch';
 import GavelOverlay from '../components/common/GavelOverlay';
 import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -19,7 +20,7 @@ import toast from 'react-hot-toast';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
-  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw,
+  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X,
 } from 'lucide-react';
 
 function getDynamicIncrement(rules, amount, fallbackNextBid) {
@@ -779,6 +780,10 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
 
         {/* Name */}
         <div className="text-center">
+          <div className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-black mb-2"
+            style={{ color: 'var(--color-accent)', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+            {playerIdLabel(player)}
+          </div>
           <h1 className="font-black leading-tight text-shimmer"
             style={{ fontSize: 'clamp(1.6rem,4vw,3rem)', letterSpacing: '-0.02em' }}>
             {player.name}
@@ -1023,6 +1028,8 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
 function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
                      actionLoading, onStart, onRandom, onReAuction, onUndo }) {
   const canUndo = auctionState?.undoable;
+  const [playerSearch, setPlayerSearch] = useState('');
+  const filteredAvailablePlayers = availablePlayers.filter(player => matchesPlayerIdOrName(player, playerSearch));
 
   return (
     <div className="flex-1 flex flex-col p-4 gap-4">
@@ -1074,11 +1081,39 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
       {/* Available players list */}
       {availablePlayers.length > 0 && (
         <>
-          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
-            Available Players ({availablePlayers.length})
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
+              Available Players ({filteredAvailablePlayers.length}/{availablePlayers.length})
+            </p>
+            <div className="relative w-full sm:w-80">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ color: 'var(--color-text-secondary)' }} />
+              <input
+                className="input pl-9 pr-9 h-10 text-sm"
+                placeholder="Search ID or name..."
+                value={playerSearch}
+                onChange={e => setPlayerSearch(e.target.value)}
+              />
+              {playerSearch && (
+                <button
+                  type="button"
+                  onClick={() => setPlayerSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-md"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                  title="Clear search">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+          {filteredAvailablePlayers.length === 0 ? (
+            <div className="rounded-xl p-4 text-sm text-center"
+              style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+              No available player found for this ID or name.
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-            {availablePlayers.map(player => {
+            {filteredAvailablePlayers.map(player => {
               const imgUrl = driveImg(player.imageUrl);
               return (
                 <button key={player.id} onClick={() => onStart(player)} disabled={actionLoading}
@@ -1092,6 +1127,9 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>{player.name}</p>
+                    <p className="text-[10px] font-black uppercase" style={{ color: 'var(--color-accent)' }}>
+                      {playerIdLabel(player)}
+                    </p>
                     <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                       {formatRole(player.role)} · {formatCurrency(player.basePrice)}
                     </p>
@@ -1101,6 +1139,7 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
               );
             })}
           </div>
+          )}
         </>
       )}
     </div>
