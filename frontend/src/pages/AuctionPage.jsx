@@ -104,6 +104,7 @@ export default function AuctionPage() {
   const callingBidInFlightRef = useRef(false);
   const pendingCallingBidRef = useRef(null);
   const latestCallingBidRef = useRef(null);
+  const pendingCallingBidAuctionRef = useRef(null);
   const debugBidRef = useRef(false);
 
   useEffect(() => {
@@ -123,6 +124,45 @@ export default function AuctionPage() {
     });
   }, []);
 
+  const applyServerAuctionState = useCallback((incoming, source = 'server') => {
+    setAuctionState(current => {
+      const pending = pendingCallingBidAuctionRef.current;
+
+      if (
+        pending &&
+        incoming &&
+        String(incoming.sessionId || '') === String(pending.sessionId || '') &&
+        incoming.status === 'ACTIVE' &&
+        Number(incoming.currentBid) !== Number(pending.currentBid)
+      ) {
+        logBidSync(`${source}-ignored-pending-bid`, incoming, {
+          pendingBid: pending.currentBid,
+          pendingRevision: pending.bidRevision,
+        });
+        return current ? { ...current, ...pending } : pending;
+      }
+
+      if (
+        pending &&
+        incoming &&
+        String(incoming.sessionId || '') === String(pending.sessionId || '') &&
+        Number(incoming.currentBid) === Number(pending.currentBid)
+      ) {
+        pendingCallingBidAuctionRef.current = null;
+      }
+
+      if (isOlderAuctionState(current, incoming)) {
+        logBidSync(`${source}-ignored-stale-revision`, incoming, {
+          currentRevision: current?.bidRevision,
+        });
+        return current;
+      }
+
+      logBidSync(`${source}-applied`, incoming);
+      return incoming;
+    });
+  }, [logBidSync]);
+
   /* ── fetch all data ── */
   const fetchAll = useCallback(async () => {
     if (!activeTournament) return;
@@ -134,7 +174,7 @@ export default function AuctionPage() {
         teamApi.getAll(activeTournament.id),
         bidRuleApi.getRules(activeTournament.id),
       ]);
-      setAuctionState(sRes.data.data);
+      applyServerAuctionState(sRes.data.data, 'fetch-all-state');
       setAvailablePlayers(pRes.data.data || []);
       setUnsoldPlayers(uRes.data.data || []);
       setTeams(tRes.data.data || []);
@@ -142,7 +182,7 @@ export default function AuctionPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTournament]);
+  }, [activeTournament, applyServerAuctionState]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -176,13 +216,10 @@ export default function AuctionPage() {
     const id = setInterval(async () => {
       if (!activeTournament) return;
       const res = await auctionApi.getState(activeTournament.id);
-      logBidSync('poll-response', res.data.data);
-      setAuctionState(current => (
-        isOlderAuctionState(current, res.data.data) ? current : res.data.data
-      ));
+      applyServerAuctionState(res.data.data, 'poll-response');
     }, 5000);
     return () => clearInterval(id);
-  }, [auctionState?.status, activeTournament, logBidSync]);
+  }, [auctionState?.status, activeTournament, applyServerAuctionState]);
 
   /* ── start specific player ── */
   const handleStartAuction = useCallback(async (player) => {
@@ -366,6 +403,7 @@ export default function AuctionPage() {
       highestBidderTeamName: null,
       currentPlayer: auctionState.currentPlayer ? { ...auctionState.currentPlayer, currentBid: amount } : auctionState.currentPlayer,
     };
+    pendingCallingBidAuctionRef.current = optimisticAuction;
 
     setAuctionState(state => state ? ({
       ...state,
@@ -400,6 +438,7 @@ export default function AuctionPage() {
           Number(latestCallingBidRef.current) === returnedBid &&
           pendingCallingBidRef.current == null
         ) {
+          pendingCallingBidAuctionRef.current = null;
           setAuctionState(res.data.data);
           publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
         }
@@ -407,6 +446,7 @@ export default function AuctionPage() {
       }
     } catch (error) {
       if (bidUpdateSeq.current === seq && Number(latestCallingBidRef.current) === Number(amountToSend)) {
+        pendingCallingBidAuctionRef.current = null;
         setAuctionState(previousState);
       }
       toast.error('Could not update live overlay bid. Restart backend if this began after the latest update.');
