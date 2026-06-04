@@ -6,6 +6,12 @@ import com.cricketauction.entity.Player;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.exception.ResourceNotFoundException;
 import com.cricketauction.repository.AuctionSessionRepository;
+import com.cricketauction.repository.BidRuleRepository;
+import com.cricketauction.repository.FormFieldRepository;
+import com.cricketauction.repository.FormSectionRepository;
+import com.cricketauction.repository.PlayerRegistrationRepository;
+import com.cricketauction.repository.PlayerRepository;
+import com.cricketauction.repository.TeamRepository;
 import com.cricketauction.repository.TournamentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,11 +24,29 @@ public class TournamentService {
 
     private final TournamentRepository    tournamentRepository;
     private final AuctionSessionRepository auctionSessionRepository;
+    private final PlayerRegistrationRepository playerRegistrationRepository;
+    private final BidRuleRepository bidRuleRepository;
+    private final FormFieldRepository formFieldRepository;
+    private final FormSectionRepository formSectionRepository;
+    private final PlayerRepository playerRepository;
+    private final TeamRepository teamRepository;
 
     public TournamentService(TournamentRepository tournamentRepository,
-                             AuctionSessionRepository auctionSessionRepository) {
+                             AuctionSessionRepository auctionSessionRepository,
+                             PlayerRegistrationRepository playerRegistrationRepository,
+                             BidRuleRepository bidRuleRepository,
+                             FormFieldRepository formFieldRepository,
+                             FormSectionRepository formSectionRepository,
+                             PlayerRepository playerRepository,
+                             TeamRepository teamRepository) {
         this.tournamentRepository    = tournamentRepository;
         this.auctionSessionRepository = auctionSessionRepository;
+        this.playerRegistrationRepository = playerRegistrationRepository;
+        this.bidRuleRepository = bidRuleRepository;
+        this.formFieldRepository = formFieldRepository;
+        this.formSectionRepository = formSectionRepository;
+        this.playerRepository = playerRepository;
+        this.teamRepository = teamRepository;
     }
 
     public TournamentResponse createTournament(TournamentRequest request) {
@@ -60,18 +84,19 @@ public class TournamentService {
         Tournament tournament = findById(id);
 
         /*
-         * auction_sessions has FK columns current_player_id and
-         * highest_bidder_team_id that point to players/teams.
-         * Those FKs prevent JPA's cascade-delete from working.
-         *
-         * Fix: delete all auction sessions that belong to this tournament
-         * explicitly, in one query, BEFORE the cascade on players/teams runs.
+         * Delete tournament-owned rows in FK-safe order. Relying only on
+         * Tournament's cascade misses tables like bid_rules and registrations,
+         * and auction_sessions also references players/teams.
          */
-        List<com.cricketauction.entity.AuctionSession> sessions =
-                auctionSessionRepository.findByTournamentId(id);
-        auctionSessionRepository.deleteAll(sessions);
-        auctionSessionRepository.flush();   // flush so FK rows are gone before cascade
+        auctionSessionRepository.deleteByTournamentId(id);
+        playerRegistrationRepository.deleteByTournamentId(id);
+        bidRuleRepository.deleteByTournamentId(id);
+        formFieldRepository.deleteByTournamentId(id);
+        formSectionRepository.deleteByTournamentId(id);
+        playerRepository.deleteByTournamentId(id);
+        teamRepository.deleteByTournamentId(id);
 
+        tournamentRepository.flush();
         tournamentRepository.delete(tournament);
     }
 

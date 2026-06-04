@@ -17,6 +17,7 @@ public interface AuctionSessionRepository extends JpaRepository<AuctionSession, 
     Optional<AuctionSession> findTopByTournamentIdAndStatusInOrderByIdDesc(
             Long tournamentId, java.util.List<AuctionSession.AuctionStatus> statuses);
     List<AuctionSession> findByTournamentId(Long tournamentId);
+    void deleteByTournamentId(Long tournamentId);
 
     /** Null out FK references so cascade delete on Tournament can proceed */
     @Modifying

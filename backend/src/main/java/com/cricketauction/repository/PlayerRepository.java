@@ -13,4 +13,5 @@ public interface PlayerRepository extends JpaRepository<Player, Long> {
     List<Player> findByTournamentIdAndStatus(Long tournamentId, Player.PlayerStatus status);
     List<Player> findByTournamentIdAndTeamId(Long tournamentId, Long teamId);
     long countByTournamentIdAndStatus(Long tournamentId, Player.PlayerStatus status);
+    void deleteByTournamentId(Long tournamentId);
 }

@@ -11,4 +11,5 @@ public interface FormFieldRepository extends JpaRepository<FormField, Long> {
     List<FormField> findByTournamentIdOrderByPositionAsc(Long tournamentId);
     List<FormField> findBySectionIdOrderByPositionAsc(Long sectionId);
     boolean existsByTournamentIdAndFieldKey(Long tournamentId, String fieldKey);
+    void deleteByTournamentId(Long tournamentId);
 }
