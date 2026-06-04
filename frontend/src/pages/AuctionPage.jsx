@@ -44,6 +44,15 @@ function isOlderAuctionState(currentAuction, incomingAuction) {
   return currentRevision != null && incomingRevision != null && incomingRevision < currentRevision;
 }
 
+function hasDifferentLiveAuctionValue(a, b) {
+  if (!a || !b) return false;
+  return (
+    Number(a.currentBid) !== Number(b.currentBid) ||
+    String(a.highestBidderTeamId || '') !== String(b.highestBidderTeamId || '') ||
+    String(a.highestBidderTeamName || '') !== String(b.highestBidderTeamName || '')
+  );
+}
+
 function publishOverlayAuctionUpdate(tournamentId, auction) {
   if (!tournamentId || !auction) return;
   const payload = {
@@ -133,10 +142,12 @@ export default function AuctionPage() {
         incoming &&
         String(incoming.sessionId || '') === String(pending.sessionId || '') &&
         incoming.status === 'ACTIVE' &&
-        Number(incoming.currentBid) !== Number(pending.currentBid)
+        hasDifferentLiveAuctionValue(incoming, pending)
       ) {
         logBidSync(`${source}-ignored-pending-bid`, incoming, {
           pendingBid: pending.currentBid,
+          pendingTeamId: pending.highestBidderTeamId,
+          pendingTeamName: pending.highestBidderTeamName,
           pendingRevision: pending.bidRevision,
         });
         return current ? { ...current, ...pending } : pending;
@@ -146,7 +157,7 @@ export default function AuctionPage() {
         pending &&
         incoming &&
         String(incoming.sessionId || '') === String(pending.sessionId || '') &&
-        Number(incoming.currentBid) === Number(pending.currentBid)
+        !hasDifferentLiveAuctionValue(incoming, pending)
       ) {
         pendingCallingBidAuctionRef.current = null;
       }
@@ -272,13 +283,29 @@ export default function AuctionPage() {
     const currentBid = auctionState?.currentBid ?? 0;
     const optimisticBid = proposedBid ?? currentBid;
     const previousState = auctionState;
+    const optimisticAuction = auctionState ? {
+      ...auctionState,
+      currentBid: optimisticBid,
+      highestBidderTeamId: teamId,
+      highestBidderTeamName: team?.name || auctionState.highestBidderTeamName,
+      currentPlayer: auctionState.currentPlayer
+        ? { ...auctionState.currentPlayer, currentBid: optimisticBid }
+        : auctionState.currentPlayer,
+    } : null;
     setActionLoading(true);
+    if (optimisticAuction) {
+      pendingCallingBidAuctionRef.current = optimisticAuction;
+    }
     setAuctionState(state => state ? ({
       ...state,
       currentBid: optimisticBid,
       highestBidderTeamId: teamId,
       highestBidderTeamName: team?.name || state.highestBidderTeamName,
+      currentPlayer: state.currentPlayer ? { ...state.currentPlayer, currentBid: optimisticBid } : state.currentPlayer,
     }) : state);
+    if (optimisticAuction) {
+      publishOverlayAuctionUpdate(activeTournament.id, optimisticAuction);
+    }
     setProposedBid(null);
     setBidFlash(true);
     setBidKey(k => k + 1);
@@ -286,11 +313,15 @@ export default function AuctionPage() {
     try {
       const amount = proposedBid ?? currentBid;
       const res = await auctionApi.assignBid(activeTournament.id, teamId, amount);
+      pendingCallingBidAuctionRef.current = null;
       setAuctionState(res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
       setBidKey(k => k + 1);
       if (voiceEnabled && team) announceBid(team.name, res.data.data.currentBid);
     } catch (error) {
+      pendingCallingBidAuctionRef.current = null;
       setAuctionState(previousState);
+      if (previousState) publishOverlayAuctionUpdate(activeTournament.id, previousState);
       setProposedBid(proposedBid ?? null);
       throw error;
     } finally {
