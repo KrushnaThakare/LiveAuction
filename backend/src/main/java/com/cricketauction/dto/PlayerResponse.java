@@ -13,6 +13,7 @@ public class PlayerResponse {
     private Double basePrice;
     private Double currentBid;
     private String imageUrl;
+    private Boolean retained;
     private Player.PlayerStatus status;
     private Long tournamentId;
     private Long teamId;

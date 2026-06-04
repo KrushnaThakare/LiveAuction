@@ -19,4 +19,8 @@ public class PlayerRequest {
     private Double basePrice;
 
     private String imageUrl;
+
+    private Boolean retained;
+
+    private Long teamId;
 }
