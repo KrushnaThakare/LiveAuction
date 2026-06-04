@@ -298,7 +298,7 @@
   line-height: 0.92;
   font-weight: 1000;
   text-shadow: 0 0 26px rgba(0, 210, 106, 0.5);
-  animation: bidScale 0.42s ease both;
+  transform: translateZ(0);
 }
 
 .teamBid {
@@ -580,12 +580,6 @@
 @keyframes badgePulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.045); }
-}
-
-@keyframes bidScale {
-  0% { transform: scale(0.94); opacity: 0.8; }
-  72% { transform: scale(1.035); opacity: 1; }
-  100% { transform: scale(1); }
 }
 
 @keyframes logoPulse {

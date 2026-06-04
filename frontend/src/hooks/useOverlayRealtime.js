@@ -4,6 +4,19 @@ import { overlayApi } from '../api/overlay';
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
 const WS_BASE = API_BASE.replace(/^http/i, 'ws');
 
+function getBidRevision(auction) {
+  const revision = Number(auction?.bidRevision);
+  return Number.isFinite(revision) ? revision : null;
+}
+
+function isOlderAuctionUpdate(currentAuction, incomingAuction) {
+  if (!currentAuction || !incomingAuction) return false;
+  if (String(currentAuction.sessionId || '') !== String(incomingAuction.sessionId || '')) return false;
+  const currentRevision = getBidRevision(currentAuction);
+  const incomingRevision = getBidRevision(incomingAuction);
+  return currentRevision != null && incomingRevision != null && incomingRevision < currentRevision;
+}
+
 function buildFrame(command, headers = {}, body = '') {
   const headerLines = Object.entries(headers).map(([key, value]) => `${key}:${value}`).join('\n');
   return `${command}\n${headerLines}\n\n${body}\0`;
@@ -31,6 +44,8 @@ export function useOverlayRealtime(tournamentId, token) {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(null);
   const freshLocalAuctionRef = useRef(null);
+  const connectedRef = useRef(false);
+  const debugRef = useRef(false);
 
   useEffect(() => {
     document.documentElement.classList.add('overlay-html');
@@ -39,16 +54,33 @@ export function useOverlayRealtime(tournamentId, token) {
 
   useEffect(() => {
     if (!tournamentId) return;
+    debugRef.current = new URLSearchParams(window.location.search).get('debugOverlay') === '1';
 
     let ws;
     let stopped = false;
     let reconnectTimer;
     let snapshotTimer;
 
-    const mergeSnapshot = (snapshot) => {
+    const logUpdate = (source, auction, status = 'accept') => {
+      if (!debugRef.current) return;
+      console.debug('[overlay-sync]', status, source, {
+        sessionId: auction?.sessionId,
+        bidRevision: auction?.bidRevision,
+        currentBid: auction?.currentBid,
+        status: auction?.status,
+        at: new Date().toISOString(),
+      });
+    };
+
+    const mergeSnapshot = (snapshot, source = 'snapshot') => {
       setData(current => {
         const fresh = freshLocalAuctionRef.current;
         const incomingAuction = snapshot?.auction;
+        const currentAuction = current?.auction;
+        if (isOlderAuctionUpdate(currentAuction, incomingAuction)) {
+          logUpdate(source, incomingAuction, 'reject-stale');
+          return snapshot ? { ...snapshot, auction: currentAuction } : current;
+        }
         if (
           fresh &&
           Date.now() < fresh.until &&
@@ -57,6 +89,7 @@ export function useOverlayRealtime(tournamentId, token) {
           incomingAuction?.sessionId === fresh.auction?.sessionId &&
           Number(incomingAuction?.currentBid) !== Number(fresh.auction?.currentBid)
         ) {
+          logUpdate(source, incomingAuction, 'reject-fresh-local');
           return {
             ...snapshot,
             auction: fresh.auction,
@@ -65,6 +98,7 @@ export function useOverlayRealtime(tournamentId, token) {
         if (fresh && Number(incomingAuction?.currentBid) === Number(fresh.auction?.currentBid)) {
           freshLocalAuctionRef.current = null;
         }
+        logUpdate(source, incomingAuction);
         return snapshot || current;
       });
     };
@@ -75,7 +109,7 @@ export function useOverlayRealtime(tournamentId, token) {
         overlayApi.getConfig(tournamentId, token),
       ]);
       if (!stopped) {
-        mergeSnapshot(snapshotRes.data.data);
+        mergeSnapshot(snapshotRes.data.data, 'initial-snapshot');
         setConfig(configRes.data.data);
       }
     };
@@ -89,9 +123,10 @@ export function useOverlayRealtime(tournamentId, token) {
 
       clearInterval(snapshotTimer);
       snapshotTimer = setInterval(async () => {
+        if (connectedRef.current) return;
         try {
           const snapshotRes = await overlayApi.getSnapshot(tournamentId, token);
-          if (!stopped) mergeSnapshot(snapshotRes.data.data);
+          if (!stopped) mergeSnapshot(snapshotRes.data.data, 'poll-snapshot');
         } catch (e) {
           if (!stopped) setError(e);
         }
@@ -110,6 +145,7 @@ export function useOverlayRealtime(tournamentId, token) {
       ws.onmessage = (event) => {
         for (const frame of parseStompFrames(event.data)) {
           if (frame.command === 'CONNECTED') {
+            connectedRef.current = true;
             setConnected(true);
             ws.send(buildFrame('SUBSCRIBE', {
               id: `overlay-${tournamentId}`,
@@ -118,7 +154,7 @@ export function useOverlayRealtime(tournamentId, token) {
           }
           if (frame.command === 'MESSAGE' && frame.body) {
             try {
-              mergeSnapshot(JSON.parse(frame.body));
+              mergeSnapshot(JSON.parse(frame.body), 'websocket');
             } catch (e) {
               setError(e);
             }
@@ -130,11 +166,13 @@ export function useOverlayRealtime(tournamentId, token) {
       };
 
       ws.onclose = () => {
+        connectedRef.current = false;
         setConnected(false);
         if (!stopped) reconnectTimer = setTimeout(connect, 2000);
       };
 
       ws.onerror = () => {
+        connectedRef.current = false;
         setConnected(false);
       };
     };
@@ -143,6 +181,7 @@ export function useOverlayRealtime(tournamentId, token) {
 
     return () => {
       stopped = true;
+      connectedRef.current = false;
       clearTimeout(reconnectTimer);
       clearInterval(snapshotTimer);
       if (ws && ws.readyState <= 1) {
@@ -169,6 +208,15 @@ export function useOverlayRealtime(tournamentId, token) {
         ...(current || {}),
         auction: payload.auction,
       }));
+      if (debugRef.current) {
+        console.debug('[overlay-sync]', 'accept', payload.type || 'local-broadcast', {
+          sessionId: payload.auction?.sessionId,
+          bidRevision: payload.auction?.bidRevision,
+          currentBid: payload.auction?.currentBid,
+          status: payload.auction?.status,
+          at: new Date().toISOString(),
+        });
+      }
     };
 
     const onStorage = (event) => {

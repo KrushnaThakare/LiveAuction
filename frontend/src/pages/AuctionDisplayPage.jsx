@@ -76,7 +76,7 @@ export default function AuctionDisplayPage() {
           <aside className={styles.bidPanel}>
             <div className={`${styles.glass} ${styles.bidCard}`}>
               <div className={styles.label}>Current Bid</div>
-              <div key={`${auction?.sessionId}-${auction?.currentBid}`} className={styles.bidAmount}>
+              <div className={styles.bidAmount}>
                 {money(auction?.currentBid)}
               </div>
             </div>

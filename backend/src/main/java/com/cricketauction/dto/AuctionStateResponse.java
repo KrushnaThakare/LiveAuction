@@ -8,6 +8,7 @@ import lombok.Data;
 @Builder
 public class AuctionStateResponse {
     private Long sessionId;
+    private Long bidRevision;
     private AuctionSession.AuctionStatus status;
     private PlayerResponse currentPlayer;
     private Double currentBid;
