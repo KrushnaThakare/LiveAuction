@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Calendar, IndianRupee, Radio, Shield, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
+import { playerIdLabel } from '../utils/playerSearch';
 import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -48,7 +49,7 @@ export default function OverlayMainPage() {
           <div className={`${styles.glassCard} ${styles.playerNameCard}`}>
             <div className={styles.eyebrow}>
               <span className={styles.liveDot} />
-              Player Name {connected ? 'Live' : 'Syncing'}
+              {player?.id ? playerIdLabel(player) : 'Player Name'} {connected ? 'Live' : 'Syncing'}
             </div>
             <h1 className={styles.playerName}>{player?.name || 'Waiting for Player'}</h1>
           </div>

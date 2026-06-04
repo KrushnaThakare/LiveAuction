@@ -9,6 +9,7 @@ import EmptyState from '../components/common/EmptyState';
 import Modal from '../components/common/Modal';
 import { exportPlayersList } from '../utils/playersExport';
 import { formatRole } from '../utils/formatters';
+import { matchesPlayerIdOrName } from '../utils/playerSearch';
 import toast from 'react-hot-toast';
 import { Users, Upload, Search, Download, X, RefreshCw } from 'lucide-react';
 
@@ -42,7 +43,10 @@ export default function PlayersPage() {
     }
   }, [activeTournament]);
 
-  useEffect(() => { fetchPlayers(); }, [fetchPlayers]);
+  useEffect(() => {
+    const id = setTimeout(fetchPlayers, 0);
+    return () => clearTimeout(id);
+  }, [fetchPlayers]);
 
   /* ── upload ── */
   const handleUpload = async (e) => {
@@ -118,7 +122,7 @@ export default function PlayersPage() {
   };
 
   const filteredPlayers = players.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) &&
+    matchesPlayerIdOrName(p, search) &&
     (roleFilter === 'ALL'   || p.role   === roleFilter)   &&
     (statusFilter === 'ALL' || p.status === statusFilter)
   );
@@ -189,7 +193,7 @@ export default function PlayersPage() {
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2"
             style={{ color: 'var(--color-text-secondary)' }} />
-          <input className="input pl-9" placeholder="Search players..."
+          <input className="input pl-9" placeholder="Search by player ID or name..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="input w-auto" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>

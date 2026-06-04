@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../../utils/formatters';
 import { driveImg } from '../../utils/driveImage';
+import { playerIdLabel } from '../../utils/playerSearch';
 import SequentialImage from '../common/SequentialImage';
-import { Trash2, Edit, Star } from 'lucide-react';
+import { Trash2, Edit } from 'lucide-react';
 
 const ROLE_ICONS = { BATSMAN: '🏏', BOWLER: '🎳', ALL_ROUNDER: '⭐', WICKET_KEEPER: '🧤' };
 
@@ -46,6 +46,13 @@ export default function PlayerCard({ player, onStartAuction, onEdit, onDelete })
           <span className={STATUS_CLASS[player.status]}>{STATUS_LABELS[player.status]}</span>
         </div>
 
+        <div className="absolute bottom-2 left-2 z-10">
+          <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(0,0,0,0.72)', color: 'var(--color-accent)', border: '1px solid rgba(255,255,255,0.16)' }}>
+            {playerIdLabel(player)}
+          </span>
+        </div>
+
         {/* Edit / Delete */}
         {(onEdit || onDelete) && (
           <div className="absolute top-2 right-2 flex gap-1 z-10 opacity-0 group-hover:opacity-100 transition-all duration-200">
@@ -77,6 +84,9 @@ export default function PlayerCard({ player, onStartAuction, onEdit, onDelete })
           style={{ color: 'var(--color-text-primary)', letterSpacing: '-0.01em' }}>
           {player.name}
         </h3>
+        <div className="text-[10px] font-black uppercase mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+          {playerIdLabel(player)}
+        </div>
 
         <div className="flex items-center gap-1.5 mb-2">
           <span className="text-xs">{ROLE_ICONS[player.role]}</span>

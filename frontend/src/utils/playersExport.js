@@ -1,4 +1,5 @@
 import { formatCurrency, formatRole } from './formatters';
+import { playerIdLabel } from './playerSearch';
 
 const ROLE_COLORS = {
   BATSMAN:       '#3b82f6',
@@ -58,6 +59,7 @@ export function exportPlayersList(players, tournamentName = '') {
     .photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
     .info { padding: 10px 12px; }
     .player-name { font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .player-id { font-size: 0.65rem; font-weight: 900; color: #f59e0b; margin-bottom: 3px; text-transform: uppercase; }
     .role-badge { display: inline-block; font-size: 0.65rem; font-weight: 700;
                   padding: 2px 8px; border-radius: 999px; margin: 4px 0; }
     .base { font-size: 0.75rem; color: #94a3b8; }
@@ -87,6 +89,7 @@ export function exportPlayersList(players, tournamentName = '') {
         <div class="card" style="border-color:${rc}33;">
           ${photoHtml}
           <div class="info">
+            <div class="player-id">${escHtml(playerIdLabel(p))}</div>
             <div class="player-name">${escHtml(p.name)}</div>
             <span class="role-badge" style="background:${rbg};color:${rc};">${formatRole(p.role)}</span>
             <div class="base">Base: <strong>${formatCurrency(p.basePrice)}</strong></div>
