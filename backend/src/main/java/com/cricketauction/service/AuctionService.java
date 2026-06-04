@@ -121,6 +121,7 @@ public class AuctionService {
         session.setHighestBidderTeam(team);
         session.getCurrentPlayer().setCurrentBid(newBid);
         playerRepository.save(session.getCurrentPlayer());
+        bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
         return mapToResponse(session);
     }
@@ -144,6 +145,7 @@ public class AuctionService {
             player.setCurrentBid(amount);
             playerRepository.save(player);
         }
+        bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
         return mapToResponse(session);
     }
@@ -185,6 +187,7 @@ public class AuctionService {
         session.setHighestBidderTeam(null);
         session.setStatus(AuctionSession.AuctionStatus.SOLD);
         session.setEndedAt(LocalDateTime.now());
+        bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
 
         // Restore in-memory for the API response (DB already has NULLs)
@@ -212,6 +215,7 @@ public class AuctionService {
         session.setHighestBidderTeam(null);
         session.setStatus(AuctionSession.AuctionStatus.UNSOLD);
         session.setEndedAt(LocalDateTime.now());
+        bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
         session.setCurrentPlayer(closedPlayer);
         return mapToResponse(session);
@@ -232,6 +236,7 @@ public class AuctionService {
         session.setStatus(AuctionSession.AuctionStatus.UNSOLD);
         session.setCurrentBid(0.0);
         session.setEndedAt(LocalDateTime.now());
+        bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
         session.setCurrentPlayer(closedPlayer);
         return mapToResponse(session);
@@ -272,6 +277,7 @@ public class AuctionService {
 
         // Mark session as UNDONE
         session.setStatus(AuctionSession.AuctionStatus.UNDONE);
+        bumpStateRevision(session);
         auctionSessionRepository.save(session);
 
         // Return current auction state (idle, ready for next player)
@@ -306,6 +312,7 @@ public class AuctionService {
                 AuctionStateResponse.builder()
                         .status(AuctionSession.AuctionStatus.IDLE)
                         .tournamentId(tournamentId)
+                        .bidRevision(0L)
                         .currentBid(0.0)
                         .build());
     }
@@ -380,6 +387,7 @@ public class AuctionService {
 
         return AuctionStateResponse.builder()
                 .sessionId(session.getId())
+                .bidRevision(session.getStateRevision() == null ? 0L : session.getStateRevision())
                 .status(session.getStatus())
                 .currentPlayer(session.getCurrentPlayer() != null
                         ? playerService.mapToResponse(session.getCurrentPlayer()) : null)
@@ -393,5 +401,9 @@ public class AuctionService {
                 .undoable(undoable)
                 .undoSessionId(undoable ? session.getId() : null)
                 .build();
+    }
+
+    private void bumpStateRevision(AuctionSession session) {
+        session.setStateRevision((session.getStateRevision() == null ? 0L : session.getStateRevision()) + 1L);
     }
 }

@@ -20,6 +20,10 @@ public class AuctionSession {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "state_revision")
+    @Builder.Default
+    private Long stateRevision = 0L;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tournament_id", nullable = false)
     private Tournament tournament;

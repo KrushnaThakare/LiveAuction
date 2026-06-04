@@ -31,6 +31,19 @@ function getDynamicIncrement(rules, amount, fallbackNextBid) {
   return Math.max(1, Number(fallbackNextBid || amount + 1000) - amount);
 }
 
+function getBidRevision(auction) {
+  const revision = Number(auction?.bidRevision);
+  return Number.isFinite(revision) ? revision : null;
+}
+
+function isOlderAuctionState(currentAuction, incomingAuction) {
+  if (!currentAuction || !incomingAuction) return false;
+  if (String(currentAuction.sessionId || '') !== String(incomingAuction.sessionId || '')) return false;
+  const currentRevision = getBidRevision(currentAuction);
+  const incomingRevision = getBidRevision(incomingAuction);
+  return currentRevision != null && incomingRevision != null && incomingRevision < currentRevision;
+}
+
 function publishOverlayAuctionUpdate(tournamentId, auction) {
   if (!tournamentId || !auction) return;
   const payload = {
@@ -88,6 +101,27 @@ export default function AuctionPage() {
   const [soldOverlay, setSoldOverlay]           = useState(null); // { verdict, name, team, teamLogo, amount }
   const containerRef = useRef(null);
   const bidUpdateSeq = useRef(0);
+  const callingBidInFlightRef = useRef(false);
+  const pendingCallingBidRef = useRef(null);
+  const latestCallingBidRef = useRef(null);
+  const debugBidRef = useRef(false);
+
+  useEffect(() => {
+    debugBidRef.current = new URLSearchParams(window.location.search).get('debugBid') === '1';
+  }, []);
+
+  const logBidSync = useCallback((stage, auction, extra = {}) => {
+    if (!debugBidRef.current) return;
+    console.debug('[admin-bid-sync]', stage, {
+      sessionId: auction?.sessionId,
+      bidRevision: auction?.bidRevision,
+      currentBid: auction?.currentBid,
+      nextBidAmount: auction?.nextBidAmount,
+      status: auction?.status,
+      at: new Date().toISOString(),
+      ...extra,
+    });
+  }, []);
 
   /* ── fetch all data ── */
   const fetchAll = useCallback(async () => {
@@ -142,10 +176,13 @@ export default function AuctionPage() {
     const id = setInterval(async () => {
       if (!activeTournament) return;
       const res = await auctionApi.getState(activeTournament.id);
-      setAuctionState(res.data.data);
+      logBidSync('poll-response', res.data.data);
+      setAuctionState(current => (
+        isOlderAuctionState(current, res.data.data) ? current : res.data.data
+      ));
     }, 5000);
     return () => clearInterval(id);
-  }, [auctionState?.status, activeTournament]);
+  }, [auctionState?.status, activeTournament, logBidSync]);
 
   /* ── start specific player ── */
   const handleStartAuction = useCallback(async (player) => {
@@ -319,7 +356,16 @@ export default function AuctionPage() {
     const previousState = auctionState;
     const seq = bidUpdateSeq.current + 1;
     bidUpdateSeq.current = seq;
+    latestCallingBidRef.current = amount;
     const nextBidAmount = amount + getDynamicIncrement(bidRules, amount, auctionState.nextBidAmount);
+    const optimisticAuction = {
+      ...auctionState,
+      currentBid: amount,
+      nextBidAmount,
+      highestBidderTeamId: null,
+      highestBidderTeamName: null,
+      currentPlayer: auctionState.currentPlayer ? { ...auctionState.currentPlayer, currentBid: amount } : auctionState.currentPlayer,
+    };
 
     setAuctionState(state => state ? ({
       ...state,
@@ -329,31 +375,46 @@ export default function AuctionPage() {
       highestBidderTeamName: null,
       currentPlayer: state.currentPlayer ? { ...state.currentPlayer, currentBid: amount } : state.currentPlayer,
     }) : state);
-    publishOverlayAuctionUpdate(activeTournament.id, {
-      ...auctionState,
-      currentBid: amount,
-      nextBidAmount,
-      highestBidderTeamId: null,
-      highestBidderTeamName: null,
-      currentPlayer: auctionState.currentPlayer ? { ...auctionState.currentPlayer, currentBid: amount } : auctionState.currentPlayer,
-    });
+    logBidSync('optimistic-paint', optimisticAuction, { seq });
+    publishOverlayAuctionUpdate(activeTournament.id, optimisticAuction);
     setProposedBid(null);
     setBidKey(k => k + 1);
 
+    if (callingBidInFlightRef.current) {
+      pendingCallingBidRef.current = amount;
+      logBidSync('queued', optimisticAuction, { seq });
+      return;
+    }
+
+    callingBidInFlightRef.current = true;
+    let amountToSend = amount;
+
     try {
-      const res = await auctionApi.updateCallingBid(activeTournament.id, amount);
-      if (bidUpdateSeq.current === seq) {
-        setAuctionState(res.data.data);
-        publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
+      while (amountToSend != null) {
+        pendingCallingBidRef.current = null;
+        logBidSync('request', { ...auctionState, currentBid: amountToSend }, { seq });
+        const res = await auctionApi.updateCallingBid(activeTournament.id, amountToSend);
+        logBidSync('response', res.data.data, { seq });
+        const returnedBid = Number(res.data.data?.currentBid);
+        if (
+          Number(latestCallingBidRef.current) === returnedBid &&
+          pendingCallingBidRef.current == null
+        ) {
+          setAuctionState(res.data.data);
+          publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
+        }
+        amountToSend = pendingCallingBidRef.current;
       }
     } catch (error) {
-      if (bidUpdateSeq.current === seq) {
+      if (bidUpdateSeq.current === seq && Number(latestCallingBidRef.current) === Number(amountToSend)) {
         setAuctionState(previousState);
       }
       toast.error('Could not update live overlay bid. Restart backend if this began after the latest update.');
       throw error;
+    } finally {
+      callingBidInFlightRef.current = false;
     }
-  }, [activeTournament, auctionState, bidRules]);
+  }, [activeTournament, auctionState, bidRules, logBidSync]);
 
   /* ── bid step helpers ── */
   const stepUp = useCallback(() => {

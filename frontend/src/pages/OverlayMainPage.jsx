@@ -77,7 +77,7 @@ export default function OverlayMainPage() {
 
           <div className={`${styles.glassCard} ${styles.amountCard}`}>
             <div className={styles.bidLabel}>Current Bid</div>
-            <div key={`${auction?.sessionId}-${auction?.currentBid}`} className={styles.bidAmount}>
+            <div className={styles.bidAmount}>
               {money(auction?.currentBid)}
             </div>
             <div className={styles.status}>{status === 'ACTIVE' ? 'Auction Active' : status}</div>
