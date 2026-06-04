@@ -37,6 +37,10 @@ public class Player {
     @Column(name = "image_url", length = 1000)
     private String imageUrl;
 
+    @Column(name = "retained")
+    @Builder.Default
+    private Boolean retained = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
@@ -58,6 +62,7 @@ public class Player {
         createdAt = LocalDateTime.now();
         if (currentBid == null) currentBid = 0.0;
         if (status == null) status = PlayerStatus.AVAILABLE;
+        if (retained == null) retained = false;
     }
 
     public enum PlayerRole {

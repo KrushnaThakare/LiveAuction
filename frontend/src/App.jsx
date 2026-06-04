@@ -16,6 +16,7 @@ import RegistrationSettingsPage from './pages/RegistrationSettingsPage';
 import RegisteredPlayersPage from './pages/RegisteredPlayersPage';
 import PublicRegistrationPage from './pages/PublicRegistrationPage';
 import UsersPage from './pages/UsersPage';
+import AuditLogsPage from './pages/AuditLogsPage';
 import PublicViewPage from './pages/PublicViewPage';
 import OverlayMainPage from './pages/OverlayMainPage';
 import OverlayTeamBudgetPage from './pages/OverlayTeamBudgetPage';
@@ -120,6 +121,9 @@ function AppRoutes() {
               } />
               <Route path="/users" element={
                 <Protected requireSuperAdmin><UsersPage /></Protected>
+              } />
+              <Route path="/logs" element={
+                <Protected requireSuperAdmin><AuditLogsPage /></Protected>
               } />
               <Route path="/broadcast" element={
                 <Protected requireOperator><BroadcastControlPage /></Protected>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTournament } from '../contexts/TournamentContext';
 import { playerApi } from '../api/players';
 import { auctionApi } from '../api/auction';
+import { teamApi } from '../api/teams';
 import PlayerCard from '../components/players/PlayerCard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
@@ -11,16 +12,17 @@ import { exportPlayersList } from '../utils/playersExport';
 import { formatRole } from '../utils/formatters';
 import { matchesPlayerIdOrName } from '../utils/playerSearch';
 import toast from 'react-hot-toast';
-import { Users, Upload, Search, Download, X, RefreshCw } from 'lucide-react';
+import { Users, Upload, Search, Download, X, RefreshCw, Plus } from 'lucide-react';
 
 const ROLES       = ['ALL', 'BATSMAN', 'BOWLER', 'ALL_ROUNDER', 'WICKET_KEEPER'];
-const STATUS_FILTERS = ['ALL', 'AVAILABLE', 'SOLD', 'UNSOLD', 'IN_AUCTION'];
+const STATUS_FILTERS = ['ALL', 'AVAILABLE', 'SOLD', 'UNSOLD', 'IN_AUCTION', 'RETAINED'];
 
 export default function PlayersPage() {
   const { activeTournament } = useTournament();
   const navigate = useNavigate();
 
   const [players, setPlayers]   = useState([]);
+  const [teams, setTeams]       = useState([]);
   const [loading, setLoading]   = useState(false);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch]           = useState('');
@@ -29,7 +31,9 @@ export default function PlayersPage() {
 
   // Edit modal
   const [editingPlayer, setEditingPlayer] = useState(null);
-  const [editForm, setEditForm]           = useState({ name: '', role: 'BATSMAN', basePrice: '', imageUrl: '' });
+  const [showManualModal, setShowManualModal] = useState(false);
+  const emptyPlayerForm = { name: '', role: 'BATSMAN', basePrice: '', imageUrl: '', retained: false, teamId: '' };
+  const [editForm, setEditForm]           = useState(emptyPlayerForm);
   const [editSaving, setEditSaving]       = useState(false);
 
   const fetchPlayers = useCallback(async () => {
@@ -37,7 +41,9 @@ export default function PlayersPage() {
     setLoading(true);
     try {
       const res = await playerApi.getAll(activeTournament.id);
+      const teamRes = await teamApi.getAll(activeTournament.id);
       setPlayers(res.data.data || []);
+      setTeams(teamRes.data.data || []);
     } finally {
       setLoading(false);
     }
@@ -86,29 +92,46 @@ export default function PlayersPage() {
   /* ── open edit ── */
   const openEdit = (player) => {
     setEditingPlayer(player);
+    setShowManualModal(false);
     setEditForm({
       name:      player.name,
       role:      player.role,
       basePrice: player.basePrice,
       imageUrl:  player.imageUrl || '',
+      retained:  Boolean(player.retained),
+      teamId:    player.teamId || '',
     });
+  };
+
+  const openManualAdd = () => {
+    setEditingPlayer(null);
+    setEditForm(emptyPlayerForm);
+    setShowManualModal(true);
   };
 
   /* ── save edit ── */
   const handleEditSave = async (e) => {
     e.preventDefault();
-    if (!editingPlayer) return;
+    const isEdit = Boolean(editingPlayer);
     setEditSaving(true);
     try {
-      const res = await playerApi.update(activeTournament.id, editingPlayer.id, {
+      const payload = {
         name:      editForm.name,
         role:      editForm.role,
         basePrice: parseFloat(editForm.basePrice),
         imageUrl:  editForm.imageUrl,
-      });
-      toast.success('Player updated');
-      setPlayers(p => p.map(x => x.id === editingPlayer.id ? res.data.data : x));
+        retained:  Boolean(editForm.retained),
+        teamId:    editForm.retained && editForm.teamId ? Number(editForm.teamId) : null,
+      };
+      const res = isEdit
+        ? await playerApi.update(activeTournament.id, editingPlayer.id, payload)
+        : await playerApi.create(activeTournament.id, payload);
+      toast.success(isEdit ? 'Player updated' : 'Player added');
+      if (isEdit) setPlayers(p => p.map(x => x.id === editingPlayer.id ? res.data.data : x));
+      else setPlayers(p => [...p, res.data.data]);
       setEditingPlayer(null);
+      setShowManualModal(false);
+      fetchPlayers();
     } finally {
       setEditSaving(false);
     }
@@ -124,7 +147,7 @@ export default function PlayersPage() {
   const filteredPlayers = players.filter(p =>
     matchesPlayerIdOrName(p, search) &&
     (roleFilter === 'ALL'   || p.role   === roleFilter)   &&
-    (statusFilter === 'ALL' || p.status === statusFilter)
+    (statusFilter === 'ALL' || (statusFilter === 'RETAINED' ? p.retained : p.status === statusFilter))
   );
 
   const stats = {
@@ -132,6 +155,7 @@ export default function PlayersPage() {
     available: players.filter(p => p.status === 'AVAILABLE').length,
     sold:      players.filter(p => p.status === 'SOLD').length,
     unsold:    players.filter(p => p.status === 'UNSOLD').length,
+    retained:  players.filter(p => p.retained).length,
   };
 
   if (!activeTournament) {
@@ -164,6 +188,10 @@ export default function PlayersPage() {
               </button>
             </>
           )}
+          <button className="btn-secondary" onClick={openManualAdd}>
+            <Plus size={15} />
+            Add Player
+          </button>
           <label className="btn-primary cursor-pointer">
             {uploading
               ? <><span className="animate-spin inline-block">⏳</span> Uploading...</>
@@ -174,12 +202,13 @@ export default function PlayersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
         {[
           { label: 'Total',     value: stats.total,     color: 'var(--color-primary)' },
           { label: 'Available', value: stats.available, color: 'var(--color-text-secondary)' },
           { label: 'Sold',      value: stats.sold,      color: 'var(--color-sold)' },
           { label: 'Unsold',    value: stats.unsold,    color: 'var(--color-unsold)' },
+          { label: 'Retained',  value: stats.retained,  color: 'var(--color-warning)' },
         ].map(({ label, value, color }) => (
           <div key={label} className="card text-center">
             <p className="text-2xl font-bold" style={{ color }}>{value}</p>
@@ -252,7 +281,11 @@ export default function PlayersPage() {
       )}
 
       {/* Edit Player Modal */}
-      <Modal isOpen={!!editingPlayer} onClose={() => setEditingPlayer(null)} title="Edit Player">
+      <Modal
+        isOpen={!!editingPlayer || showManualModal}
+        onClose={() => { setEditingPlayer(null); setShowManualModal(false); }}
+        title={editingPlayer ? 'Edit Player' : 'Add Player'}
+      >
         <form onSubmit={handleEditSave} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Name *</label>
@@ -281,10 +314,38 @@ export default function PlayersPage() {
             <input className="input" placeholder="https://..." value={editForm.imageUrl}
               onChange={e => setEditForm(f => ({ ...f, imageUrl: e.target.value }))} />
           </div>
+          <label className="flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer"
+            style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}>
+            <input
+              type="checkbox"
+              checked={editForm.retained}
+              onChange={e => setEditForm(f => ({ ...f, retained: e.target.checked, teamId: e.target.checked ? f.teamId : '' }))}
+            />
+            Mark as retained player
+          </label>
+          {editForm.retained && (
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                Retained Team <span style={{ fontWeight: 400 }}>(optional)</span>
+              </label>
+              <select className="input" value={editForm.teamId}
+                onChange={e => setEditForm(f => ({ ...f, teamId: e.target.value }))}>
+                <option value="">No team yet - keep available</option>
+                {teams.map(team => (
+                  <option key={team.id} value={team.id}>
+                    {team.name} - remaining {team.remainingBudget?.toLocaleString('en-IN')}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                Selecting a team adds this player to that squad and deducts the base price from remaining budget.
+              </p>
+            </div>
+          )}
           <div className="flex gap-3 justify-end">
-            <button type="button" className="btn-secondary" onClick={() => setEditingPlayer(null)}>Cancel</button>
+            <button type="button" className="btn-secondary" onClick={() => { setEditingPlayer(null); setShowManualModal(false); }}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={editSaving}>
-              {editSaving ? 'Saving…' : 'Save Changes'}
+              {editSaving ? 'Saving…' : editingPlayer ? 'Save Changes' : 'Add Player'}
             </button>
           </div>
         </form>

@@ -105,6 +105,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE,"/api/tournaments/*").hasRole("SUPER_ADMIN")
                 .requestMatchers("/api/tournaments/*/registration/**").hasRole("SUPER_ADMIN")
                 .requestMatchers("/api/users/**").hasRole("SUPER_ADMIN")
+                .requestMatchers("/api/audit-logs/**").hasRole("SUPER_ADMIN")
 
                 // Everything else requires at least login
                 .anyRequest().authenticated()

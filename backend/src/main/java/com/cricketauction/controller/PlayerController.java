@@ -23,6 +23,14 @@ public class PlayerController {
         this.playerService = playerService;
     }
 
+    @PostMapping
+    public ResponseEntity<ApiResponse<PlayerResponse>> createPlayer(
+            @PathVariable Long tournamentId,
+            @Valid @RequestBody PlayerRequest request) {
+        PlayerResponse player = playerService.createPlayer(tournamentId, request);
+        return ResponseEntity.ok(ApiResponse.success("Player added", player));
+    }
+
     @PostMapping("/upload")
     public ResponseEntity<ApiResponse<List<PlayerResponse>>> uploadPlayers(
             @PathVariable Long tournamentId,

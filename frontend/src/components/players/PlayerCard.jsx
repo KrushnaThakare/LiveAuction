@@ -43,7 +43,9 @@ export default function PlayerCard({ player, onStartAuction, onEdit, onDelete })
 
         {/* Status badge */}
         <div className="absolute top-2 left-2 z-10">
-          <span className={STATUS_CLASS[player.status]}>{STATUS_LABELS[player.status]}</span>
+          <span className={player.retained ? 'badge-in-auction' : STATUS_CLASS[player.status]}>
+            {player.retained ? 'Retained' : STATUS_LABELS[player.status]}
+          </span>
         </div>
 
         <div className="absolute bottom-2 left-2 z-10">
@@ -94,6 +96,12 @@ export default function PlayerCard({ player, onStartAuction, onEdit, onDelete })
             style={{ background: roleBg, color: roleColor }}>
             {formatRole(player.role)}
           </span>
+          {player.retained && (
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(245,158,11,0.16)', color: 'var(--color-warning)' }}>
+              Retained
+            </span>
+          )}
         </div>
 
         <div className="flex items-center justify-between mt-auto">

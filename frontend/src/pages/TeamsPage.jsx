@@ -290,7 +290,9 @@ function TeamCard({ team, accentColor, expanded, onToggle, onEdit, onDelete }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{p.name}</p>
-                    <p className="text-xs" style={{ color: rc, opacity: 0.8 }}>{formatRole(p.role)}</p>
+                    <p className="text-xs" style={{ color: p.retained ? 'var(--color-warning)' : rc, opacity: 0.9 }}>
+                      {p.retained ? 'Retained' : formatRole(p.role)}
+                    </p>
                   </div>
                   <span className="text-xs font-bold flex-shrink-0" style={{ color: 'var(--color-accent)' }}>
                     {formatCurrency(p.currentBid)}

@@ -30,6 +30,7 @@ public class TournamentService {
     private final FormSectionRepository formSectionRepository;
     private final PlayerRepository playerRepository;
     private final TeamRepository teamRepository;
+    private final AuditLogService auditLogService;
 
     public TournamentService(TournamentRepository tournamentRepository,
                              AuctionSessionRepository auctionSessionRepository,
@@ -38,7 +39,8 @@ public class TournamentService {
                              FormFieldRepository formFieldRepository,
                              FormSectionRepository formSectionRepository,
                              PlayerRepository playerRepository,
-                             TeamRepository teamRepository) {
+                             TeamRepository teamRepository,
+                             AuditLogService auditLogService) {
         this.tournamentRepository    = tournamentRepository;
         this.auctionSessionRepository = auctionSessionRepository;
         this.playerRegistrationRepository = playerRegistrationRepository;
@@ -47,6 +49,7 @@ public class TournamentService {
         this.formSectionRepository = formSectionRepository;
         this.playerRepository = playerRepository;
         this.teamRepository = teamRepository;
+        this.auditLogService = auditLogService;
     }
 
     public TournamentResponse createTournament(TournamentRequest request) {
@@ -98,6 +101,7 @@ public class TournamentService {
 
         tournamentRepository.flush();
         tournamentRepository.delete(tournament);
+        auditLogService.record("TOURNAMENT_DELETED", "Tournament", id, tournament.getName());
     }
 
     public Tournament saveTournament(Tournament tournament) {

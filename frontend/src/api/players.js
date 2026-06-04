@@ -7,6 +7,8 @@ export const playerApi = {
   },
   getById: (tournamentId, playerId) =>
     api.get(`/tournaments/${tournamentId}/players/${playerId}`),
+  create: (tournamentId, data) =>
+    api.post(`/tournaments/${tournamentId}/players`, data),
   upload: (tournamentId, file) => {
     const formData = new FormData();
     formData.append('file', file);
