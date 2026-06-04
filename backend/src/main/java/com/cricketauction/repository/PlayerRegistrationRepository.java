@@ -13,4 +13,5 @@ public interface PlayerRegistrationRepository extends JpaRepository<PlayerRegist
     Optional<PlayerRegistration> findByTournamentIdAndMobile(Long tournamentId, String mobile);
     boolean existsByTournamentIdAndMobile(Long tournamentId, String mobile);
     long countByTournamentId(Long tournamentId);
+    void deleteByTournamentId(Long tournamentId);
 }
