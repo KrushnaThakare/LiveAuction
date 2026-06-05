@@ -166,6 +166,9 @@
   object-position: top center;
   border-radius: 36px;
   background: radial-gradient(circle at 50% 24%, #263a68, #050914 72%);
+  image-rendering: auto;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .imageFallback {

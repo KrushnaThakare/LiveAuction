@@ -5,6 +5,7 @@ import com.cricketauction.entity.AuditLog;
 import com.cricketauction.service.AuditLogService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,18 +27,25 @@ public class AuditLogController {
                 auditLogService.latest().stream().map(AuditLogResponse::from).toList()));
     }
 
+    @GetMapping("/tournaments/{tournamentId}/auction")
+    public ResponseEntity<ApiResponse<List<AuditLogResponse>>> latestAuctionLogs(@PathVariable Long tournamentId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                auditLogService.latestAuctionLogs(tournamentId).stream().map(AuditLogResponse::from).toList()));
+    }
+
     public record AuditLogResponse(
             Long id,
             String username,
             String action,
             String entityType,
             Long entityId,
+            Long tournamentId,
             String details,
             LocalDateTime createdAt
     ) {
         static AuditLogResponse from(AuditLog log) {
             return new AuditLogResponse(log.getId(), log.getUsername(), log.getAction(),
-                    log.getEntityType(), log.getEntityId(), log.getDetails(), log.getCreatedAt());
+                    log.getEntityType(), log.getEntityId(), log.getTournamentId(), log.getDetails(), log.getCreatedAt());
         }
     }
 }

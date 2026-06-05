@@ -63,7 +63,7 @@ public class PlayerService {
                 .build();
         applyRetainedAssignment(player, request.getTeamId());
         player = playerRepository.save(player);
-        auditLogService.record("PLAYER_CREATED", "Player", player.getId(),
+        auditLogService.record("PLAYER_CREATED", "Player", player.getId(), tournamentId,
                 player.getName() + (Boolean.TRUE.equals(player.getRetained()) ? " (retained)" : ""));
         return mapToResponse(player);
     }
@@ -102,16 +102,18 @@ public class PlayerService {
             applyRetainedAssignment(player, request.getTeamId());
         }
         player = playerRepository.save(player);
-        auditLogService.record("PLAYER_UPDATED", "Player", player.getId(), player.getName());
+        auditLogService.record("PLAYER_UPDATED", "Player", player.getId(),
+                player.getTournament() != null ? player.getTournament().getId() : null, player.getName());
         return mapToResponse(player);
     }
 
     public void deletePlayer(Long id) {
         Player player = findById(id);
         String name = player.getName();
+        Long tournamentId = player.getTournament() != null ? player.getTournament().getId() : null;
         clearRetainedBudget(player);
         playerRepository.delete(player);
-        auditLogService.record("PLAYER_DELETED", "Player", id, name);
+        auditLogService.record("PLAYER_DELETED", "Player", id, tournamentId, name);
     }
 
     public Player findById(Long id) {

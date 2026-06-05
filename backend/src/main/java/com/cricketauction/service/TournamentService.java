@@ -101,7 +101,7 @@ public class TournamentService {
 
         tournamentRepository.flush();
         tournamentRepository.delete(tournament);
-        auditLogService.record("TOURNAMENT_DELETED", "Tournament", id, tournament.getName());
+        auditLogService.record("TOURNAMENT_DELETED", "Tournament", id, id, tournament.getName());
     }
 
     public Tournament saveTournament(Tournament tournament) {

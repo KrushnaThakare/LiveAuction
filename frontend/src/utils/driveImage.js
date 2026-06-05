@@ -2,7 +2,7 @@
  * Resolves the correct display URL for a player image.
  *
  * Backend stores Drive images as thumbnail URLs:
- *   https://drive.google.com/thumbnail?id={id}&sz=w400-h400
+ *   https://drive.google.com/thumbnail?id={id}&sz=w1200-h1200
  *
  * These are loaded sequentially (one at a time, 350ms gap) via SequentialImage
  * to avoid Google's rate-limiting (429) that occurs when many load at once.
@@ -22,13 +22,16 @@ export function driveImg(url) {
   // Already absolute local URL
   if (url.startsWith('http://localhost') || url.startsWith('http://127.')) return url;
 
-  // Already a thumbnail URL — return as-is
-  if (url.includes('thumbnail?id=')) return url;
+  // Already a thumbnail URL — upgrade old low-res saved URLs for large overlays.
+  if (url.includes('thumbnail?id=')) {
+    const id = extractDriveId(url);
+    return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1200-h1200` : url;
+  }
 
   // Any other Drive URL — convert to thumbnail
   if (url.includes('drive.google.com') || url.includes('lh3.googleusercontent.com')) {
     const id = extractDriveId(url);
-    if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w400-h400`;
+    if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w1200-h1200`;
   }
 
   return url;
@@ -49,6 +52,8 @@ function extractDriveId(url) {
     if (url.includes('lh3.googleusercontent.com/d/')) {
       return url.split('lh3.googleusercontent.com/d/')[1].split('=')[0];
     }
-  } catch (_) {}
+  } catch {
+    return null;
+  }
   return null;
 }

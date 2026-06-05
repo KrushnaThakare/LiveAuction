@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     List<AuditLog> findTop200ByOrderByCreatedAtDesc();
+    List<AuditLog> findTop100ByTournamentIdAndActionInOrderByCreatedAtDesc(Long tournamentId, List<String> actions);
 }

@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Calendar, IndianRupee, Radio, Shield, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
+import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import styles from './OverlayBroadcast.module.css';
 
@@ -64,7 +65,7 @@ export default function OverlayMainPage() {
 
         <div className={styles.imageWrap}>
           {player?.imageUrl ? (
-            <img className={styles.playerImage} src={resolveUrl(player.imageUrl)} alt={player.name} />
+            <img className={styles.playerImage} src={driveImg(player.imageUrl) || resolveUrl(player.imageUrl)} alt={player.name} />
           ) : (
             <div className={styles.imageFallback}><UserRound size={96} /></div>
           )}
