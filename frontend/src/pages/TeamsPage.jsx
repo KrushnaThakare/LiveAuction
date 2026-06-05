@@ -38,7 +38,10 @@ export default function TeamsPage() {
     }
   }, [activeTournament]);
 
-  useEffect(() => { fetchTeams(); }, [fetchTeams]);
+  useEffect(() => {
+    const id = setTimeout(fetchTeams, 0);
+    return () => clearTimeout(id);
+  }, [fetchTeams]);
 
   const handleSubmit = async (formData) => {
     if (!activeTournament) return;

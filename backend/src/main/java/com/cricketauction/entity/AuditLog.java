@@ -31,6 +31,9 @@ public class AuditLog {
     @Column(name = "entity_id")
     private Long entityId;
 
+    @Column(name = "tournament_id")
+    private Long tournamentId;
+
     @Column(length = 1000)
     private String details;
 

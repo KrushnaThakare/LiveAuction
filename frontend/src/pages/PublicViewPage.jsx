@@ -1,21 +1,23 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
+import { auditLogApi } from '../api/auditLogs';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
 import { driveImg } from '../utils/driveImage';
+import { playerIdLabel } from '../utils/playerSearch';
 import { resolveUrl } from '../utils/resolveUrl';
 import SequentialImage from '../components/common/SequentialImage';
 import GavelOverlay from '../components/common/GavelOverlay';
-import { Gavel, ShieldCheck, Trophy, XCircle, Wifi, ChevronDown, ChevronUp } from 'lucide-react';
+import { Gavel, ShieldCheck, Trophy, XCircle, Wifi, ChevronDown, ChevronUp, ScrollText } from 'lucide-react';
 
 async function get(path) {
   const res = await api.get(path);
   return res.data.data;
 }
 
-const TABS = ['auction', 'teams', 'sold', 'unsold'];
-const TAB_LABELS = { auction: 'Live Auction', teams: 'Teams', sold: 'Sold', unsold: 'Unsold' };
-const TAB_ICONS  = { auction: Gavel, teams: ShieldCheck, sold: Trophy, unsold: XCircle };
+const TABS = ['auction', 'teams', 'sold', 'unsold', 'logs'];
+const TAB_LABELS = { auction: 'Live Auction', teams: 'Teams', sold: 'Sold', unsold: 'Unsold', logs: 'Logs' };
+const TAB_ICONS  = { auction: Gavel, teams: ShieldCheck, sold: Trophy, unsold: XCircle, logs: ScrollText };
 
 export default function PublicViewPage() {
   const { tournamentId } = useParams();
@@ -25,10 +27,10 @@ export default function PublicViewPage() {
   const [teams, setTeams]             = useState([]);
   const [sold, setSold]               = useState([]);
   const [unsold, setUnsold]           = useState([]);
+  const [auctionLogs, setAuctionLogs] = useState([]);
   const [loading, setLoading]         = useState(true);
   const [live, setLive]               = useState(false);
   const [soldOverlay, setSoldOverlay] = useState(null); // { name, team, teamLogo, amount }
-  const prevStatus = useRef(null);
 
   const refreshTeams = useCallback(async () => {
     const tm = await get(`/tournaments/${tournamentId}/teams`);
@@ -46,30 +48,36 @@ export default function PublicViewPage() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [t, a, tm, s, u] = await Promise.all([
+      const [t, a, tm, s, u, l] = await Promise.all([
         get(`/tournaments/${tournamentId}`),
         get(`/tournaments/${tournamentId}/auction/state`),
         get(`/tournaments/${tournamentId}/teams`),
         get(`/tournaments/${tournamentId}/players?status=SOLD`),
         get(`/tournaments/${tournamentId}/players?status=UNSOLD`),
+        auditLogApi.latestAuction(tournamentId).then(res => res.data.data || []).catch(() => []),
       ]);
       setTournament(t);
       setAuction(a);
       setTeams(tm || []);
       setSold(s || []);
       setUnsold(u || []);
+      setAuctionLogs(l || []);
       setLive(a?.status === 'ACTIVE');
     } catch { /* silent */ }
     finally { setLoading(false); }
   }, [tournamentId]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    const id = setTimeout(fetchAll, 0);
+    return () => clearTimeout(id);
+  }, [fetchAll]);
 
   // Poll auction state every 3 seconds
   useEffect(() => {
     const id = setInterval(async () => {
       try {
         const a = await get(`/tournaments/${tournamentId}/auction/state`);
+        auditLogApi.latestAuction(tournamentId).then(res => setAuctionLogs(res.data.data || [])).catch(() => {});
         setAuction(prev => {
           const wasActive = prev?.status === 'ACTIVE';
           if (wasActive && a?.status === 'SOLD') {
@@ -159,6 +167,7 @@ export default function PublicViewPage() {
         {tab === 'teams'   && <TeamsView teams={teams} />}
         {tab === 'sold'    && <PlayerListView players={sold} emptyMsg="No players sold yet" label="Sold" />}
         {tab === 'unsold'  && <PlayerListView players={unsold} emptyMsg="No unsold players yet" label="Unsold" />}
+        {tab === 'logs'    && <AuctionLogsView logs={auctionLogs} />}
       </div>
 
       {/* Gavel overlay — same for SOLD and UNSOLD */}
@@ -216,6 +225,9 @@ function AuctionView({ auctionState, teams }) {
           <h2 className="font-black mb-1 text-shimmer" style={{ fontSize: 'clamp(1.4rem,5vw,2rem)' }}>
             {player.name}
           </h2>
+          <p className="text-xs font-black uppercase mb-2" style={{ color: 'var(--color-accent)' }}>
+            {playerIdLabel(player)}
+          </p>
           <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider mb-2"
             style={{ background: roleBg, color: roleColor, border: `1px solid ${roleColor}` }}>
             {formatRole(player.role)}
@@ -346,7 +358,9 @@ function TeamsView({ teams }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{p.name}</p>
-                        <p className="text-xs" style={{ color: rc }}>{formatRole(p.role)}</p>
+                        <p className="text-xs" style={{ color: p.retained ? 'var(--color-warning)' : rc }}>
+                          {playerIdLabel(p)} · {p.retained ? 'Retained' : formatRole(p.role)}
+                        </p>
                       </div>
                       <span className="text-xs font-bold flex-shrink-0" style={{ color: 'var(--color-accent)' }}>
                         {formatCurrency(p.currentBid)}
@@ -387,7 +401,9 @@ function PlayerListView({ players, emptyMsg }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>{p.name}</p>
-              <p className="text-xs" style={{ color: rc }}>{formatRole(p.role)}</p>
+              <p className="text-xs" style={{ color: p.retained ? 'var(--color-warning)' : rc }}>
+                {playerIdLabel(p)} · {p.retained ? 'Retained' : formatRole(p.role)}
+              </p>
             </div>
             {p.teamName && (
               <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
@@ -403,6 +419,31 @@ function PlayerListView({ players, emptyMsg }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function AuctionLogsView({ logs }) {
+  if (!logs.length) return (
+    <p className="text-center py-12 text-sm" style={{ color: 'var(--color-text-secondary)' }}>No auction logs yet</p>
+  );
+  return (
+    <div className="space-y-2 max-w-lg mx-auto">
+      {logs.map(log => (
+        <div key={log.id} className="rounded-xl px-3 py-2"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full"
+              style={{ color: 'var(--color-primary)', background: 'rgba(59,130,246,0.12)' }}>
+              {String(log.action || '').replace(/_/g, ' ')}
+            </span>
+            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              {log.createdAt ? new Date(log.createdAt).toLocaleTimeString() : ''}
+            </span>
+          </div>
+          <p className="text-sm font-semibold mt-1" style={{ color: 'var(--color-text-primary)' }}>{log.details}</p>
+        </div>
+      ))}
     </div>
   );
 }

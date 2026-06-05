@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Radio, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
+import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import styles from './AuctionDisplay.module.css';
 
@@ -68,7 +69,7 @@ export default function AuctionDisplayPage() {
 
           <div className={styles.imageFrame}>
             {player?.imageUrl ? (
-              <img className={styles.playerImage} src={resolveUrl(player.imageUrl)} alt={player.name} />
+              <img className={styles.playerImage} src={driveImg(player.imageUrl) || resolveUrl(player.imageUrl)} alt={player.name} />
             ) : (
               <div className={styles.imageFallback}><UserRound size={150} /></div>
             )}

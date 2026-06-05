@@ -53,6 +53,7 @@ export default function AuditLogsPage() {
                   <th className="text-left p-3">Time</th>
                   <th className="text-left p-3">User</th>
                   <th className="text-left p-3">Action</th>
+                  <th className="text-left p-3">Tournament</th>
                   <th className="text-left p-3">Entity</th>
                   <th className="text-left p-3">Details</th>
                 </tr>
@@ -69,6 +70,9 @@ export default function AuditLogsPage() {
                         style={{ color: 'var(--color-warning)', background: 'rgba(245,158,11,0.12)' }}>
                         {actionLabel(log.action)}
                       </span>
+                    </td>
+                    <td className="p-3" style={{ color: 'var(--color-text-secondary)' }}>
+                      {log.tournamentId ? `#${log.tournamentId}` : '-'}
                     </td>
                     <td className="p-3" style={{ color: 'var(--color-text-secondary)' }}>
                       {log.entityType} {log.entityId ? `#${log.entityId}` : ''}

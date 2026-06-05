@@ -29,19 +29,22 @@ public class AuctionService {
     private final TournamentService        tournamentService;
     private final PlayerService            playerService;
     private final BidRuleService           bidRuleService;
+    private final AuditLogService          auditLogService;
 
     public AuctionService(AuctionSessionRepository auctionSessionRepository,
                           PlayerRepository playerRepository,
                           TeamRepository teamRepository,
                           TournamentService tournamentService,
                           PlayerService playerService,
-                          BidRuleService bidRuleService) {
+                          BidRuleService bidRuleService,
+                          AuditLogService auditLogService) {
         this.auctionSessionRepository = auctionSessionRepository;
         this.playerRepository         = playerRepository;
         this.teamRepository           = teamRepository;
         this.tournamentService        = tournamentService;
         this.playerService            = playerService;
         this.bidRuleService           = bidRuleService;
+        this.auditLogService          = auditLogService;
     }
 
     /* ── start auction for a specific player ── */
@@ -123,6 +126,10 @@ public class AuctionService {
         playerRepository.save(session.getCurrentPlayer());
         bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
+        Player currentPlayer = session.getCurrentPlayer();
+        auditLogService.record("BID_ASSIGNED", "Player", currentPlayer.getId(), tournamentId,
+                "Player #" + currentPlayer.getId() + " " + currentPlayer.getName()
+                        + " assigned to " + team.getName() + " at " + (long) newBid);
         return mapToResponse(session);
     }
 
@@ -147,6 +154,10 @@ public class AuctionService {
         }
         bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
+        if (player != null) {
+            auditLogService.record("CALLING_BID_UPDATED", "Player", player.getId(), tournamentId,
+                    "Player #" + player.getId() + " " + player.getName() + " calling bid " + (long) amount);
+        }
         return mapToResponse(session);
     }
 
@@ -194,6 +205,9 @@ public class AuctionService {
         session.setCurrentPlayer(closedPlayer);
         session.setHighestBidderTeam(closedWinnerTeam);
         session.setCurrentBid(closedBid);
+        auditLogService.record("PLAYER_SOLD", "Player", closedPlayer.getId(), tournamentId,
+                "Player #" + closedPlayer.getId() + " " + closedPlayer.getName()
+                        + " sold to " + closedWinnerTeam.getName() + " for " + (long) closedBid);
         return mapToResponse(session);
     }
 
@@ -218,6 +232,8 @@ public class AuctionService {
         bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
         session.setCurrentPlayer(closedPlayer);
+        auditLogService.record("PLAYER_UNSOLD", "Player", closedPlayer.getId(), tournamentId,
+                "Player #" + closedPlayer.getId() + " " + closedPlayer.getName() + " marked unsold");
         return mapToResponse(session);
     }
 
@@ -373,7 +389,10 @@ public class AuctionService {
                 .status(AuctionSession.AuctionStatus.ACTIVE)
                 .startedAt(LocalDateTime.now())
                 .build();
-        return mapToResponse(auctionSessionRepository.save(session));
+        session = auctionSessionRepository.save(session);
+        auditLogService.record("AUCTION_STARTED", "Player", player.getId(), tournament.getId(),
+                "Player #" + player.getId() + " " + player.getName() + " started at " + (long) player.getBasePrice().doubleValue());
+        return mapToResponse(session);
     }
 
     private AuctionStateResponse mapToResponse(AuctionSession session) {
