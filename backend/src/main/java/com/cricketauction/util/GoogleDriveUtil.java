@@ -12,7 +12,7 @@ public class GoogleDriveUtil {
 
     /**
      * Converts any Drive share URL to thumbnail format.
-     * Stored as: https://drive.google.com/thumbnail?id={fileId}&sz=w400-h400
+     * Stored as: https://drive.google.com/thumbnail?id={fileId}&sz=w1200-h1200
      *
      * The thumbnail endpoint works in <img> tags without login (rate-limited
      * when many load simultaneously — use sequential loading on the frontend).
@@ -24,7 +24,7 @@ public class GoogleDriveUtil {
             if (url.contains("drive.google.com") || url.contains("lh3.googleusercontent.com")) {
                 String fileId = extractFileId(url);
                 if (fileId != null && !fileId.isBlank()) {
-                    return "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w400-h400";
+                    return "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1200-h1200";
                 }
             }
         } catch (Exception e) {

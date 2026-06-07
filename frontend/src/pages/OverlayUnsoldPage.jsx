@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
+import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
 
 export default function OverlayUnsoldPage() {
@@ -11,7 +12,7 @@ export default function OverlayUnsoldPage() {
   if (config && config.overlayEnabled === false) return null;
 
   return <div className="overlay-stage overlay-full-celebration unsold-bg">
-    {player?.imageUrl && <img className="overlay-unsold-player" src={resolveUrl(player.imageUrl)} alt={player.name} />}
+    {player?.imageUrl && <img className="overlay-unsold-player" src={driveImg(player.imageUrl) || resolveUrl(player.imageUrl)} alt={player.name} />}
     <div className="overlay-verdict-card unsold">
       <div className="overlay-kicker">Auction Result</div>
       <h1>UNSOLD</h1>

@@ -1,13 +1,10 @@
 package com.cricketauction.repository;
 
 import com.cricketauction.entity.AuditLog;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
 @Repository
-public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
-    List<AuditLog> findTop200ByOrderByCreatedAtDesc();
-    List<AuditLog> findTop100ByTournamentIdAndActionInOrderByCreatedAtDesc(Long tournamentId, List<String> actions);
+public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSpecificationExecutor<AuditLog> {
 }

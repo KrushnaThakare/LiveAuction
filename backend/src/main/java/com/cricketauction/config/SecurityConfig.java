@@ -66,7 +66,6 @@ public class SecurityConfig {
                 .requestMatchers("/api/uploads/**", "/api/images/**").permitAll()
                 .requestMatchers("/ws-overlay/**", "/ws-overlay-native/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/overlay/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/audit-logs/tournaments/*/auction").permitAll()
                 // Public view mode: read-only tournament data (for broadcast links)
                 .requestMatchers(HttpMethod.GET, "/api/tournaments").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*").permitAll()
