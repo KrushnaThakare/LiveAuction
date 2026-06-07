@@ -37,6 +37,8 @@ export default function PlayersPage() {
   const [editForm, setEditForm]           = useState(emptyPlayerForm);
   const [editSaving, setEditSaving]       = useState(false);
   const [statsFetching, setStatsFetching] = useState(false);
+  const [bulkStatsFetching, setBulkStatsFetching] = useState(false);
+  const [bulkStatsProgress, setBulkStatsProgress] = useState({ done: 0, total: 0 });
 
   const fetchPlayers = useCallback(async () => {
     if (!activeTournament) return;
@@ -170,6 +172,39 @@ export default function PlayersPage() {
     }
   };
 
+  const handleFetchAllStats = async () => {
+    if (!activeTournament) return;
+    const candidates = players.filter(player => player.cricheroesProfileUrl);
+    if (candidates.length === 0) {
+      toast.error('No players have CricHeroes profile URLs');
+      return;
+    }
+
+    setBulkStatsFetching(true);
+    setBulkStatsProgress({ done: 0, total: candidates.length });
+    let successCount = 0;
+    let failedCount = 0;
+
+    try {
+      for (const player of candidates) {
+        try {
+          const res = await playerApi.fetchCricHeroesStats(activeTournament.id, player.id);
+          const updated = res.data.data;
+          setPlayers(prev => prev.map(x => x.id === player.id ? updated : x));
+          successCount += 1;
+        } catch {
+          failedCount += 1;
+        } finally {
+          setBulkStatsProgress(progress => ({ ...progress, done: progress.done + 1 }));
+        }
+      }
+      if (successCount > 0) toast.success(`Fetched stats for ${successCount} player${successCount === 1 ? '' : 's'}`);
+      if (failedCount > 0) toast.error(`${failedCount} player${failedCount === 1 ? '' : 's'} failed. Check URLs or retry later.`);
+    } finally {
+      setBulkStatsFetching(false);
+    }
+  };
+
 
   /* ── export ── */
   const handleExport = () => {
@@ -218,6 +253,12 @@ export default function PlayersPage() {
               <button className="btn-secondary" onClick={handleExport}>
                 <Download size={15} />
                 Export List
+              </button>
+              <button className="btn-secondary" onClick={handleFetchAllStats} disabled={bulkStatsFetching}>
+                <BarChart3 size={15} />
+                {bulkStatsFetching
+                  ? `Fetching ${bulkStatsProgress.done}/${bulkStatsProgress.total}`
+                  : 'Fetch All Stats'}
               </button>
             </>
           )}
