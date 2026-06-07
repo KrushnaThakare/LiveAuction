@@ -5,9 +5,11 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -40,7 +42,8 @@ public class CricHeroesStatsService {
     }
 
     private String fetch(String url) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(normalizeUrl(url)))
+        URI uri = validatedProfileUri(url);
+        HttpRequest request = HttpRequest.newBuilder(uri)
                 .timeout(Duration.ofSeconds(12))
                 .header("User-Agent", "Mozilla/5.0 CricketAuctionStatsBot/1.0")
                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
@@ -60,6 +63,20 @@ public class CricHeroesStatsService {
             return clean.replaceFirst("/(matches|awards|badges|teams|photos|connections|profile)$", "/stats");
         }
         return clean.replaceAll("/+$", "") + "/stats";
+    }
+
+    private URI validatedProfileUri(String url) {
+        URI uri = URI.create(normalizeUrl(url));
+        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
+        String path = uri.getPath() == null ? "" : uri.getPath();
+        if (!host.endsWith("cricheroes.com") || !path.matches(".*/player-profile/\\d+.*")) {
+            throw new IllegalArgumentException("Only CricHeroes player profile URLs are supported");
+        }
+        return uri;
+    }
+
+    public boolean isTimeout(Exception ex) {
+        return ex instanceof HttpTimeoutException || ex instanceof HttpConnectTimeoutException;
     }
 
     private String normalizeUrl(String url) {

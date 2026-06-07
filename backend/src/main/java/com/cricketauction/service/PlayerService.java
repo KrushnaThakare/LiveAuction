@@ -5,6 +5,7 @@ import com.cricketauction.dto.PlayerResponse;
 import com.cricketauction.entity.Player;
 import com.cricketauction.entity.Team;
 import com.cricketauction.entity.Tournament;
+import com.cricketauction.exception.AuctionException;
 import com.cricketauction.exception.ResourceNotFoundException;
 import com.cricketauction.repository.PlayerRepository;
 import com.cricketauction.repository.TeamRepository;
@@ -124,10 +125,15 @@ public class PlayerService {
                     "Stats refreshed for Player #" + player.getId() + " " + player.getName());
             return mapToResponse(player);
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to fetch CricHeroes stats: " + e.getMessage(), e);
+            if (cricHeroesStatsService.isTimeout(e)) {
+                throw new AuctionException("CricHeroes is not reachable from backend right now. Please retry later or fetch stats outside live auction.");
+            }
+            throw new AuctionException("Failed to fetch CricHeroes stats: " + e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new AuctionException("Failed to fetch CricHeroes stats: " + e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("CricHeroes stats fetch was interrupted", e);
+            throw new AuctionException("CricHeroes stats fetch was interrupted");
         }
     }
 

@@ -10,6 +10,17 @@ export function hasPlayerStats(player) {
   ].some(value => value !== null && value !== undefined && value !== '');
 }
 
+export function hasCricHeroesProfile(player) {
+  return isCricHeroesProfileUrl(player?.cricheroesProfileUrl);
+}
+
+export function isCricHeroesProfileUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  const value = url.trim();
+  return /^(https?:\/\/)?(www\.)?cricheroes\.com\/player-profile\/\d+/i.test(value) ||
+    /^\/player-profile\/\d+/i.test(value);
+}
+
 export function statValue(value, fallback = '-') {
   if (value === null || value === undefined || value === '') return fallback;
   if (typeof value === 'number') {

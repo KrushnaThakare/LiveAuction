@@ -11,7 +11,7 @@ import Modal from '../components/common/Modal';
 import { exportPlayersList } from '../utils/playersExport';
 import { formatRole } from '../utils/formatters';
 import { matchesPlayerIdOrName } from '../utils/playerSearch';
-import { hasPlayerStats, statValue } from '../utils/playerStats';
+import { hasCricHeroesProfile, hasPlayerStats, isCricHeroesProfileUrl, statValue } from '../utils/playerStats';
 import toast from 'react-hot-toast';
 import { BarChart3, Users, Upload, Search, Download, X, RefreshCw, Plus } from 'lucide-react';
 
@@ -145,6 +145,10 @@ export default function PlayersPage() {
 
   const handleFetchStats = async () => {
     if (!activeTournament || !editingPlayer) return;
+    if (!isCricHeroesProfileUrl(editForm.cricheroesProfileUrl)) {
+      toast.error('Please enter a valid CricHeroes player profile URL');
+      return;
+    }
     setStatsFetching(true);
     try {
       let playerForFetch = editingPlayer;
@@ -174,9 +178,9 @@ export default function PlayersPage() {
 
   const handleFetchAllStats = async () => {
     if (!activeTournament) return;
-    const candidates = players.filter(player => player.cricheroesProfileUrl);
+    const candidates = players.filter(hasCricHeroesProfile);
     if (candidates.length === 0) {
-      toast.error('No players have CricHeroes profile URLs');
+      toast.error('No players have valid CricHeroes profile URLs');
       return;
     }
 
@@ -199,7 +203,7 @@ export default function PlayersPage() {
         }
       }
       if (successCount > 0) toast.success(`Fetched stats for ${successCount} player${successCount === 1 ? '' : 's'}`);
-      if (failedCount > 0) toast.error(`${failedCount} player${failedCount === 1 ? '' : 's'} failed. Check URLs or retry later.`);
+      if (failedCount > 0) toast.error(`${failedCount} player${failedCount === 1 ? '' : 's'} failed. CricHeroes may be slow or blocking server requests.`);
     } finally {
       setBulkStatsFetching(false);
     }
@@ -410,7 +414,7 @@ export default function PlayersPage() {
                 <button
                   type="button"
                   className="btn-secondary"
-                  disabled={statsFetching || !editForm.cricheroesProfileUrl}
+                  disabled={statsFetching || !isCricHeroesProfileUrl(editForm.cricheroesProfileUrl)}
                   onClick={handleFetchStats}
                 >
                   <BarChart3 size={15} />
