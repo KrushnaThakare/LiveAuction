@@ -3,10 +3,11 @@ package com.cricketauction.controller;
 import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.entity.AuditLog;
 import com.cricketauction.service.AuditLogService;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -22,15 +23,13 @@ public class AuditLogController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AuditLogResponse>>> latest() {
-        return ResponseEntity.ok(ApiResponse.success(
-                auditLogService.latest().stream().map(AuditLogResponse::from).toList()));
-    }
-
-    @GetMapping("/tournaments/{tournamentId}/auction")
-    public ResponseEntity<ApiResponse<List<AuditLogResponse>>> latestAuctionLogs(@PathVariable Long tournamentId) {
-        return ResponseEntity.ok(ApiResponse.success(
-                auditLogService.latestAuctionLogs(tournamentId).stream().map(AuditLogResponse::from).toList()));
+    public ResponseEntity<ApiResponse<AuditLogPageResponse>> latest(
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size
+    ) {
+        Page<AuditLog> logs = auditLogService.latest(search, page, size);
+        return ResponseEntity.ok(ApiResponse.success(AuditLogPageResponse.from(logs)));
     }
 
     public record AuditLogResponse(
@@ -46,6 +45,27 @@ public class AuditLogController {
         static AuditLogResponse from(AuditLog log) {
             return new AuditLogResponse(log.getId(), log.getUsername(), log.getAction(),
                     log.getEntityType(), log.getEntityId(), log.getTournamentId(), log.getDetails(), log.getCreatedAt());
+        }
+    }
+
+    public record AuditLogPageResponse(
+            List<AuditLogResponse> content,
+            int page,
+            int size,
+            long totalElements,
+            int totalPages,
+            boolean first,
+            boolean last
+    ) {
+        static AuditLogPageResponse from(Page<AuditLog> logs) {
+            return new AuditLogPageResponse(
+                    logs.getContent().stream().map(AuditLogResponse::from).toList(),
+                    logs.getNumber(),
+                    logs.getSize(),
+                    logs.getTotalElements(),
+                    logs.getTotalPages(),
+                    logs.isFirst(),
+                    logs.isLast());
         }
     }
 }
