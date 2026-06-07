@@ -40,7 +40,7 @@ public class CricHeroesStatsService {
     }
 
     private String fetch(String url) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+        HttpRequest request = HttpRequest.newBuilder(URI.create(normalizeUrl(url)))
                 .timeout(Duration.ofSeconds(12))
                 .header("User-Agent", "Mozilla/5.0 CricketAuctionStatsBot/1.0")
                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
@@ -54,12 +54,23 @@ public class CricHeroesStatsService {
     }
 
     private String firstStatsUrl(String profileUrl) {
-        String clean = profileUrl.trim();
+        String clean = normalizeUrl(profileUrl);
         if (clean.endsWith("/stats")) return clean;
         if (clean.matches(".*/(matches|awards|badges|teams|photos|connections|profile)$")) {
             return clean.replaceFirst("/(matches|awards|badges|teams|photos|connections|profile)$", "/stats");
         }
         return clean.replaceAll("/+$", "") + "/stats";
+    }
+
+    private String normalizeUrl(String url) {
+        if (url == null || url.isBlank()) {
+            throw new IllegalArgumentException("CricHeroes profile URL is required before fetching stats");
+        }
+        String clean = url.trim();
+        if (clean.startsWith("//")) return "https:" + clean;
+        if (clean.startsWith("/player-profile/")) return "https://cricheroes.com" + clean;
+        if (!clean.matches("(?i)^https?://.*")) return "https://" + clean;
+        return clean;
     }
 
     private String toReadableText(String html) {
