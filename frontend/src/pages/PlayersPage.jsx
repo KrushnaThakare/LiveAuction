@@ -11,8 +11,9 @@ import Modal from '../components/common/Modal';
 import { exportPlayersList } from '../utils/playersExport';
 import { formatRole } from '../utils/formatters';
 import { matchesPlayerIdOrName } from '../utils/playerSearch';
+import { hasPlayerStats, statValue } from '../utils/playerStats';
 import toast from 'react-hot-toast';
-import { Users, Upload, Search, Download, X, RefreshCw, Plus } from 'lucide-react';
+import { BarChart3, Users, Upload, Search, Download, X, RefreshCw, Plus } from 'lucide-react';
 
 const ROLES       = ['ALL', 'BATSMAN', 'BOWLER', 'ALL_ROUNDER', 'WICKET_KEEPER'];
 const STATUS_FILTERS = ['ALL', 'AVAILABLE', 'SOLD', 'UNSOLD', 'IN_AUCTION', 'RETAINED'];
@@ -32,9 +33,10 @@ export default function PlayersPage() {
   // Edit modal
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [showManualModal, setShowManualModal] = useState(false);
-  const emptyPlayerForm = { name: '', role: 'BATSMAN', basePrice: '', imageUrl: '', retained: false, teamId: '' };
+  const emptyPlayerForm = { name: '', role: 'BATSMAN', basePrice: '', imageUrl: '', cricheroesProfileUrl: '', retained: false, teamId: '' };
   const [editForm, setEditForm]           = useState(emptyPlayerForm);
   const [editSaving, setEditSaving]       = useState(false);
+  const [statsFetching, setStatsFetching] = useState(false);
 
   const fetchPlayers = useCallback(async () => {
     if (!activeTournament) return;
@@ -98,6 +100,7 @@ export default function PlayersPage() {
       role:      player.role,
       basePrice: player.basePrice,
       imageUrl:  player.imageUrl || '',
+      cricheroesProfileUrl: player.cricheroesProfileUrl || '',
       retained:  Boolean(player.retained),
       teamId:    player.teamId || '',
     });
@@ -120,6 +123,7 @@ export default function PlayersPage() {
         role:      editForm.role,
         basePrice: parseFloat(editForm.basePrice),
         imageUrl:  editForm.imageUrl,
+        cricheroesProfileUrl: editForm.cricheroesProfileUrl,
         retained:  Boolean(editForm.retained),
         teamId:    editForm.retained && editForm.teamId ? Number(editForm.teamId) : null,
       };
@@ -134,6 +138,35 @@ export default function PlayersPage() {
       fetchPlayers();
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const handleFetchStats = async () => {
+    if (!activeTournament || !editingPlayer) return;
+    setStatsFetching(true);
+    try {
+      let playerForFetch = editingPlayer;
+      if ((editForm.cricheroesProfileUrl || '') !== (editingPlayer.cricheroesProfileUrl || '')) {
+        const payload = {
+          name:      editForm.name,
+          role:      editForm.role,
+          basePrice: parseFloat(editForm.basePrice),
+          imageUrl:  editForm.imageUrl,
+          cricheroesProfileUrl: editForm.cricheroesProfileUrl,
+          retained:  Boolean(editForm.retained),
+          teamId:    editForm.retained && editForm.teamId ? Number(editForm.teamId) : null,
+        };
+        const saved = await playerApi.update(activeTournament.id, editingPlayer.id, payload);
+        playerForFetch = saved.data.data;
+      }
+      const res = await playerApi.fetchCricHeroesStats(activeTournament.id, playerForFetch.id);
+      const updated = res.data.data;
+      setPlayers(p => p.map(x => x.id === editingPlayer.id ? updated : x));
+      setEditingPlayer(updated);
+      setEditForm(f => ({ ...f, cricheroesProfileUrl: updated.cricheroesProfileUrl || f.cricheroesProfileUrl }));
+      toast.success('CricHeroes stats refreshed');
+    } finally {
+      setStatsFetching(false);
     }
   };
 
@@ -244,6 +277,7 @@ export default function PlayersPage() {
         <strong style={{ color: 'var(--color-primary)' }}>Excel Format:</strong>
         <span style={{ color: 'var(--color-text-secondary)' }}>
           {' '}Name | Role | Base Price | Image URL (Google Drive links auto-converted)
+          {' '}| CricHeroes Profile URL (optional)
         </span>
         <div className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>
           <strong style={{ color: 'var(--color-accent)' }}>Valid roles:</strong>
@@ -314,6 +348,54 @@ export default function PlayersPage() {
             <input className="input" placeholder="https://..." value={editForm.imageUrl}
               onChange={e => setEditForm(f => ({ ...f, imageUrl: e.target.value }))} />
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+              CricHeroes Profile URL <span style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}>(optional)</span>
+            </label>
+            <input className="input" placeholder="https://cricheroes.com/player-profile/..."
+              value={editForm.cricheroesProfileUrl}
+              onChange={e => setEditForm(f => ({ ...f, cricheroesProfileUrl: e.target.value }))} />
+          </div>
+          {editingPlayer && (
+            <div className="rounded-xl px-3 py-3"
+              style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>CricHeroes Stats</p>
+                  <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                    Cached stats are used on overlay. Fetch before going live.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={statsFetching || !editForm.cricheroesProfileUrl}
+                  onClick={handleFetchStats}
+                >
+                  <BarChart3 size={15} />
+                  {statsFetching ? 'Fetching...' : 'Fetch Stats'}
+                </button>
+              </div>
+              {hasPlayerStats(editingPlayer) && (
+                <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+                  {[
+                    ['Matches', editingPlayer.statsMatches],
+                    ['Runs', editingPlayer.statsRuns],
+                    ['SR', editingPlayer.statsStrikeRate],
+                    ['Wickets', editingPlayer.statsWickets],
+                    ['Economy', editingPlayer.statsEconomy],
+                    ['Average', editingPlayer.statsAverage],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-lg px-2 py-2"
+                      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                      <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{label}</p>
+                      <p className="text-sm font-black" style={{ color: 'var(--color-primary)' }}>{statValue(value)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <label className="flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer"
             style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}>
             <input

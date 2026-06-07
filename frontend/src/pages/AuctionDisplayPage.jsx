@@ -1,9 +1,10 @@
 import { useSearchParams } from 'react-router-dom';
-import { Radio, UserRound } from 'lucide-react';
+import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
+import { hasPlayerStats, statValue } from '../utils/playerStats';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -14,6 +15,33 @@ const roleLabel = (role) => ({
   ALL_ROUNDER: 'AR',
   WICKET_KEEPER: 'WK',
 }[role] || role || 'ROLE');
+
+function PlayerStatsPanel({ player }) {
+  if (!hasPlayerStats(player)) return null;
+  const stats = [
+    ['Matches', player.statsMatches, BarChart3],
+    ['Runs', player.statsRuns, TrendingUp],
+    ['Strike Rate', player.statsStrikeRate, Activity],
+    ['Wickets', player.statsWickets, Target],
+    ['Economy', player.statsEconomy, Shield],
+    ['Average', player.statsAverage, Trophy],
+  ];
+
+  return (
+    <div className={`${styles.glass} ${styles.statsPanel}`}>
+      <div className={styles.statsTitle}>{player?.id ? playerIdLabel(player) : 'Player'} Stats</div>
+      <div className={styles.statsPanelGrid}>
+        {stats.map(([label, value, Icon]) => (
+          <div key={label} className={styles.statsPanelItem}>
+            <Icon size={18} />
+            <span>{label}</span>
+            <strong>{statValue(value)}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function AuctionDisplayPage() {
   const [params] = useSearchParams();
@@ -96,6 +124,8 @@ export default function AuctionDisplayPage() {
                 <div className={styles.teamName}>{auction?.highestBidderTeamName || 'Awaiting Bid'}</div>
               </div>
             </div>
+
+            <PlayerStatsPanel player={player} />
           </aside>
         </section>
 

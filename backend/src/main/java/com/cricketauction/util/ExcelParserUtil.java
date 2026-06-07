@@ -40,6 +40,7 @@ public class ExcelParserUtil {
                 String roleStr = getCellStringValue(row.getCell(1));
                 Double basePrice = getCellNumericValue(row.getCell(2));
                 String imageUrl = getCellStringValue(row.getCell(3));
+                String cricheroesProfileUrl = getCellStringValue(row.getCell(4));
 
                 if (name == null || name.isBlank()) continue;
 
@@ -57,6 +58,8 @@ public class ExcelParserUtil {
                         .basePrice(basePrice)
                         .currentBid(0.0)
                         .imageUrl(convertedImageUrl)
+                        .cricheroesProfileUrl(blankToNull(cricheroesProfileUrl))
+                        .cricheroesPlayerId(extractCricHeroesPlayerId(cricheroesProfileUrl))
                         .status(Player.PlayerStatus.AVAILABLE)
                         .tournament(tournament)
                         .build();
@@ -118,5 +121,23 @@ public class ExcelParserUtil {
             }
             default -> null;
         };
+    }
+
+    public static Long extractCricHeroesPlayerId(String url) {
+        if (url == null || url.isBlank()) return null;
+        String marker = "/player-profile/";
+        int markerIndex = url.indexOf(marker);
+        if (markerIndex < 0) return null;
+        String rest = url.substring(markerIndex + marker.length());
+        String idPart = rest.split("[/?#]")[0];
+        try {
+            return Long.parseLong(idPart);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }
