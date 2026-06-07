@@ -27,19 +27,22 @@ public class PlayerService {
     private final AuditLogService   auditLogService;
     private final ExcelParserUtil   excelParserUtil;
     private final GoogleDriveUtil   googleDriveUtil;
+    private final CricHeroesStatsService cricHeroesStatsService;
 
     public PlayerService(PlayerRepository playerRepository,
                          TournamentService tournamentService,
                          TeamRepository teamRepository,
                          AuditLogService auditLogService,
                          ExcelParserUtil excelParserUtil,
-                         GoogleDriveUtil googleDriveUtil) {
+                         GoogleDriveUtil googleDriveUtil,
+                         CricHeroesStatsService cricHeroesStatsService) {
         this.playerRepository  = playerRepository;
         this.tournamentService = tournamentService;
         this.teamRepository    = teamRepository;
         this.auditLogService   = auditLogService;
         this.excelParserUtil   = excelParserUtil;
         this.googleDriveUtil   = googleDriveUtil;
+        this.cricHeroesStatsService = cricHeroesStatsService;
     }
 
     public List<PlayerResponse> uploadPlayers(Long tournamentId, MultipartFile file) throws IOException {
@@ -57,6 +60,8 @@ public class PlayerService {
                 .basePrice(request.getBasePrice())
                 .currentBid(0.0)
                 .imageUrl(request.getImageUrl() != null ? googleDriveUtil.convertToDirectLink(request.getImageUrl()) : null)
+                .cricheroesProfileUrl(blankToNull(request.getCricheroesProfileUrl()))
+                .cricheroesPlayerId(ExcelParserUtil.extractCricHeroesPlayerId(request.getCricheroesProfileUrl()))
                 .status(Player.PlayerStatus.AVAILABLE)
                 .retained(Boolean.TRUE.equals(request.getRetained()))
                 .tournament(tournament)
@@ -96,6 +101,8 @@ public class PlayerService {
         if (request.getImageUrl() != null) {
             player.setImageUrl(googleDriveUtil.convertToDirectLink(request.getImageUrl()));
         }
+        player.setCricheroesProfileUrl(blankToNull(request.getCricheroesProfileUrl()));
+        player.setCricheroesPlayerId(ExcelParserUtil.extractCricHeroesPlayerId(request.getCricheroesProfileUrl()));
         if (request.getRetained() != null) {
             clearRetainedBudget(player);
             player.setRetained(Boolean.TRUE.equals(request.getRetained()));
@@ -105,6 +112,23 @@ public class PlayerService {
         auditLogService.record("PLAYER_UPDATED", "Player", player.getId(),
                 player.getTournament() != null ? player.getTournament().getId() : null, player.getName());
         return mapToResponse(player);
+    }
+
+    public PlayerResponse fetchCricHeroesStats(Long playerId) {
+        Player player = findById(playerId);
+        try {
+            cricHeroesStatsService.fetchAndApply(player);
+            player = playerRepository.save(player);
+            auditLogService.record("CRICHEROES_STATS_UPDATED", "Player", player.getId(),
+                    player.getTournament() != null ? player.getTournament().getId() : null,
+                    "Stats refreshed for Player #" + player.getId() + " " + player.getName());
+            return mapToResponse(player);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to fetch CricHeroes stats: " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("CricHeroes stats fetch was interrupted", e);
+        }
     }
 
     public void deletePlayer(Long id) {
@@ -129,6 +153,15 @@ public class PlayerService {
                 .basePrice(player.getBasePrice())
                 .currentBid(player.getCurrentBid())
                 .imageUrl(player.getImageUrl())
+                .cricheroesProfileUrl(player.getCricheroesProfileUrl())
+                .cricheroesPlayerId(player.getCricheroesPlayerId())
+                .statsMatches(player.getStatsMatches())
+                .statsRuns(player.getStatsRuns())
+                .statsStrikeRate(player.getStatsStrikeRate())
+                .statsWickets(player.getStatsWickets())
+                .statsEconomy(player.getStatsEconomy())
+                .statsAverage(player.getStatsAverage())
+                .statsLastUpdatedAt(player.getStatsLastUpdatedAt() != null ? player.getStatsLastUpdatedAt().toString() : null)
                 .retained(Boolean.TRUE.equals(player.getRetained()))
                 .status(player.getStatus())
                 .tournamentId(player.getTournament() != null ? player.getTournament().getId() : null)
@@ -169,5 +202,9 @@ public class PlayerService {
         player.setTeam(null);
         player.setStatus(Player.PlayerStatus.AVAILABLE);
         player.setCurrentBid(0.0);
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

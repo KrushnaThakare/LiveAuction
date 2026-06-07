@@ -1,9 +1,10 @@
 import { useSearchParams } from 'react-router-dom';
-import { Calendar, IndianRupee, Radio, Shield, TrendingUp, Trophy, UserRound } from 'lucide-react';
+import { Activity, BarChart3, Calendar, IndianRupee, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
+import { hasPlayerStats, statValue } from '../utils/playerStats';
 import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -27,6 +28,36 @@ function Stat({ icon: Icon, label, value }) {
   );
 }
 
+function PlayerStatsOverlay({ player }) {
+  if (!hasPlayerStats(player)) return null;
+  const stats = [
+    ['Matches', player.statsMatches, BarChart3],
+    ['Runs', player.statsRuns, TrendingUp],
+    ['Strike Rate', player.statsStrikeRate, Activity],
+    ['Wickets', player.statsWickets, Target],
+    ['Economy', player.statsEconomy, Shield],
+    ['Average', player.statsAverage, Trophy],
+  ];
+
+  return (
+    <aside className={styles.statsOverlayPanel}>
+      <div className={styles.statsOverlayHeader}>
+        <span>{player?.id ? playerIdLabel(player) : 'Player'} Stats</span>
+        {player?.cricheroesPlayerId && <small>CRH #{player.cricheroesPlayerId}</small>}
+      </div>
+      <div className={styles.statsOverlayGrid}>
+        {stats.map(([label, value, Icon]) => (
+          <div key={label} className={styles.statsOverlayItem}>
+            <Icon size={15} />
+            <span>{label}</span>
+            <strong>{statValue(value)}</strong>
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
 export default function OverlayMainPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
@@ -45,6 +76,7 @@ export default function OverlayMainPage() {
 
   return (
     <div className={styles.stage}>
+      <PlayerStatsOverlay player={player} />
       <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
         <div className={styles.infoStack}>
           <div className={`${styles.glassCard} ${styles.playerNameCard}`}>

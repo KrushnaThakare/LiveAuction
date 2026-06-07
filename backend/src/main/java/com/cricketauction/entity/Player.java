@@ -37,6 +37,33 @@ public class Player {
     @Column(name = "image_url", length = 1000)
     private String imageUrl;
 
+    @Column(name = "cricheroes_profile_url", length = 1000)
+    private String cricheroesProfileUrl;
+
+    @Column(name = "cricheroes_player_id")
+    private Long cricheroesPlayerId;
+
+    @Column(name = "stats_matches")
+    private Integer statsMatches;
+
+    @Column(name = "stats_runs")
+    private Integer statsRuns;
+
+    @Column(name = "stats_strike_rate")
+    private Double statsStrikeRate;
+
+    @Column(name = "stats_wickets")
+    private Integer statsWickets;
+
+    @Column(name = "stats_economy")
+    private Double statsEconomy;
+
+    @Column(name = "stats_average")
+    private Double statsAverage;
+
+    @Column(name = "stats_last_updated_at")
+    private LocalDateTime statsLastUpdatedAt;
+
     @Column(name = "retained")
     @Builder.Default
     private Boolean retained = false;

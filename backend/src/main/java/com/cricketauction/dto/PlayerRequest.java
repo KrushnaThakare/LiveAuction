@@ -20,6 +20,8 @@ public class PlayerRequest {
 
     private String imageUrl;
 
+    private String cricheroesProfileUrl;
+
     private Boolean retained;
 
     private Long teamId;

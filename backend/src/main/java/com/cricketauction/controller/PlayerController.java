@@ -70,6 +70,13 @@ public class PlayerController {
         return ResponseEntity.ok(ApiResponse.success("Player updated", playerService.updatePlayer(playerId, request)));
     }
 
+    @PostMapping("/{playerId}/cricheroes/fetch-stats")
+    public ResponseEntity<ApiResponse<PlayerResponse>> fetchCricHeroesStats(
+            @PathVariable Long tournamentId,
+            @PathVariable Long playerId) {
+        return ResponseEntity.ok(ApiResponse.success("CricHeroes stats refreshed", playerService.fetchCricHeroesStats(playerId)));
+    }
+
     @DeleteMapping("/{playerId}")
     public ResponseEntity<ApiResponse<Void>> deletePlayer(
             @PathVariable Long tournamentId,
