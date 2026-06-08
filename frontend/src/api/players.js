@@ -20,6 +20,8 @@ export const playerApi = {
     api.put(`/tournaments/${tournamentId}/players/${playerId}`, data),
   fetchCricHeroesStats: (tournamentId, playerId) =>
     api.post(`/tournaments/${tournamentId}/players/${playerId}/cricheroes/fetch-stats`),
+  cleanInvalidCricHeroesProfiles: (tournamentId) =>
+    api.post(`/tournaments/${tournamentId}/players/cricheroes/clean-invalid`),
   delete: (tournamentId, playerId) =>
     api.delete(`/tournaments/${tournamentId}/players/${playerId}`),
   downloadImages: (tournamentId) =>
