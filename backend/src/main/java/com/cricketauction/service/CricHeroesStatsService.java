@@ -29,7 +29,7 @@ public class CricHeroesStatsService {
             throw new IllegalArgumentException("CricHeroes profile URL is required before fetching stats");
         }
 
-        String html = fetch(firstStatsUrl(profileUrl));
+        String html = fetchProfileHtml(profileUrl);
         String text = toReadableText(html);
 
         player.setStatsMatches(parseInteger(text, "matches").orElse(player.getStatsMatches()));
@@ -41,17 +41,30 @@ public class CricHeroesStatsService {
         player.setStatsLastUpdatedAt(LocalDateTime.now());
     }
 
+    private String fetchProfileHtml(String profileUrl) throws IOException, InterruptedException {
+        try {
+            return fetch(firstStatsUrl(profileUrl));
+        } catch (CricHeroesStatusException ex) {
+            if (ex.statusCode() == 403 || ex.statusCode() == 404) {
+                return fetch(normalizeUrl(profileUrl));
+            }
+            throw ex;
+        }
+    }
+
     private String fetch(String url) throws IOException, InterruptedException {
         URI uri = validatedProfileUri(url);
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .timeout(Duration.ofSeconds(12))
-                .header("User-Agent", "Mozilla/5.0 CricketAuctionStatsBot/1.0")
+                .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36")
                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                .header("Accept-Language", "en-US,en;q=0.9")
+                .header("Cache-Control", "no-cache")
                 .GET()
                 .build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IllegalStateException("CricHeroes returned status " + response.statusCode());
+            throw new CricHeroesStatusException(response.statusCode());
         }
         return response.body();
     }
@@ -77,6 +90,19 @@ public class CricHeroesStatsService {
 
     public boolean isTimeout(Exception ex) {
         return ex instanceof HttpTimeoutException || ex instanceof HttpConnectTimeoutException;
+    }
+
+    public static class CricHeroesStatusException extends IOException {
+        private final int statusCode;
+
+        public CricHeroesStatusException(int statusCode) {
+            super("CricHeroes returned status " + statusCode);
+            this.statusCode = statusCode;
+        }
+
+        public int statusCode() {
+            return statusCode;
+        }
     }
 
     private String normalizeUrl(String url) {
