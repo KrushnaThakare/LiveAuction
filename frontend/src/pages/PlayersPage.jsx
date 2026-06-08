@@ -39,6 +39,7 @@ export default function PlayersPage() {
   const [statsFetching, setStatsFetching] = useState(false);
   const [bulkStatsFetching, setBulkStatsFetching] = useState(false);
   const [bulkStatsProgress, setBulkStatsProgress] = useState({ done: 0, total: 0 });
+  const [cleaningProfiles, setCleaningProfiles] = useState(false);
 
   const fetchPlayers = useCallback(async () => {
     if (!activeTournament) return;
@@ -209,6 +210,19 @@ export default function PlayersPage() {
     }
   };
 
+  const handleCleanInvalidProfiles = async () => {
+    if (!activeTournament) return;
+    setCleaningProfiles(true);
+    try {
+      const res = await playerApi.cleanInvalidCricHeroesProfiles(activeTournament.id);
+      const cleaned = res.data.data || 0;
+      toast.success(cleaned ? `Cleaned ${cleaned} invalid CricHeroes value${cleaned === 1 ? '' : 's'}` : 'No invalid CricHeroes values found');
+      fetchPlayers();
+    } finally {
+      setCleaningProfiles(false);
+    }
+  };
+
 
   /* ── export ── */
   const handleExport = () => {
@@ -263,6 +277,10 @@ export default function PlayersPage() {
                 {bulkStatsFetching
                   ? `Fetching ${bulkStatsProgress.done}/${bulkStatsProgress.total}`
                   : 'Fetch All Stats'}
+              </button>
+              <button className="btn-secondary" onClick={handleCleanInvalidProfiles} disabled={cleaningProfiles || bulkStatsFetching}>
+                <X size={15} />
+                {cleaningProfiles ? 'Cleaning...' : 'Clean Bad Stats URLs'}
               </button>
             </>
           )}

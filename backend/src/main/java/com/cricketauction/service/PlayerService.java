@@ -61,7 +61,7 @@ public class PlayerService {
                 .basePrice(request.getBasePrice())
                 .currentBid(0.0)
                 .imageUrl(request.getImageUrl() != null ? googleDriveUtil.convertToDirectLink(request.getImageUrl()) : null)
-                .cricheroesProfileUrl(blankToNull(request.getCricheroesProfileUrl()))
+                .cricheroesProfileUrl(ExcelParserUtil.normalizeCricHeroesProfileUrl(request.getCricheroesProfileUrl()))
                 .cricheroesPlayerId(ExcelParserUtil.extractCricHeroesPlayerId(request.getCricheroesProfileUrl()))
                 .status(Player.PlayerStatus.AVAILABLE)
                 .retained(Boolean.TRUE.equals(request.getRetained()))
@@ -102,7 +102,7 @@ public class PlayerService {
         if (request.getImageUrl() != null) {
             player.setImageUrl(googleDriveUtil.convertToDirectLink(request.getImageUrl()));
         }
-        player.setCricheroesProfileUrl(blankToNull(request.getCricheroesProfileUrl()));
+        player.setCricheroesProfileUrl(ExcelParserUtil.normalizeCricHeroesProfileUrl(request.getCricheroesProfileUrl()));
         player.setCricheroesPlayerId(ExcelParserUtil.extractCricHeroesPlayerId(request.getCricheroesProfileUrl()));
         if (request.getRetained() != null) {
             clearRetainedBudget(player);
@@ -136,6 +136,31 @@ public class PlayerService {
             throw new AuctionException("CricHeroes stats fetch was interrupted");
         }
     }
+
+    public int cleanInvalidCricHeroesProfiles(Long tournamentId) {
+        List<Player> players = playerRepository.findByTournamentId(tournamentId);
+        int cleaned = 0;
+        for (Player player : players) {
+            String normalized = ExcelParserUtil.normalizeCricHeroesProfileUrl(player.getCricheroesProfileUrl());
+            Long normalizedId = ExcelParserUtil.extractCricHeroesPlayerId(normalized);
+            boolean changed = (player.getCricheroesProfileUrl() != null && normalized == null)
+                    || (normalized != null && !normalized.equals(player.getCricheroesProfileUrl()))
+                    || (normalizedId != null && !normalizedId.equals(player.getCricheroesPlayerId()))
+                    || (normalizedId == null && player.getCricheroesPlayerId() != null);
+            if (changed) {
+                player.setCricheroesProfileUrl(normalized);
+                player.setCricheroesPlayerId(normalizedId);
+                cleaned += 1;
+            }
+        }
+        if (cleaned > 0) {
+            playerRepository.saveAll(players);
+            auditLogService.record("CRICHEROES_URLS_CLEANED", "Tournament", tournamentId, tournamentId,
+                    "Cleaned invalid CricHeroes profile URLs for " + cleaned + " player(s)");
+        }
+        return cleaned;
+    }
+
 
     public void deletePlayer(Long id) {
         Player player = findById(id);

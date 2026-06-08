@@ -77,6 +77,12 @@ public class PlayerController {
         return ResponseEntity.ok(ApiResponse.success("CricHeroes stats refreshed", playerService.fetchCricHeroesStats(playerId)));
     }
 
+    @PostMapping("/cricheroes/clean-invalid")
+    public ResponseEntity<ApiResponse<Integer>> cleanInvalidCricHeroesProfiles(@PathVariable Long tournamentId) {
+        int cleaned = playerService.cleanInvalidCricHeroesProfiles(tournamentId);
+        return ResponseEntity.ok(ApiResponse.success("Invalid CricHeroes profile values cleaned", cleaned));
+    }
+
     @DeleteMapping("/{playerId}")
     public ResponseEntity<ApiResponse<Void>> deletePlayer(
             @PathVariable Long tournamentId,

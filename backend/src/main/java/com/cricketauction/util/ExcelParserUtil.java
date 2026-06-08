@@ -40,7 +40,7 @@ public class ExcelParserUtil {
                 String roleStr = getCellStringValue(row.getCell(1));
                 Double basePrice = getCellNumericValue(row.getCell(2));
                 String imageUrl = getCellStringValue(row.getCell(3));
-                String cricheroesProfileUrl = getCellStringValue(row.getCell(4));
+                String cricheroesProfileUrl = normalizeCricHeroesProfileUrl(getCellStringValue(row.getCell(4)));
 
                 if (name == null || name.isBlank()) continue;
 
@@ -123,7 +123,23 @@ public class ExcelParserUtil {
         };
     }
 
+    public static String normalizeCricHeroesProfileUrl(String url) {
+        if (url == null || url.isBlank()) return null;
+        String clean = url.trim();
+        if (clean.startsWith("//")) clean = "https:" + clean;
+        else if (clean.startsWith("/player-profile/")) clean = "https://cricheroes.com" + clean;
+        else if (clean.matches("(?i)^(www\\.)?cricheroes\\.com/player-profile/\\d+.*")) clean = "https://" + clean;
+
+        return isCricHeroesProfileUrl(clean) ? clean : null;
+    }
+
+    public static boolean isCricHeroesProfileUrl(String url) {
+        if (url == null || url.isBlank()) return false;
+        return url.trim().matches("(?i)^https?://(www\\.)?cricheroes\\.com/player-profile/\\d+.*");
+    }
+
     public static Long extractCricHeroesPlayerId(String url) {
+        url = normalizeCricHeroesProfileUrl(url);
         if (url == null || url.isBlank()) return null;
         String marker = "/player-profile/";
         int markerIndex = url.indexOf(marker);
