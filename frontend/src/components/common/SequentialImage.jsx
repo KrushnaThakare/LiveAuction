@@ -42,7 +42,7 @@ function isDriveUrl(src) {
   );
 }
 
-export default function SequentialImage({ src, fallbackSrc, alt, className, style, fallback }) {
+export default function SequentialImage({ src, alt, className, style, fallback }) {
   const [displaySrc, setDisplaySrc] = useState(() => {
     // If already cached, show immediately
     if (src && !isDriveUrl(src)) return src;
@@ -94,10 +94,6 @@ export default function SequentialImage({ src, fallbackSrc, alt, className, styl
 
   const handleError = () => {
     if (!mountedRef.current) return;
-    if (fallbackSrc && displaySrc !== fallbackSrc) {
-      setDisplaySrc(fallbackSrc);
-      return;
-    }
     setFailed(true);
   };
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
-import { driveImg, driveProxyImg } from '../utils/driveImage';
+import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { resolveUrl } from '../utils/resolveUrl';
 import SequentialImage from '../components/common/SequentialImage';
@@ -17,14 +17,6 @@ async function get(path) {
 const TABS = ['auction', 'teams', 'sold', 'unsold'];
 const TAB_LABELS = { auction: 'Live Auction', teams: 'Teams', sold: 'Sold', unsold: 'Unsold' };
 const TAB_ICONS  = { auction: Gavel, teams: ShieldCheck, sold: Trophy, unsold: XCircle };
-
-function broadcasterImage(url) {
-  const normalized = driveImg(url);
-  if (!normalized) return null;
-  return normalized.includes('drive.google.com/thumbnail?id=')
-    ? normalized.replace(/([?&]sz=)[^&]+/i, '$1w500-h500')
-    : normalized;
-}
 
 export default function PublicViewPage() {
   const { tournamentId } = useParams();
@@ -203,8 +195,7 @@ function AuctionView({ auctionState, teams }) {
 
   const roleColor = getRoleColor(player.role);
   const roleBg    = getRoleBg(player.role);
-  const imgUrl    = broadcasterImage(player.imageUrl);
-  const fallbackImgUrl = driveProxyImg(player.imageUrl);
+  const imgUrl    = driveImg(player.imageUrl);
 
   return (
     <div className="max-w-lg mx-auto space-y-3">
@@ -216,7 +207,7 @@ function AuctionView({ auctionState, teams }) {
           <div className="rounded-2xl overflow-hidden relative flex items-center justify-center"
             style={{ width: 'min(160px,40vw)', height: 'min(180px,45vw)',
                      border: `2px solid ${roleColor}`, background: roleBg }}>
-            <SequentialImage src={imgUrl} fallbackSrc={fallbackImgUrl} alt={player.name}
+            <SequentialImage src={imgUrl} alt={player.name}
               className="w-full h-full object-cover object-top"
               fallback={
                 <span className="absolute inset-0 flex items-center justify-center font-black select-none"
@@ -349,14 +340,13 @@ function TeamsView({ teams }) {
                 {team.players.map(p => {
                   const rc  = getRoleColor(p.role);
                   const rbg = getRoleBg(p.role);
-                  const imgUrl = broadcasterImage(p.imageUrl);
-                  const fallbackImgUrl = driveProxyImg(p.imageUrl);
+                  const imgUrl = driveImg(p.imageUrl);
                   return (
                     <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-xl"
                       style={{ background: 'var(--color-surface-2)' }}>
                       <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center font-bold text-sm flex-shrink-0 relative"
                         style={{ background: rbg, color: rc }}>
-                        <SequentialImage src={imgUrl} fallbackSrc={fallbackImgUrl} alt={p.name}
+                        <SequentialImage src={imgUrl} alt={p.name}
                           className="w-full h-full object-cover object-top"
                           fallback={<span className="absolute inset-0 flex items-center justify-center">{p.name[0]}</span>} />
                       </div>
@@ -399,7 +389,7 @@ function PlayerListView({ players, emptyMsg }) {
             </span>
             <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center font-bold flex-shrink-0 relative"
               style={{ background: rbg, color: rc }}>
-              <SequentialImage src={broadcasterImage(p.imageUrl)} fallbackSrc={driveProxyImg(p.imageUrl)} alt={p.name}
+              <SequentialImage src={driveImg(p.imageUrl)} alt={p.name}
                 className="w-full h-full object-cover object-top"
                 fallback={<span className="absolute inset-0 flex items-center justify-center text-base">{p.name[0]}</span>} />
             </div>
