@@ -37,11 +37,6 @@ export function driveImg(url) {
   return url;
 }
 
-export function driveProxyImg(url) {
-  const id = extractDriveId(url || '');
-  return id ? `${API_ORIGIN}/api/proxy/image?id=${encodeURIComponent(id)}` : null;
-}
-
 function extractDriveId(url) {
   try {
     if (url.includes('/d/')) {
