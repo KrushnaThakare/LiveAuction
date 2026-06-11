@@ -42,7 +42,7 @@ function isDriveUrl(src) {
   );
 }
 
-export default function SequentialImage({ src, alt, className, style, fallback }) {
+export default function SequentialImage({ src, fallbackSrc, alt, className, style, fallback }) {
   const [displaySrc, setDisplaySrc] = useState(() => {
     // If already cached, show immediately
     if (src && !isDriveUrl(src)) return src;
@@ -54,24 +54,31 @@ export default function SequentialImage({ src, alt, className, style, fallback }
 
   useEffect(() => {
     mountedRef.current = true;
+    const schedule = (callback) => {
+      window.setTimeout(() => {
+        if (mountedRef.current) callback();
+      }, 0);
+    };
 
-    if (!src) { setDisplaySrc(null); setFailed(false); return; }
+    if (!src) {
+      schedule(() => { setDisplaySrc(null); setFailed(false); });
+      return;
+    }
 
     // Non-Drive: show instantly
     if (!isDriveUrl(src)) {
-      setDisplaySrc(src);
+      schedule(() => setDisplaySrc(src));
       return;
     }
 
     // Already cached: show instantly, skip the queue
     if (loadedCache.has(src)) {
-      setDisplaySrc(src);
+      schedule(() => setDisplaySrc(src));
       return;
     }
 
     // First time seeing this Drive URL: go through queue
-    setDisplaySrc(null);
-    setFailed(false);
+    schedule(() => { setDisplaySrc(null); setFailed(false); });
 
     enqueue(() => {
       if (mountedRef.current) setDisplaySrc(src);
@@ -83,6 +90,16 @@ export default function SequentialImage({ src, alt, className, style, fallback }
   const handleLoad = () => {
     // Mark URL as successfully loaded so future mounts skip the queue
     if (src) loadedCache.add(src);
+    if (displaySrc) loadedCache.add(displaySrc);
+  };
+
+  const handleError = () => {
+    if (!mountedRef.current) return;
+    if (fallbackSrc && displaySrc !== fallbackSrc) {
+      setDisplaySrc(fallbackSrc);
+      return;
+    }
+    setFailed(true);
   };
 
   if (!src || failed) return fallback || null;
@@ -105,7 +122,7 @@ export default function SequentialImage({ src, alt, className, style, fallback }
       className={className}
       style={style}
       onLoad={handleLoad}
-      onError={() => { if (mountedRef.current) setFailed(true); }}
+      onError={handleError}
     />
   );
 }

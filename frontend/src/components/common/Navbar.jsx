@@ -84,7 +84,7 @@ export default function Navbar() {
             const isActive = location.pathname === to;
             return (
               <Link key={to} to={to}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 relative"
+                className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-semibold transition-all duration-200 relative"
                 style={{
                   background: isActive
                     ? 'var(--gradient-primary)'
@@ -93,7 +93,7 @@ export default function Navbar() {
                   boxShadow: isActive ? '0 2px 8px var(--color-primary-glow)' : 'none',
                 }}>
                 <Icon size={13} />
-                <span className="hidden md:inline">{label}</span>
+                <span className="leading-tight text-center">{label}</span>
                 {isActive && (
                   <span className="absolute inset-0 rounded-xl"
                     style={{ background: 'rgba(255,255,255,0.1)', pointerEvents: 'none' }} />
