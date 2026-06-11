@@ -140,7 +140,7 @@ export default function AuctionDisplayPage() {
 
       {isResult && (
         <section className={styles.resultLayer}>
-          <div className={styles.resultBursts} />
+          <div className={`${styles.resultBursts} ${status === 'UNSOLD' ? styles.unsoldBursts : ''}`} />
           <div className={styles.resultCard}>
             <div className={styles.resultKicker}>Auction Result</div>
             <div className={styles.resultTitle}>{status}</div>
