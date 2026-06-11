@@ -67,13 +67,13 @@ export default function SequentialImage({ src, fallbackSrc, alt, className, styl
 
     // Non-Drive: show instantly
     if (!isDriveUrl(src)) {
-      schedule(() => setDisplaySrc(src));
+      schedule(() => { setDisplaySrc(src); setFailed(false); });
       return;
     }
 
     // Already cached: show instantly, skip the queue
     if (loadedCache.has(src)) {
-      schedule(() => setDisplaySrc(src));
+      schedule(() => { setDisplaySrc(src); setFailed(false); });
       return;
     }
 
@@ -89,7 +89,6 @@ export default function SequentialImage({ src, fallbackSrc, alt, className, styl
 
   const handleLoad = () => {
     // Mark URL as successfully loaded so future mounts skip the queue
-    if (src) loadedCache.add(src);
     if (displaySrc) loadedCache.add(displaySrc);
   };
 
