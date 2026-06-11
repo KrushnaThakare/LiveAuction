@@ -5,6 +5,7 @@ import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { hasPlayerStats, statValue } from '../utils/playerStats';
+import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -60,6 +61,7 @@ export default function AuctionDisplayPage() {
 
   return (
     <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''}`}>
+      <OverlayFullscreenButton />
       <div className={styles.shell}>
         <header className={styles.topBar}>
           <div>

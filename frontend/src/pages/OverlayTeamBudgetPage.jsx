@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Gauge, Users } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
+import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -17,6 +18,7 @@ export default function OverlayTeamBudgetPage() {
 
   return (
     <div className={styles.stage}>
+      <OverlayFullscreenButton />
       <section className={styles.budgetBoard}>
         <div className={styles.boardTitle}>
           <span>Team Purse Scoreboard</span>

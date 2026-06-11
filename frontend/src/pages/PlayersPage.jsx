@@ -400,7 +400,7 @@ export default function PlayersPage() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Base Price (₹) *</label>
-            <input type="number" className="input" required min="1" step="100"
+            <input type="number" className="input" required min="0" step="100"
               value={editForm.basePrice}
               onChange={e => setEditForm(f => ({ ...f, basePrice: e.target.value }))} />
           </div>

@@ -149,8 +149,14 @@
 
 .imageFrame {
   position: relative;
-  min-height: 0;
-  align-self: stretch;
+  align-self: center;
+  justify-self: center;
+  width: min(100%, calc(64vh * 0.8));
+  height: min(100%, 64vh);
+  min-width: 0;
+  min-height: 420px;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
   padding: 6px;
   border-radius: 42px;
   background: linear-gradient(135deg, rgba(255,199,44,0.92), rgba(0,210,106,0.75), rgba(255,255,255,0.2));
@@ -162,6 +168,8 @@
   display: block;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   object-fit: cover;
   object-position: top center;
   border-radius: 36px;
@@ -176,7 +184,7 @@
   place-items: center;
   width: 100%;
   height: 100%;
-  min-height: 520px;
+  min-height: 0;
   border-radius: 36px;
   color: rgba(255,255,255,0.58);
   background: radial-gradient(circle at 50% 24%, #263a68, #050914 72%);
@@ -525,7 +533,9 @@
 
   .imageFrame {
     order: -1;
-    min-height: 420px;
+    width: min(100%, 340px);
+    height: auto;
+    min-height: 0;
   }
 
   .detailsPanel,
@@ -563,7 +573,8 @@
   }
 
   .imageFrame {
-    min-height: 320px;
+    width: min(100%, 280px);
+    min-height: 0;
     border-radius: 28px;
   }
 

@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
+import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 
@@ -15,6 +16,7 @@ export default function OverlaySoldPage() {
   if (config && config.overlayEnabled === false) return null;
 
   return <div className="overlay-stage overlay-full-celebration">
+    <OverlayFullscreenButton />
     <div className="overlay-confetti" />
     <div className="overlay-verdict-card sold">
       <div className="overlay-kicker">Final Hammer</div>
