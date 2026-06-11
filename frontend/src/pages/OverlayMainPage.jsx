@@ -5,6 +5,7 @@ import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { hasPlayerStats, statValue } from '../utils/playerStats';
+import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -76,6 +77,7 @@ export default function OverlayMainPage() {
 
   return (
     <div className={styles.stage}>
+      <OverlayFullscreenButton />
       <PlayerStatsOverlay player={player} />
       <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
         <div className={styles.infoStack}>

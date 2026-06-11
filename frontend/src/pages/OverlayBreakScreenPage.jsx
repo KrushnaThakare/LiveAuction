@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
+import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 
 export default function OverlayBreakScreenPage() {
   const [params] = useSearchParams();
@@ -9,6 +10,7 @@ export default function OverlayBreakScreenPage() {
   if (config && config.overlayEnabled === false) return null;
 
   return <div className="overlay-stage overlay-break-screen">
+    <OverlayFullscreenButton />
     <div className="overlay-break-card">
       <div className="overlay-kicker">Cricket Auction</div>
       <h1>We’ll Be Right Back</h1>

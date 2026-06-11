@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
+import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 
 export default function OverlayUnsoldPage() {
   const [params] = useSearchParams();
@@ -12,6 +13,7 @@ export default function OverlayUnsoldPage() {
   if (config && config.overlayEnabled === false) return null;
 
   return <div className="overlay-stage overlay-full-celebration unsold-bg">
+    <OverlayFullscreenButton />
     {player?.imageUrl && <img className="overlay-unsold-player" src={driveImg(player.imageUrl) || resolveUrl(player.imageUrl)} alt={player.name} />}
     <div className="overlay-verdict-card unsold">
       <div className="overlay-kicker">Auction Result</div>

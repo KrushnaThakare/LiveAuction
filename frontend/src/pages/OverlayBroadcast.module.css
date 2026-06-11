@@ -241,7 +241,7 @@
   z-index: 2;
   align-self: center;
   justify-self: center;
-  width: min(100%, calc((25.5vh - 28px) * 0.82));
+  width: clamp(170px, 15.5vw, 270px);
   height: 100%;
   aspect-ratio: 4 / 5;
   min-width: 0;
@@ -602,7 +602,8 @@
 
 .squadRows {
   margin-top: 12px;
-  max-height: 322px;
+  --squad-window: 322px;
+  max-height: var(--squad-window);
   overflow: hidden;
 }
 
@@ -679,7 +680,7 @@
 
 @keyframes squadScroll {
   0%, 18% { transform: translateY(0); }
-  50%, 68% { transform: translateY(calc(-100% + 322px)); }
+  50%, 68% { transform: translateY(calc(-100% + var(--squad-window))); }
   100% { transform: translateY(0); }
 }
 
@@ -864,10 +865,11 @@
   }
 
   .squadRows {
-    max-height: none;
+    --squad-window: calc(100vh - 118px);
+    max-height: var(--squad-window);
   }
 
   .squadRowsInner.scrolling {
-    animation: none;
+    animation-duration: 12s;
   }
 }

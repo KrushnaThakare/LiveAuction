@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
+import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 
@@ -16,6 +17,7 @@ export default function OverlayTickerPage() {
     : `${auction?.highestBidderTeamName || 'No team'} leading ${auction?.currentPlayer?.name || 'current player'} at ${money(auction?.currentBid)}`;
 
   return <div className="overlay-stage">
+    <OverlayFullscreenButton />
     <div className="overlay-ticker"><div className="overlay-ticker-text">{text}</div></div>
   </div>;
 }

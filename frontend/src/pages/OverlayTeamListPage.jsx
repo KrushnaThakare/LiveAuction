@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Users } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
+import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -24,6 +25,7 @@ export default function OverlayTeamListPage() {
 
   return (
     <div className={`${styles.stage} ${styles.squadStage}`}>
+      <OverlayFullscreenButton />
       <div className={styles.squadGrid}>
         {teams.map(team => {
           const players = team.players || [];
@@ -40,7 +42,7 @@ export default function OverlayTeamListPage() {
               </header>
 
               <div className={styles.squadRows}>
-                <div className={`${styles.squadRowsInner} ${players.length > 8 ? styles.scrolling : ''}`}>
+                <div className={`${styles.squadRowsInner} ${players.length >= 6 ? styles.scrolling : ''}`}>
                   {players.length ? players.map(player => (
                     <div key={player.id} className={styles.playerRow}>
                       <span>{player.name}</span>

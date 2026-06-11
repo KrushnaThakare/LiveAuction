@@ -18,6 +18,43 @@ html.overlay-html #root {
   pointer-events: none;
 }
 
+.overlay-fullscreen-button {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 10000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255,255,255,0.24);
+  border-radius: 999px;
+  background: rgba(3,7,18,0.72);
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.32);
+  backdrop-filter: blur(16px);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.overlay-fullscreen-button:hover {
+  background: rgba(15,23,42,0.88);
+  transform: translateY(-1px);
+}
+
+:fullscreen .overlay-fullscreen-button {
+  opacity: 0.18;
+}
+
+:fullscreen .overlay-fullscreen-button:hover {
+  opacity: 1;
+}
+
 .overlay-main-card {
   position: fixed;
   left: 48px;
