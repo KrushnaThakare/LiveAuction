@@ -18,6 +18,14 @@ const TABS = ['auction', 'teams', 'sold', 'unsold'];
 const TAB_LABELS = { auction: 'Live Auction', teams: 'Teams', sold: 'Sold', unsold: 'Unsold' };
 const TAB_ICONS  = { auction: Gavel, teams: ShieldCheck, sold: Trophy, unsold: XCircle };
 
+function broadcasterImage(url) {
+  const normalized = driveImg(url);
+  if (!normalized) return null;
+  return normalized.includes('drive.google.com/thumbnail?id=')
+    ? normalized.replace(/([?&]sz=)[^&]+/i, '$1w500-h500')
+    : normalized;
+}
+
 export default function PublicViewPage() {
   const { tournamentId } = useParams();
   const [tab, setTab]                 = useState('auction');
@@ -195,7 +203,7 @@ function AuctionView({ auctionState, teams }) {
 
   const roleColor = getRoleColor(player.role);
   const roleBg    = getRoleBg(player.role);
-  const imgUrl    = driveImg(player.imageUrl);
+  const imgUrl    = broadcasterImage(player.imageUrl);
   const fallbackImgUrl = driveProxyImg(player.imageUrl);
 
   return (
@@ -341,7 +349,7 @@ function TeamsView({ teams }) {
                 {team.players.map(p => {
                   const rc  = getRoleColor(p.role);
                   const rbg = getRoleBg(p.role);
-                  const imgUrl = driveImg(p.imageUrl);
+                  const imgUrl = broadcasterImage(p.imageUrl);
                   const fallbackImgUrl = driveProxyImg(p.imageUrl);
                   return (
                     <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-xl"
@@ -391,7 +399,7 @@ function PlayerListView({ players, emptyMsg }) {
             </span>
             <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center font-bold flex-shrink-0 relative"
               style={{ background: rbg, color: rc }}>
-              <SequentialImage src={driveImg(p.imageUrl)} fallbackSrc={driveProxyImg(p.imageUrl)} alt={p.name}
+              <SequentialImage src={broadcasterImage(p.imageUrl)} fallbackSrc={driveProxyImg(p.imageUrl)} alt={p.name}
                 className="w-full h-full object-cover object-top"
                 fallback={<span className="absolute inset-0 flex items-center justify-center text-base">{p.name[0]}</span>} />
             </div>
