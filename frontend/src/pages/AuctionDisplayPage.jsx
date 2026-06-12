@@ -48,7 +48,7 @@ export default function AuctionDisplayPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const title = params.get('title') || 'Cricket Auction Live';
+  const title = params.get('title') || 'Royal Champions Trophy Auction Live';
   const sponsor = params.get('sponsor') || 'Premium Auction Arena';
   const { data, connected } = useOverlayRealtime(tid, token);
   const auction = data?.auction;
