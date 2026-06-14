@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg, getPlayerRoles, getAuctionDisplayName } from '../utils/formatters';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { resolveUrl } from '../utils/resolveUrl';
+import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import SequentialImage from '../components/common/SequentialImage';
 import GavelOverlay from '../components/common/GavelOverlay';
 import { Gavel, ShieldCheck, Trophy, XCircle, Wifi, ChevronDown, ChevronUp } from 'lucide-react';
@@ -20,87 +21,67 @@ const TAB_ICONS  = { auction: Gavel, teams: ShieldCheck, sold: Trophy, unsold: X
 
 export default function PublicViewPage() {
   const { tournamentId } = useParams();
+  const { data, config, connected } = useOverlayRealtime(tournamentId, null, { applyOverlayClass: false });
   const [tab, setTab]                 = useState('auction');
-  const [tournament, setTournament]   = useState(null);
-  const [auctionState, setAuction]    = useState(null);
-  const [teams, setTeams]             = useState([]);
+  const [fullTeams, setFullTeams]     = useState(null);
   const [sold, setSold]               = useState([]);
   const [unsold, setUnsold]           = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [live, setLive]               = useState(false);
+  const [loadedTabs, setLoadedTabs]   = useState({});
+  const [tabLoading, setTabLoading]   = useState(false);
   const [soldOverlay, setSoldOverlay] = useState(null); // { name, team, teamLogo, amount }
+  const previousAuctionRef = useRef(null);
 
-  const refreshTeams = useCallback(async () => {
-    const tm = await get(`/tournaments/${tournamentId}/teams`);
-    setTeams(tm || []);
-  }, [tournamentId]);
-
-  const refreshPlayers = useCallback(async () => {
-    const [s, u] = await Promise.all([
-      get(`/tournaments/${tournamentId}/players?status=SOLD`),
-      get(`/tournaments/${tournamentId}/players?status=UNSOLD`),
-    ]);
-    setSold(s || []);
-    setUnsold(u || []);
-  }, [tournamentId]);
-
-  const fetchAll = useCallback(async () => {
+  const loadTabData = useCallback(async (targetTab, force = false) => {
+    if (!tournamentId || (!force && loadedTabs[targetTab])) return;
+    if (!['teams', 'sold', 'unsold'].includes(targetTab)) return;
+    setTabLoading(true);
     try {
-      const [t, a, tm, s, u] = await Promise.all([
-        get(`/tournaments/${tournamentId}`),
-        get(`/tournaments/${tournamentId}/auction/state`),
-        get(`/tournaments/${tournamentId}/teams`),
-        get(`/tournaments/${tournamentId}/players?status=SOLD`),
-        get(`/tournaments/${tournamentId}/players?status=UNSOLD`),
-      ]);
-      setTournament(t);
-      setAuction(a);
-      setTeams(tm || []);
-      setSold(s || []);
-      setUnsold(u || []);
-      setLive(a?.status === 'ACTIVE');
+      if (targetTab === 'teams') {
+        const tm = await get(`/tournaments/${tournamentId}/teams`);
+        setFullTeams(tm || []);
+      } else if (targetTab === 'sold') {
+        const s = await get(`/tournaments/${tournamentId}/players?status=SOLD`);
+        setSold(s || []);
+      } else if (targetTab === 'unsold') {
+        const u = await get(`/tournaments/${tournamentId}/players?status=UNSOLD`);
+        setUnsold(u || []);
+      }
+      setLoadedTabs(tabs => ({ ...tabs, [targetTab]: true }));
     } catch { /* silent */ }
-    finally { setLoading(false); }
-  }, [tournamentId]);
+    finally { setTabLoading(false); }
+  }, [tournamentId, loadedTabs]);
+
+  const handleTabChange = (nextTab) => {
+    setTab(nextTab);
+    loadTabData(nextTab);
+  };
 
   useEffect(() => {
-    const id = setTimeout(fetchAll, 0);
-    return () => clearTimeout(id);
-  }, [fetchAll]);
+    const current = data?.auction;
+    const previous = previousAuctionRef.current;
+    if (!current) return;
+    if (previous?.status === 'ACTIVE' && current.status === 'SOLD') {
+      const winnerTeam = (data?.teams || []).find(t => t.id === current.highestBidderTeamId);
+      setSoldOverlay({
+        verdict: 'SOLD',
+        name: previous.currentPlayer?.name || current.currentPlayer?.name,
+        team: current.highestBidderTeamName,
+        teamLogo: resolveUrl(winnerTeam?.logoUrl),
+        amount: current.currentBid,
+      });
+      setTimeout(() => setSoldOverlay(null), 5200);
+      if (loadedTabs.teams) loadTabData('teams', true);
+      if (loadedTabs.sold) loadTabData('sold', true);
+    }
+    if (previous?.status === 'ACTIVE' && current.status === 'UNSOLD') {
+      setSoldOverlay({ verdict: 'UNSOLD', name: previous.currentPlayer?.name || current.currentPlayer?.name });
+      setTimeout(() => setSoldOverlay(null), 4200);
+      if (loadedTabs.unsold) loadTabData('unsold', true);
+    }
+    previousAuctionRef.current = current;
+  }, [data?.auction, data?.teams, loadedTabs, loadTabData]);
 
-  // Poll auction state every 3 seconds
-  useEffect(() => {
-    const id = setInterval(async () => {
-      try {
-        const a = await get(`/tournaments/${tournamentId}/auction/state`);
-        setAuction(prev => {
-          const wasActive = prev?.status === 'ACTIVE';
-          if (wasActive && a?.status === 'SOLD') {
-            const winnerTeam = teams.find(t => t.id === a.highestBidderTeamId);
-            setSoldOverlay({
-              verdict:  'SOLD',
-              name:     prev.currentPlayer?.name,
-              team:     a.highestBidderTeamName,
-              teamLogo: resolveUrl(winnerTeam?.logoUrl),
-              amount:   a.currentBid,
-            });
-            setTimeout(() => setSoldOverlay(null), 5200);
-            refreshTeams();
-            refreshPlayers();
-          }
-          if (wasActive && a?.status === 'UNSOLD') {
-            setSoldOverlay({ verdict: 'UNSOLD', name: prev.currentPlayer?.name });
-            setTimeout(() => setSoldOverlay(null), 4200);
-          }
-          return a;
-        });
-        setLive(a?.status === 'ACTIVE');
-      } catch { /* silent */ }
-    }, 3000);
-    return () => clearInterval(id);
-  }, [tournamentId, teams, refreshTeams, refreshPlayers]);
-
-  if (loading) return (
+  if (!data && !config) return (
     <div className="min-h-screen flex items-center justify-center"
       style={{ background: 'var(--color-background)' }}>
       <div className="text-center">
@@ -111,7 +92,18 @@ export default function PublicViewPage() {
     </div>
   );
 
-  const logoSrc = resolveUrl(tournament?.logoUrl);
+  const tournament = {
+    name: config?.tournamentName,
+    auctionDisplayName: config?.auctionDisplayName,
+    logoUrl: config?.logoUrl,
+    sport: config?.sport,
+    playerRoles: config?.playerRoles,
+  };
+  const auctionState = data?.auction;
+  const summaryTeams = data?.teams || [];
+  const teamsForTab = fullTeams || summaryTeams;
+  const live = auctionState?.status === 'ACTIVE';
+  const logoSrc = resolveUrl(tournament.logoUrl);
   const playerRoles = getPlayerRoles(tournament);
 
   return (
@@ -130,7 +122,9 @@ export default function PublicViewPage() {
           <h1 className="font-black text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>
             {getAuctionDisplayName(tournament, 'Auction')}
           </h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Broadcast View</p>
+          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+            Broadcast View · {connected ? 'Live sync' : 'Reconnecting'}
+          </p>
         </div>
         <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full flex-shrink-0"
           style={{ background: live ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.15)',
@@ -146,7 +140,7 @@ export default function PublicViewPage() {
           const Icon = TAB_ICONS[t];
           const active = tab === t;
           return (
-            <button key={t} onClick={() => setTab(t)}
+            <button key={t} onClick={() => handleTabChange(t)}
               className="flex-1 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-2.5 px-1 text-[10px] sm:text-xs font-semibold transition-all"
               style={{ color: active ? 'var(--color-primary)' : 'var(--color-text-secondary)',
                        borderBottom: `2px solid ${active ? 'var(--color-primary)' : 'transparent'}` }}>
@@ -159,10 +153,10 @@ export default function PublicViewPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-3">
-        {tab === 'auction' && <AuctionView auctionState={auctionState} teams={teams} roles={playerRoles} />}
-        {tab === 'teams'   && <TeamsView teams={teams} />}
-        {tab === 'sold'    && <PlayerListView players={sold} emptyMsg="No players sold yet" label="Sold" />}
-        {tab === 'unsold'  && <PlayerListView players={unsold} emptyMsg="No unsold players yet" label="Unsold" />}
+        {tab === 'auction' && <AuctionView auctionState={auctionState} teams={summaryTeams} roles={playerRoles} />}
+        {tab === 'teams'   && <TeamsView teams={teamsForTab} roles={playerRoles} loading={tabLoading && !fullTeams} />}
+        {tab === 'sold'    && <PlayerListView players={sold} roles={playerRoles} loading={tabLoading && !loadedTabs.sold} emptyMsg="No players sold yet" label="Sold" />}
+        {tab === 'unsold'  && <PlayerListView players={unsold} roles={playerRoles} loading={tabLoading && !loadedTabs.unsold} emptyMsg="No unsold players yet" label="Unsold" />}
       </div>
 
       {/* Gavel overlay — same for SOLD and UNSOLD */}
@@ -188,7 +182,7 @@ function AuctionView({ auctionState, teams, roles }) {
            'Auction not started yet'}
         </h2>
         <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-          Updates every 3 seconds automatically
+          Updates live when the auction desk changes players or bids
         </p>
       </div>
     );
@@ -294,10 +288,14 @@ function AuctionView({ auctionState, teams, roles }) {
 }
 
 /* ═══ TEAMS VIEW with squad ═══ */
-function TeamsView({ teams }) {
+function TeamsView({ teams, roles, loading }) {
   const [expanded, setExpanded] = useState({});
 
   const toggle = (id) => setExpanded(e => ({ ...e, [id]: !e[id] }));
+
+  if (loading) return (
+    <p className="text-center py-12 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Loading team squads...</p>
+  );
 
   return (
     <div className="space-y-3 max-w-lg mx-auto">
@@ -339,8 +337,8 @@ function TeamsView({ teams }) {
                 <p className="text-xs font-bold uppercase tracking-wide mb-2"
                   style={{ color: 'var(--color-text-secondary)' }}>Squad</p>
                 {team.players.map(p => {
-                  const rc  = getRoleColor(p.role);
-                  const rbg = getRoleBg(p.role);
+                  const rc  = getRoleColor(p.role, roles);
+                  const rbg = getRoleBg(p.role, roles);
                   const imgUrl = driveImg(p.imageUrl);
                   return (
                     <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-xl"
@@ -354,7 +352,7 @@ function TeamsView({ teams }) {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{p.name}</p>
                         <p className="text-xs" style={{ color: p.retained ? 'var(--color-warning)' : rc }}>
-                          {playerIdLabel(p)} · {p.retained ? 'Retained' : formatRole(p.role)}
+                          {playerIdLabel(p)} · {p.retained ? 'Retained' : formatRole(p.role, roles)}
                         </p>
                       </div>
                       <span className="text-xs font-bold flex-shrink-0" style={{ color: 'var(--color-accent)' }}>
@@ -373,15 +371,18 @@ function TeamsView({ teams }) {
 }
 
 /* ═══ PLAYER LIST (Sold / Unsold) ═══ */
-function PlayerListView({ players, emptyMsg }) {
+function PlayerListView({ players, roles, loading, emptyMsg }) {
+  if (loading) return (
+    <p className="text-center py-12 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Loading players...</p>
+  );
   if (!players.length) return (
     <p className="text-center py-12 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{emptyMsg}</p>
   );
   return (
     <div className="space-y-2 max-w-lg mx-auto">
       {players.map((p, i) => {
-        const rc  = getRoleColor(p.role);
-        const rbg = getRoleBg(p.role);
+        const rc  = getRoleColor(p.role, roles);
+        const rbg = getRoleBg(p.role, roles);
         return (
           <div key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-xl"
             style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
@@ -397,7 +398,7 @@ function PlayerListView({ players, emptyMsg }) {
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>{p.name}</p>
               <p className="text-xs" style={{ color: p.retained ? 'var(--color-warning)' : rc }}>
-                {playerIdLabel(p)} · {p.retained ? 'Retained' : formatRole(p.role)}
+                {playerIdLabel(p)} · {p.retained ? 'Retained' : formatRole(p.role, roles)}
               </p>
             </div>
             {p.teamName && (

@@ -32,11 +32,16 @@ public class OverlayController {
     }
 
     @GetMapping("/{tournamentId}/snapshot")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> snapshot(@PathVariable Long tournamentId, @RequestParam(value = "token", required = false) String token) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> snapshot(
+            @PathVariable Long tournamentId,
+            @RequestParam(value = "token", required = false) String token,
+            @RequestParam(value = "includePlayers", defaultValue = "false") boolean includePlayers) {
         Tournament t = tournamentService.findById(tournamentId);
         validateOverlayAccess(t, token);
         AuctionStateResponse auction = auctionService.getAuctionState(tournamentId);
-        List<TeamResponse> teams = teamService.getTeamsByTournament(tournamentId);
+        List<TeamResponse> teams = includePlayers
+                ? teamService.getTeamsByTournament(tournamentId)
+                : teamService.getTeamSummariesByTournament(tournamentId);
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "auction", auction,
                 "teams", teams
@@ -53,6 +58,8 @@ public class OverlayController {
                 .overlayShowTeamBudget(t.getOverlayShowTeamBudget())
                 .overlayShowTeamList(t.getOverlayShowTeamList())
                 .overlayShowTicker(t.getOverlayShowTicker())
+                .overlayShowPlayerStatsIntro(t.getOverlayShowPlayerStatsIntro())
+                .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .tournamentName(t.getName())
                 .auctionDisplayName(t.getAuctionDisplayName())

@@ -91,6 +91,14 @@ public class Tournament {
     @Builder.Default
     private Boolean overlayShowTicker = true;
 
+    @Column(name = "overlay_show_player_stats_intro")
+    @Builder.Default
+    private Boolean overlayShowPlayerStatsIntro = true;
+
+    @Column(name = "overlay_player_stats_intro_ms")
+    @Builder.Default
+    private Integer overlayPlayerStatsIntroMs = 5500;
+
     @Column(name = "overlay_secret_token", length = 120)
     private String overlaySecretToken;
 

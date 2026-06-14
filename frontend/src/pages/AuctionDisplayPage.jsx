@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
+import { useTimedPlayerStatsOverlay } from '../hooks/useTimedPlayerStatsOverlay';
 import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
@@ -52,6 +53,12 @@ export default function AuctionDisplayPage() {
   const status = auction?.status || 'IDLE';
   const liveText = status === 'ACTIVE' ? 'Auction Live' : status === 'SOLD' ? 'Sold' : status === 'UNSOLD' ? 'Unsold' : 'Auction Standby';
   const isResult = status === 'SOLD' || status === 'UNSOLD';
+  const showStatsIntro = useTimedPlayerStatsOverlay(
+    player,
+    auction?.sessionId,
+    config?.overlayShowPlayerStatsIntro !== false,
+    config?.overlayPlayerStatsIntroMs || 5500
+  );
 
   return (
     <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''}`}>
@@ -121,7 +128,7 @@ export default function AuctionDisplayPage() {
               </div>
             </div>
 
-            <PlayerStatsPanel player={player} />
+            {showStatsIntro && <PlayerStatsPanel player={player} />}
           </aside>
         </section>
 

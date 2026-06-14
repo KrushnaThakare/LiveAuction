@@ -52,7 +52,9 @@ function mergeTeams(currentTeams = [], incomingTeams = []) {
   });
 }
 
-export function useOverlayRealtime(tournamentId, token) {
+export function useOverlayRealtime(tournamentId, token, options = {}) {
+  const includePlayers = Boolean(options.includePlayers);
+  const applyOverlayClass = options.applyOverlayClass !== false;
   const [data, setData] = useState(null);
   const [config, setConfig] = useState(null);
   const [connected, setConnected] = useState(false);
@@ -62,9 +64,10 @@ export function useOverlayRealtime(tournamentId, token) {
   const debugRef = useRef(false);
 
   useEffect(() => {
+    if (!applyOverlayClass) return undefined;
     document.documentElement.classList.add('overlay-html');
     return () => document.documentElement.classList.remove('overlay-html');
-  }, []);
+  }, [applyOverlayClass]);
 
   useEffect(() => {
     if (!tournamentId) return;
@@ -124,7 +127,7 @@ export function useOverlayRealtime(tournamentId, token) {
 
     const loadInitial = async () => {
       const [snapshotRes, configRes] = await Promise.all([
-        overlayApi.getSnapshot(tournamentId, token),
+        overlayApi.getSnapshot(tournamentId, token, { includePlayers }),
         overlayApi.getConfig(tournamentId, token),
       ]);
       if (!stopped) {
@@ -144,7 +147,7 @@ export function useOverlayRealtime(tournamentId, token) {
       snapshotTimer = setInterval(async () => {
         if (connectedRef.current) return;
         try {
-          const snapshotRes = await overlayApi.getSnapshot(tournamentId, token);
+          const snapshotRes = await overlayApi.getSnapshot(tournamentId, token, { includePlayers });
           if (!stopped) mergeSnapshot(snapshotRes.data.data, 'poll-snapshot');
         } catch (e) {
           if (!stopped) setError(e);
@@ -212,7 +215,7 @@ export function useOverlayRealtime(tournamentId, token) {
         ws.close();
       }
     };
-  }, [tournamentId, token]);
+  }, [tournamentId, token, includePlayers]);
 
   useEffect(() => {
     if (!tournamentId) return;
