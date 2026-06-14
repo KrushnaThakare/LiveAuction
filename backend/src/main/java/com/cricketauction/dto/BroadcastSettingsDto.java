@@ -13,4 +13,9 @@ public class BroadcastSettingsDto {
     private Boolean overlayShowTicker;
     private Boolean tokenEnabled;
     private String overlaySecretToken;
+    private String tournamentName;
+    private String auctionDisplayName;
+    private String logoUrl;
+    private String sport;
+    private java.util.List<PlayerRoleDto> playerRoles;
 }

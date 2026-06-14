@@ -31,6 +31,7 @@ public class TournamentService {
     private final PlayerRepository playerRepository;
     private final TeamRepository teamRepository;
     private final AuditLogService auditLogService;
+    private final PlayerRoleService playerRoleService;
 
     public TournamentService(TournamentRepository tournamentRepository,
                              AuctionSessionRepository auctionSessionRepository,
@@ -40,7 +41,8 @@ public class TournamentService {
                              FormSectionRepository formSectionRepository,
                              PlayerRepository playerRepository,
                              TeamRepository teamRepository,
-                             AuditLogService auditLogService) {
+                             AuditLogService auditLogService,
+                             PlayerRoleService playerRoleService) {
         this.tournamentRepository    = tournamentRepository;
         this.auctionSessionRepository = auctionSessionRepository;
         this.playerRegistrationRepository = playerRegistrationRepository;
@@ -50,6 +52,7 @@ public class TournamentService {
         this.playerRepository = playerRepository;
         this.teamRepository = teamRepository;
         this.auditLogService = auditLogService;
+        this.playerRoleService = playerRoleService;
     }
 
     public TournamentResponse createTournament(TournamentRequest request) {
@@ -59,6 +62,9 @@ public class TournamentService {
         }
         Tournament tournament = Tournament.builder()
                 .name(request.getName())
+                .auctionDisplayName(blankToNull(request.getAuctionDisplayName()))
+                .sport(normalizeSport(request.getSport()))
+                .playerRolesConfig(playerRoleService.toConfigJson(request.getPlayerRoles(), normalizeSport(request.getSport())))
                 .description(request.getDescription())
                 .logoUrl(request.getLogoUrl())
                 .build();
@@ -78,6 +84,13 @@ public class TournamentService {
     public TournamentResponse updateTournament(Long id, TournamentRequest request) {
         Tournament t = findById(id);
         t.setName(request.getName());
+        t.setAuctionDisplayName(blankToNull(request.getAuctionDisplayName()));
+        t.setSport(normalizeSport(request.getSport()));
+        if (request.getPlayerRoles() != null) {
+            t.setPlayerRolesConfig(playerRoleService.toConfigJson(request.getPlayerRoles(), t.getSport()));
+        } else if (t.getPlayerRolesConfig() == null || t.getPlayerRolesConfig().isBlank()) {
+            t.setPlayerRolesConfig(playerRoleService.toConfigJson(null, t.getSport()));
+        }
         t.setDescription(request.getDescription());
         if (request.getLogoUrl() != null) t.setLogoUrl(request.getLogoUrl());
         return mapToResponse(tournamentRepository.save(t));
@@ -119,6 +132,9 @@ public class TournamentService {
         return TournamentResponse.builder()
                 .id(t.getId())
                 .name(t.getName())
+                .auctionDisplayName(t.getAuctionDisplayName())
+                .sport(t.getSport() == null ? "CRICKET" : t.getSport())
+                .playerRoles(playerRoleService.getRoles(t))
                 .description(t.getDescription())
                 .totalPlayers(t.getPlayers().size())
                 .totalTeams(t.getTeams().size())
@@ -131,5 +147,13 @@ public class TournamentService {
                 .registrationMessage(t.getRegistrationMessage())
                 .registrationRedirectLink(t.getRegistrationRedirectLink())
                 .build();
+    }
+
+    private String normalizeSport(String sport) {
+        return sport == null || sport.isBlank() ? "CRICKET" : sport.trim().toUpperCase();
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

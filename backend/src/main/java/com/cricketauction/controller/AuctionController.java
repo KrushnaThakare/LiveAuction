@@ -36,7 +36,7 @@ public class AuctionController {
             @PathVariable Long tournamentId,
             @PathVariable Long playerId) {
         var r = auctionService.startAuction(tournamentId, playerId);
-        overlayPushService.pushSnapshot(tournamentId, r);
+        overlayPushService.pushLightweightSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Auction started", r));
     }
 
@@ -45,7 +45,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionStateResponse>> startRandomAuction(
             @PathVariable Long tournamentId) {
         var r = auctionService.startRandomAuction(tournamentId);
-        overlayPushService.pushSnapshot(tournamentId, r);
+        overlayPushService.pushLightweightSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Random auction started", r));
     }
 
@@ -59,7 +59,7 @@ public class AuctionController {
             @PathVariable Long tournamentId,
             @Valid @RequestBody BidRequest bidRequest) {
         var r = auctionService.assignBid(tournamentId, bidRequest);
-        overlayPushService.pushSnapshot(tournamentId, r);
+        overlayPushService.pushLightweightSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Bid assigned", r));
     }
 
@@ -69,7 +69,7 @@ public class AuctionController {
             @PathVariable Long tournamentId,
             @Valid @RequestBody BidAmountRequest request) {
         var r = auctionService.updateCallingBid(tournamentId, request);
-        overlayPushService.pushSnapshot(tournamentId, r);
+        overlayPushService.pushLightweightSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Calling bid updated", r));
     }
 
@@ -87,7 +87,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionStateResponse>> markUnsold(
             @PathVariable Long tournamentId) {
         var r = auctionService.markUnsold(tournamentId);
-        overlayPushService.pushSnapshot(tournamentId, r);
+        overlayPushService.pushLightweightSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Player marked unsold", r));
     }
 
@@ -96,7 +96,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionStateResponse>> stopAuction(
             @PathVariable Long tournamentId) {
         var r = auctionService.stopAuction(tournamentId);
-        overlayPushService.pushSnapshot(tournamentId, r);
+        overlayPushService.pushLightweightSnapshot(tournamentId, r);
         return ResponseEntity.ok(ApiResponse.success("Auction stopped", r));
     }
 

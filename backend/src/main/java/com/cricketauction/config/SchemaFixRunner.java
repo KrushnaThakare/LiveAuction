@@ -57,6 +57,8 @@ public class SchemaFixRunner implements ApplicationRunner {
             // (Hibernate ddl-auto=update only runs on application startup;
             //  this ensures columns exist even before Hibernate processes the schema)
             addUndoColumnsIfMissing(conn);
+            addTournamentConfigColumnsIfMissing(conn);
+            widenPlayerRoleColumn(conn);
 
             // Step 1: null out FK values on closed sessions first
             // (needed even if the index is already gone, prevents future constraint hits)
@@ -134,6 +136,29 @@ public class SchemaFixRunner implements ApplicationRunner {
             } catch (SQLException e) {
                 log.debug("SchemaFixRunner addColumn {}.{}: {}", tableName, colName, e.getMessage());
             }
+        }
+    }
+
+    private void addTournamentConfigColumnsIfMissing(Connection conn) {
+        addColumnsToTable(conn, "tournaments", new String[]{
+            "auction_display_name VARCHAR(120)",
+            "sport VARCHAR(50) DEFAULT 'CRICKET'",
+            "player_roles_config TEXT"
+        });
+    }
+
+    private void widenPlayerRoleColumn(Connection conn) {
+        try {
+            boolean wasAuto = conn.getAutoCommit();
+            conn.setAutoCommit(true);
+            try (Statement st = conn.createStatement()) {
+                st.execute("ALTER TABLE players MODIFY COLUMN role VARCHAR(50) NOT NULL");
+                log.debug("SchemaFixRunner: player role column is VARCHAR(50)");
+            } finally {
+                conn.setAutoCommit(wasAuto);
+            }
+        } catch (SQLException e) {
+            log.debug("SchemaFixRunner role column: {}", e.getMessage());
         }
     }
 

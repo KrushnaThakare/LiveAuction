@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
-import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
+import { formatCurrency, formatRole, getRoleColor, getRoleBg, getPlayerRoles, getAuctionDisplayName } from '../utils/formatters';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { resolveUrl } from '../utils/resolveUrl';
@@ -112,6 +112,7 @@ export default function PublicViewPage() {
   );
 
   const logoSrc = resolveUrl(tournament?.logoUrl);
+  const playerRoles = getPlayerRoles(tournament);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-background)', color: 'var(--color-text-primary)' }}>
@@ -127,7 +128,7 @@ export default function PublicViewPage() {
         )}
         <div className="flex-1 min-w-0">
           <h1 className="font-black text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>
-            {tournament?.name || 'Cricket Auction'}
+            {getAuctionDisplayName(tournament, 'Auction')}
           </h1>
           <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Broadcast View</p>
         </div>
@@ -158,7 +159,7 @@ export default function PublicViewPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-3">
-        {tab === 'auction' && <AuctionView auctionState={auctionState} teams={teams} />}
+        {tab === 'auction' && <AuctionView auctionState={auctionState} teams={teams} roles={playerRoles} />}
         {tab === 'teams'   && <TeamsView teams={teams} />}
         {tab === 'sold'    && <PlayerListView players={sold} emptyMsg="No players sold yet" label="Sold" />}
         {tab === 'unsold'  && <PlayerListView players={unsold} emptyMsg="No unsold players yet" label="Unsold" />}
@@ -173,7 +174,7 @@ export default function PublicViewPage() {
 /* GavelOverlay handles both SOLD and UNSOLD — imported from components/common */
 
 /* ═══ AUCTION VIEW ═══ */
-function AuctionView({ auctionState, teams }) {
+function AuctionView({ auctionState, teams, roles }) {
   const isActive = auctionState?.status === 'ACTIVE';
   const player   = auctionState?.currentPlayer;
 
@@ -193,8 +194,8 @@ function AuctionView({ auctionState, teams }) {
     );
   }
 
-  const roleColor = getRoleColor(player.role);
-  const roleBg    = getRoleBg(player.role);
+  const roleColor = getRoleColor(player.role, roles);
+  const roleBg    = getRoleBg(player.role, roles);
   const imgUrl    = driveImg(player.imageUrl);
 
   return (
@@ -224,7 +225,7 @@ function AuctionView({ auctionState, teams }) {
           </p>
           <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider mb-2"
             style={{ background: roleBg, color: roleColor, border: `1px solid ${roleColor}` }}>
-            {formatRole(player.role)}
+            {formatRole(player.role, roles)}
           </span>
           <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             Base: <strong style={{ color: 'var(--color-accent)' }}>{formatCurrency(player.basePrice)}</strong>

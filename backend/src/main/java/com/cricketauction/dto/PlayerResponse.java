@@ -1,6 +1,5 @@
 package com.cricketauction.dto;
 
-import com.cricketauction.entity.Player;
 import lombok.Builder;
 import lombok.Data;
 
@@ -9,7 +8,7 @@ import lombok.Data;
 public class PlayerResponse {
     private Long id;
     private String name;
-    private Player.PlayerRole role;
+    private String role;
     private Double basePrice;
     private Double currentBid;
     private String imageUrl;
@@ -23,7 +22,7 @@ public class PlayerResponse {
     private Double statsAverage;
     private String statsLastUpdatedAt;
     private Boolean retained;
-    private Player.PlayerStatus status;
+    private com.cricketauction.entity.Player.PlayerStatus status;
     private Long tournamentId;
     private Long teamId;
     private String teamName;

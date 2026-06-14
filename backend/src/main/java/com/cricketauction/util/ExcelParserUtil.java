@@ -2,6 +2,7 @@ package com.cricketauction.util;
 
 import com.cricketauction.entity.Player;
 import com.cricketauction.entity.Tournament;
+import com.cricketauction.service.PlayerRoleService;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
@@ -15,9 +16,11 @@ import java.util.List;
 public class ExcelParserUtil {
 
     private final GoogleDriveUtil googleDriveUtil;
+    private final PlayerRoleService playerRoleService;
 
-    public ExcelParserUtil(GoogleDriveUtil googleDriveUtil) {
+    public ExcelParserUtil(GoogleDriveUtil googleDriveUtil, PlayerRoleService playerRoleService) {
         this.googleDriveUtil = googleDriveUtil;
+        this.playerRoleService = playerRoleService;
     }
 
     public List<Player> parsePlayersFromExcel(MultipartFile file, Tournament tournament) throws IOException {
@@ -44,7 +47,7 @@ public class ExcelParserUtil {
 
                 if (name == null || name.isBlank()) continue;
 
-                Player.PlayerRole role = parseRole(roleStr);
+                String role = playerRoleService.resolveRole(tournament, roleStr);
 
                 if (basePrice == null || basePrice <= 0) basePrice = 1000.0;
 
@@ -69,22 +72,6 @@ public class ExcelParserUtil {
         }
 
         return players;
-    }
-
-    /**
-     * Robustly parses any variation of role text from the Excel.
-     * Handles: "All Rounder", "AllRounder", "all rounder", "AR", "WK", "WKT", etc.
-     */
-    private Player.PlayerRole parseRole(String raw) {
-        if (raw == null || raw.isBlank()) return Player.PlayerRole.BATSMAN;
-        String s = raw.trim().toUpperCase()
-                .replace(" ", "").replace("-", "").replace("_", "");
-        return switch (s) {
-            case "ALLROUNDER", "ALLROUNDERS", "AR", "ALL" -> Player.PlayerRole.ALL_ROUNDER;
-            case "BOWLER", "BOWLERS", "BOWL", "B" -> Player.PlayerRole.BOWLER;
-            case "WICKETKEEPER", "WICKET", "WK", "WKT", "KEEPER", "WKKEEPER" -> Player.PlayerRole.WICKET_KEEPER;
-            default -> Player.PlayerRole.BATSMAN;
-        };
     }
 
     private boolean isRowEmpty(Row row) {

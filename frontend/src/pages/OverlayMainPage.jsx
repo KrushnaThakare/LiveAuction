@@ -5,17 +5,11 @@ import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { hasPlayerStats, statValue } from '../utils/playerStats';
+import { getRoleShortLabel } from '../utils/formatters';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
-
-const roleLabel = (role) => ({
-  BATSMAN: 'BATSMAN',
-  BOWLER: 'BOWLER',
-  ALL_ROUNDER: 'ALL ROUNDER',
-  WICKET_KEEPER: 'WK',
-}[role] || role || 'ROLE');
 
 function Stat({ icon: Icon, label, value }) {
   return (
@@ -90,7 +84,7 @@ export default function OverlayMainPage() {
           </div>
 
           <div className={styles.statsGrid}>
-            <Stat icon={Shield} label="Role" value={roleLabel(player?.role)} />
+            <Stat icon={Shield} label="Role" value={getRoleShortLabel(player?.role, config?.playerRoles)} />
             <Stat icon={IndianRupee} label="Base Price" value={money(player?.basePrice)} />
             <Stat icon={Calendar} label="Age" value={player?.age || 'Auction Pool'} />
             <Stat icon={Trophy} label="History" value={player?.teamName || player?.stats || 'Fresh pick'} />

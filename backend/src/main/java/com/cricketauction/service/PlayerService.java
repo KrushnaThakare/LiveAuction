@@ -29,6 +29,7 @@ public class PlayerService {
     private final ExcelParserUtil   excelParserUtil;
     private final GoogleDriveUtil   googleDriveUtil;
     private final CricHeroesStatsService cricHeroesStatsService;
+    private final PlayerRoleService playerRoleService;
 
     public PlayerService(PlayerRepository playerRepository,
                          TournamentService tournamentService,
@@ -36,7 +37,8 @@ public class PlayerService {
                          AuditLogService auditLogService,
                          ExcelParserUtil excelParserUtil,
                          GoogleDriveUtil googleDriveUtil,
-                         CricHeroesStatsService cricHeroesStatsService) {
+                         CricHeroesStatsService cricHeroesStatsService,
+                         PlayerRoleService playerRoleService) {
         this.playerRepository  = playerRepository;
         this.tournamentService = tournamentService;
         this.teamRepository    = teamRepository;
@@ -44,6 +46,7 @@ public class PlayerService {
         this.excelParserUtil   = excelParserUtil;
         this.googleDriveUtil   = googleDriveUtil;
         this.cricHeroesStatsService = cricHeroesStatsService;
+        this.playerRoleService = playerRoleService;
     }
 
     public List<PlayerResponse> uploadPlayers(Long tournamentId, MultipartFile file) throws IOException {
@@ -57,7 +60,7 @@ public class PlayerService {
         Tournament tournament = tournamentService.findById(tournamentId);
         Player player = Player.builder()
                 .name(request.getName())
-                .role(request.getRole())
+                .role(playerRoleService.resolveRole(tournament, request.getRole()))
                 .basePrice(request.getBasePrice())
                 .currentBid(0.0)
                 .imageUrl(request.getImageUrl() != null ? googleDriveUtil.convertToDirectLink(request.getImageUrl()) : null)
@@ -96,8 +99,9 @@ public class PlayerService {
 
     public PlayerResponse updatePlayer(Long id, com.cricketauction.dto.PlayerRequest request) {
         Player player = findById(id);
+        Tournament tournament = player.getTournament();
         player.setName(request.getName());
-        player.setRole(request.getRole());
+        player.setRole(playerRoleService.resolveRole(tournament, request.getRole()));
         player.setBasePrice(request.getBasePrice());
         if (request.getImageUrl() != null) {
             player.setImageUrl(googleDriveUtil.convertToDirectLink(request.getImageUrl()));

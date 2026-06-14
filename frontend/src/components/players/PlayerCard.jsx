@@ -1,17 +1,15 @@
-import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../../utils/formatters';
+import { formatCurrency, formatRole, getRoleColor, getRoleBg, getRoleIcon } from '../../utils/formatters';
 import { driveImg } from '../../utils/driveImage';
 import { playerIdLabel } from '../../utils/playerSearch';
 import SequentialImage from '../common/SequentialImage';
 import { Trash2, Edit } from 'lucide-react';
 
-const ROLE_ICONS = { BATSMAN: '🏏', BOWLER: '🎳', ALL_ROUNDER: '⭐', WICKET_KEEPER: '🧤' };
-
 const STATUS_LABELS = { AVAILABLE: 'Available', IN_AUCTION: 'In Auction', SOLD: 'Sold', UNSOLD: 'Unsold' };
 const STATUS_CLASS  = { AVAILABLE: 'badge-available', IN_AUCTION: 'badge-in-auction', SOLD: 'badge-sold', UNSOLD: 'badge-unsold' };
 
-export default function PlayerCard({ player, onStartAuction, onEdit, onDelete }) {
-  const roleColor = getRoleColor(player.role);
-  const roleBg    = getRoleBg(player.role);
+export default function PlayerCard({ player, roles, onStartAuction, onEdit, onDelete }) {
+  const roleColor = getRoleColor(player.role, roles);
+  const roleBg    = getRoleBg(player.role, roles);
   const imgUrl    = driveImg(player.imageUrl);
 
   return (
@@ -91,10 +89,10 @@ export default function PlayerCard({ player, onStartAuction, onEdit, onDelete })
         </div>
 
         <div className="flex items-center gap-1.5 mb-2">
-          <span className="text-xs">{ROLE_ICONS[player.role]}</span>
+          <span className="text-xs">{getRoleIcon(player.role, roles)}</span>
           <span className="text-xs font-bold px-2 py-0.5 rounded-full"
             style={{ background: roleBg, color: roleColor }}>
-            {formatRole(player.role)}
+            {formatRole(player.role, roles)}
           </span>
           {player.retained && (
             <span className="text-xs font-bold px-2 py-0.5 rounded-full"

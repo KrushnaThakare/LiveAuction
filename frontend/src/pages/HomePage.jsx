@@ -9,8 +9,7 @@ import toast from 'react-hot-toast';
 import { Trophy, Plus, Users, ShieldCheck, CheckCircle, XCircle, Edit, Trash2, Upload, Share2 } from 'lucide-react';
 import { resolveUrl } from '../utils/resolveUrl';
 import { useAuth } from '../contexts/AuthContext';
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
+import { DEFAULT_PLAYER_ROLES, FOOTBALL_PLAYER_ROLES, roleConfigToLines, roleLinesToConfig } from '../utils/formatters';
 
 export default function HomePage() {
   const { tournaments, loading, fetchTournaments, selectTournament, activeTournament } = useTournament();
@@ -18,7 +17,7 @@ export default function HomePage() {
 
   const [showCreateModal, setShowCreateModal]   = useState(false);
   const [editingTournament, setEditingTournament] = useState(null);
-  const [editForm, setEditForm]                 = useState({ name: '', description: '' });
+  const [editForm, setEditForm]                 = useState({ name: '', auctionDisplayName: '', sport: 'CRICKET', roleLines: '', description: '' });
   const [editLogoFile, setEditLogoFile]         = useState(null);
   const [editLogoPreview, setEditLogoPreview]   = useState(null);
   const [editSaving, setEditSaving]             = useState(false);
@@ -26,7 +25,13 @@ export default function HomePage() {
   const openEdit = (e, t) => {
     e.stopPropagation();
     setEditingTournament(t);
-    setEditForm({ name: t.name, description: t.description || '' });
+    setEditForm({
+      name: t.name,
+      auctionDisplayName: t.auctionDisplayName || '',
+      sport: t.sport || 'CRICKET',
+      roleLines: roleConfigToLines(t.playerRoles || DEFAULT_PLAYER_ROLES),
+      description: t.description || '',
+    });
     setEditLogoFile(null);
     setEditLogoPreview(resolveUrl(t.logoUrl));
   };
@@ -36,7 +41,13 @@ export default function HomePage() {
     if (!editForm.name.trim()) { toast.error('Name is required'); return; }
     setEditSaving(true);
     try {
-      await tournamentApi.update(editingTournament.id, editForm);
+      await tournamentApi.update(editingTournament.id, {
+        name: editForm.name,
+        auctionDisplayName: editForm.auctionDisplayName,
+        sport: editForm.sport,
+        playerRoles: roleLinesToConfig(editForm.roleLines),
+        description: editForm.description,
+      });
       if (editLogoFile) {
         await tournamentApi.uploadLogo(editingTournament.id, editLogoFile);
       }
@@ -56,6 +67,14 @@ export default function HomePage() {
       toast.success('Tournament deleted');
       fetchTournaments();
     } catch { /* handled */ }
+  };
+
+  const applyEditSport = (sport) => {
+    setEditForm(current => ({
+      ...current,
+      sport,
+      roleLines: roleConfigToLines(sport === 'FOOTBALL' ? FOOTBALL_PLAYER_ROLES : DEFAULT_PLAYER_ROLES),
+    }));
   };
 
   return (
@@ -135,7 +154,6 @@ export default function HomePage() {
                 <button
                   onClick={(e) => openEdit(e, t)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: 'var(--color-surface-2)', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}
                   title="Edit tournament"
                   style={{ display: isSuperAdmin ? undefined : 'none', backgroundColor: 'var(--color-surface-2)', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}
                 >
@@ -190,6 +208,9 @@ export default function HomePage() {
               </div>
 
               <h3 className="text-lg font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>{t.name}</h3>
+              {t.auctionDisplayName && t.auctionDisplayName !== t.name && (
+                <p className="text-xs mb-2 font-semibold" style={{ color: 'var(--color-primary)' }}>{t.auctionDisplayName}</p>
+              )}
               {t.description && (
                 <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>{t.description}</p>
               )}
@@ -246,6 +267,26 @@ export default function HomePage() {
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Name *</label>
             <input className="input" required value={editForm.name}
               onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Auction Display Name</label>
+            <input className="input" value={editForm.auctionDisplayName}
+              placeholder="e.g. Royal Champions Trophy Auction Live"
+              onChange={e => setEditForm(f => ({ ...f, auctionDisplayName: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Sport</label>
+            <select className="input" value={editForm.sport} onChange={e => applyEditSport(e.target.value)}>
+              <option value="CRICKET">Cricket</option>
+              <option value="FOOTBALL">Football</option>
+              <option value="CUSTOM">Custom</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Player Roles</label>
+            <textarea className="input font-mono text-xs" rows={4} value={editForm.roleLines}
+              onChange={e => setEditForm(f => ({ ...f, roleLines: e.target.value, sport: 'CUSTOM' }))} />
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>One per line: KEY|Label|Short Label|Color</p>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Description</label>

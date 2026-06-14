@@ -3,16 +3,10 @@ import { Users } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
+import { getRoleShortLabel } from '../utils/formatters';
 import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
-
-const roleLabel = (role) => ({
-  BATSMAN: 'BAT',
-  BOWLER: 'BOWL',
-  ALL_ROUNDER: 'AR',
-  WICKET_KEEPER: 'WK',
-}[role] || role || 'ROLE');
 
 export default function OverlayTeamListPage() {
   const [params] = useSearchParams();
@@ -46,7 +40,7 @@ export default function OverlayTeamListPage() {
                   {players.length ? players.map(player => (
                     <div key={player.id} className={styles.playerRow}>
                       <span>{player.name}</span>
-                      <span className={styles.roleBadge}>{roleLabel(player.role)}</span>
+                      <span className={styles.roleBadge}>{getRoleShortLabel(player.role, config?.playerRoles)}</span>
                       <span className={styles.rowPrice}>{money(player.currentBid || player.basePrice)}</span>
                     </div>
                   )) : (

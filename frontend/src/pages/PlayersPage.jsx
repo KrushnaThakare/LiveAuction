@@ -9,13 +9,12 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import Modal from '../components/common/Modal';
 import { exportPlayersList } from '../utils/playersExport';
-import { formatRole } from '../utils/formatters';
+import { formatRole, getPlayerRoles, getAuctionDisplayName } from '../utils/formatters';
 import { matchesPlayerIdOrName } from '../utils/playerSearch';
 import { hasCricHeroesProfile, hasPlayerStats, isCricHeroesProfileUrl, statValue } from '../utils/playerStats';
 import toast from 'react-hot-toast';
 import { BarChart3, Users, Upload, Search, Download, X, RefreshCw, Plus } from 'lucide-react';
 
-const ROLES       = ['ALL', 'BATSMAN', 'BOWLER', 'ALL_ROUNDER', 'WICKET_KEEPER'];
 const STATUS_FILTERS = ['ALL', 'AVAILABLE', 'SOLD', 'UNSOLD', 'IN_AUCTION', 'RETAINED'];
 
 export default function PlayersPage() {
@@ -40,6 +39,8 @@ export default function PlayersPage() {
   const [bulkStatsFetching, setBulkStatsFetching] = useState(false);
   const [bulkStatsProgress, setBulkStatsProgress] = useState({ done: 0, total: 0 });
   const [cleaningProfiles, setCleaningProfiles] = useState(false);
+  const playerRoles = getPlayerRoles(activeTournament);
+  const defaultRole = playerRoles[0]?.key || 'BATSMAN';
 
   const fetchPlayers = useCallback(async () => {
     if (!activeTournament) return;
@@ -111,7 +112,7 @@ export default function PlayersPage() {
 
   const openManualAdd = () => {
     setEditingPlayer(null);
-    setEditForm(emptyPlayerForm);
+    setEditForm({ ...emptyPlayerForm, role: defaultRole });
     setShowManualModal(true);
   };
 
@@ -227,7 +228,7 @@ export default function PlayersPage() {
   /* ── export ── */
   const handleExport = () => {
     if (players.length === 0) { toast.error('No players to export'); return; }
-    exportPlayersList(filteredPlayers, activeTournament?.name);
+    exportPlayersList(filteredPlayers, getAuctionDisplayName(activeTournament, activeTournament?.name));
   };
 
   const filteredPlayers = players.filter(p =>
@@ -259,7 +260,7 @@ export default function PlayersPage() {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Players</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{activeTournament.name}</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{getAuctionDisplayName(activeTournament, activeTournament.name)}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {players.length > 0 && (
@@ -322,7 +323,8 @@ export default function PlayersPage() {
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="input w-auto" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-          {ROLES.map(r => <option key={r} value={r}>{r === 'ALL' ? 'All Roles' : r.replace(/_/g, ' ')}</option>)}
+          <option value="ALL">All Roles</option>
+          {playerRoles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
         </select>
         <select className="input w-auto" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           {STATUS_FILTERS.map(s => <option key={s} value={s}>{s === 'ALL' ? 'All Status' : s}</option>)}
@@ -344,7 +346,7 @@ export default function PlayersPage() {
         </span>
         <div className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>
           <strong style={{ color: 'var(--color-accent)' }}>Valid roles:</strong>
-          {' '}Batsman · Bowler · Allrounder / All Rounder / AR · Wicket Keeper / WK
+          {' '}{playerRoles.map(r => r.label).join(' · ')}
           &nbsp;·&nbsp; Hover a player card to Edit or Delete.
           &nbsp;·&nbsp; Images load when you are logged into Google Drive.
         </div>
@@ -369,6 +371,7 @@ export default function PlayersPage() {
             <PlayerCard
               key={player.id}
               player={player}
+              roles={playerRoles}
               onStartAuction={handleStartAuction}
               onEdit={openEdit}
               onDelete={handleDelete}
@@ -393,8 +396,8 @@ export default function PlayersPage() {
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Role *</label>
             <select className="input" value={editForm.role}
               onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
-              {['BATSMAN', 'BOWLER', 'ALL_ROUNDER', 'WICKET_KEEPER'].map(r => (
-                <option key={r} value={r}>{formatRole(r)}</option>
+              {playerRoles.map(r => (
+                <option key={r.key} value={r.key}>{formatRole(r.key, playerRoles)}</option>
               ))}
             </select>
           </div>

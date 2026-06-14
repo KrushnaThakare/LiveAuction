@@ -83,8 +83,6 @@ public class AuctionService {
 
         int idx = ThreadLocalRandom.current().nextInt(available.size());
         Player player = available.get(idx);
-        // reload in case we just updated status
-        player = playerRepository.findById(player.getId()).orElseThrow();
         validatePlayerForAuction(player, tournamentId);
 
         return createAndSaveSession(tournament, player);
@@ -336,8 +334,7 @@ public class AuctionService {
     /* ── history ── */
     @Transactional(readOnly = true)
     public List<AuctionStateResponse> getAuctionHistory(Long tournamentId) {
-        return auctionSessionRepository.findAll().stream()
-                .filter(s -> s.getTournament().getId().equals(tournamentId))
+        return auctionSessionRepository.findByTournamentId(tournamentId).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -398,6 +395,8 @@ public class AuctionService {
     private AuctionStateResponse mapToResponse(AuctionSession session) {
         double current = session.getCurrentBid();
         double next = current + bidRuleService.getIncrement(session.getTournament().getId(), current);
+        Player currentPlayer = resolveSessionPlayer(session);
+        Team highestBidderTeam = resolveSessionTeam(session);
 
         // A session is undoable if it is SOLD or UNSOLD and has undo metadata
         boolean undoable = (session.getStatus() == AuctionSession.AuctionStatus.SOLD
@@ -408,18 +407,31 @@ public class AuctionService {
                 .sessionId(session.getId())
                 .bidRevision(session.getStateRevision() == null ? 0L : session.getStateRevision())
                 .status(session.getStatus())
-                .currentPlayer(session.getCurrentPlayer() != null
-                        ? playerService.mapToResponse(session.getCurrentPlayer()) : null)
+                .currentPlayer(currentPlayer != null ? playerService.mapToResponse(currentPlayer) : null)
                 .currentBid(current)
-                .highestBidderTeamId(session.getHighestBidderTeam() != null
-                        ? session.getHighestBidderTeam().getId() : null)
-                .highestBidderTeamName(session.getHighestBidderTeam() != null
-                        ? session.getHighestBidderTeam().getName() : null)
+                .highestBidderTeamId(highestBidderTeam != null ? highestBidderTeam.getId() : null)
+                .highestBidderTeamName(highestBidderTeam != null ? highestBidderTeam.getName() : null)
                 .nextBidAmount(next)
                 .tournamentId(session.getTournament().getId())
                 .undoable(undoable)
                 .undoSessionId(undoable ? session.getId() : null)
                 .build();
+    }
+
+    private Player resolveSessionPlayer(AuctionSession session) {
+        if (session.getCurrentPlayer() != null) return session.getCurrentPlayer();
+        if (session.getUndoPlayerId() == null) return null;
+        if (session.getStatus() != AuctionSession.AuctionStatus.SOLD
+                && session.getStatus() != AuctionSession.AuctionStatus.UNSOLD) {
+            return null;
+        }
+        return playerRepository.findById(session.getUndoPlayerId()).orElse(null);
+    }
+
+    private Team resolveSessionTeam(AuctionSession session) {
+        if (session.getHighestBidderTeam() != null) return session.getHighestBidderTeam();
+        if (session.getUndoTeamId() == null || session.getStatus() != AuctionSession.AuctionStatus.SOLD) return null;
+        return teamRepository.findById(session.getUndoTeamId()).orElse(null);
     }
 
     private void bumpStateRevision(AuctionSession session) {

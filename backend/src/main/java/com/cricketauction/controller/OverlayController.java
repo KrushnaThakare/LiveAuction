@@ -9,6 +9,7 @@ import com.cricketauction.entity.Tournament;
 import com.cricketauction.exception.AuctionException;
 import com.cricketauction.service.TeamService;
 import com.cricketauction.service.TournamentService;
+import com.cricketauction.service.PlayerRoleService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,11 +22,13 @@ public class OverlayController {
     private final AuctionService auctionService;
     private final TeamService teamService;
     private final TournamentService tournamentService;
+    private final PlayerRoleService playerRoleService;
 
-    public OverlayController(AuctionService auctionService, TeamService teamService, TournamentService tournamentService) {
+    public OverlayController(AuctionService auctionService, TeamService teamService, TournamentService tournamentService, PlayerRoleService playerRoleService) {
         this.auctionService = auctionService;
         this.teamService = teamService;
         this.tournamentService = tournamentService;
+        this.playerRoleService = playerRoleService;
     }
 
     @GetMapping("/{tournamentId}/snapshot")
@@ -51,6 +54,11 @@ public class OverlayController {
                 .overlayShowTeamList(t.getOverlayShowTeamList())
                 .overlayShowTicker(t.getOverlayShowTicker())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
+                .tournamentName(t.getName())
+                .auctionDisplayName(t.getAuctionDisplayName())
+                .logoUrl(t.getLogoUrl())
+                .sport(t.getSport() == null ? "CRICKET" : t.getSport())
+                .playerRoles(playerRoleService.getRoles(t))
                 .build()));
     }
 
