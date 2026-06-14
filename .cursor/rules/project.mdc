@@ -1,0 +1,15 @@
+---
+description: Cricket auction repo conventions
+alwaysApply: true
+---
+
+# Cricket Auction repo rules
+
+- Prefer targeted context: mention the relevant controller/service/API/page instead of broad directories.
+- Keep changes small and aligned with existing Java, JSX, and Tailwind styles.
+- Frontend is JavaScript/JSX, not TypeScript.
+- Backend business logic belongs in services; controllers should mainly handle HTTP boundaries.
+- Preserve tournament scoping and role boundaries when editing APIs.
+- Treat overlay/display/public registration routes as intentionally public unless the task says otherwise.
+- Use `npm run lint` / `npm run build` in `frontend/` and `mvn test` in `backend/` for affected changes.
+- Avoid reading ignored dependency/build artifacts unless the task is specifically about dependencies or generated output.
