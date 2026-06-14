@@ -11,16 +11,20 @@ import com.cricketauction.repository.PlayerRepository;
 import com.cricketauction.repository.TeamRepository;
 import com.cricketauction.util.ExcelParserUtil;
 import com.cricketauction.util.GoogleDriveUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @Transactional
 public class PlayerService {
+    private static final Logger log = LoggerFactory.getLogger(PlayerService.class);
 
     private final PlayerRepository  playerRepository;
     private final TournamentService tournamentService;
@@ -70,6 +74,7 @@ public class PlayerService {
                 .retained(Boolean.TRUE.equals(request.getRetained()))
                 .tournament(tournament)
                 .build();
+        applyManualStats(player, request);
         applyRetainedAssignment(player, request.getTeamId());
         player = playerRepository.save(player);
         auditLogService.record("PLAYER_CREATED", "Player", player.getId(), tournamentId,
@@ -108,6 +113,7 @@ public class PlayerService {
         }
         player.setCricheroesProfileUrl(ExcelParserUtil.normalizeCricHeroesProfileUrl(request.getCricheroesProfileUrl()));
         player.setCricheroesPlayerId(ExcelParserUtil.extractCricHeroesPlayerId(request.getCricheroesProfileUrl()));
+        applyManualStats(player, request);
         if (request.getRetained() != null) {
             clearRetainedBudget(player);
             player.setRetained(Boolean.TRUE.equals(request.getRetained()));
@@ -130,8 +136,18 @@ public class PlayerService {
             return mapToResponse(player);
         } catch (IOException e) {
             if (cricHeroesStatsService.isTimeout(e)) {
+                log.warn("CricHeroes stats fetch timed out. playerId={} url={}", player.getId(), player.getCricheroesProfileUrl());
                 throw new AuctionException("CricHeroes is not reachable from backend right now. Please retry later or fetch stats outside live auction.");
             }
+            if (e instanceof CricHeroesStatsService.CricHeroesBlockedException) {
+                log.warn("CricHeroes blocked backend stats fetch. playerId={} tournamentId={} url={}",
+                        player.getId(),
+                        player.getTournament() != null ? player.getTournament().getId() : null,
+                        player.getCricheroesProfileUrl());
+                throw new AuctionException(e.getMessage());
+            }
+            log.warn("CricHeroes stats fetch failed. playerId={} url={} error={}",
+                    player.getId(), player.getCricheroesProfileUrl(), e.getMessage());
             throw new AuctionException("Failed to fetch CricHeroes stats: " + e.getMessage());
         } catch (IllegalStateException e) {
             throw new AuctionException("Failed to fetch CricHeroes stats: " + e.getMessage());
@@ -237,6 +253,37 @@ public class PlayerService {
         player.setTeam(null);
         player.setStatus(Player.PlayerStatus.AVAILABLE);
         player.setCurrentBid(0.0);
+    }
+
+    private void applyManualStats(Player player, PlayerRequest request) {
+        boolean changed = false;
+        if (request.getStatsMatches() != null) {
+            player.setStatsMatches(request.getStatsMatches());
+            changed = true;
+        }
+        if (request.getStatsRuns() != null) {
+            player.setStatsRuns(request.getStatsRuns());
+            changed = true;
+        }
+        if (request.getStatsStrikeRate() != null) {
+            player.setStatsStrikeRate(request.getStatsStrikeRate());
+            changed = true;
+        }
+        if (request.getStatsWickets() != null) {
+            player.setStatsWickets(request.getStatsWickets());
+            changed = true;
+        }
+        if (request.getStatsEconomy() != null) {
+            player.setStatsEconomy(request.getStatsEconomy());
+            changed = true;
+        }
+        if (request.getStatsAverage() != null) {
+            player.setStatsAverage(request.getStatsAverage());
+            changed = true;
+        }
+        if (changed) {
+            player.setStatsLastUpdatedAt(LocalDateTime.now());
+        }
     }
 
     private String blankToNull(String value) {

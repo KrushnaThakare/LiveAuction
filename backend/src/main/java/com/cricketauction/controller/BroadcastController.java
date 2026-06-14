@@ -3,6 +3,7 @@ package com.cricketauction.controller;
 import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.dto.BroadcastSettingsDto;
 import com.cricketauction.entity.Tournament;
+import com.cricketauction.service.OverlayPushService;
 import com.cricketauction.service.TournamentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,9 +12,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/tournaments/{tournamentId}/broadcast")
 public class BroadcastController {
     private final TournamentService tournamentService;
+    private final OverlayPushService overlayPushService;
 
-    public BroadcastController(TournamentService tournamentService) {
+    public BroadcastController(TournamentService tournamentService, OverlayPushService overlayPushService) {
         this.tournamentService = tournamentService;
+        this.overlayPushService = overlayPushService;
     }
 
     @GetMapping("/settings")
@@ -25,6 +28,7 @@ public class BroadcastController {
     @PutMapping("/settings")
     public ResponseEntity<ApiResponse<BroadcastSettingsDto>> put(@PathVariable Long tournamentId, @RequestBody BroadcastSettingsDto d) {
         Tournament t = tournamentService.findById(tournamentId);
+        boolean wasEnabled = Boolean.TRUE.equals(t.getOverlayEnabled());
         if (d.getOverlayEnabled() != null) t.setOverlayEnabled(d.getOverlayEnabled());
         if (d.getOverlayTheme() != null) t.setOverlayTheme(d.getOverlayTheme());
         if (d.getOverlayShowTeamBudget() != null) t.setOverlayShowTeamBudget(d.getOverlayShowTeamBudget());
@@ -37,6 +41,9 @@ public class BroadcastController {
         if (Boolean.FALSE.equals(d.getTokenEnabled())) t.setOverlaySecretToken(null);
         if (d.getOverlaySecretToken() != null) t.setOverlaySecretToken(d.getOverlaySecretToken().isBlank() ? null : d.getOverlaySecretToken());
         tournamentService.saveTournament(t);
+        if (wasEnabled && Boolean.FALSE.equals(t.getOverlayEnabled())) {
+            overlayPushService.pushBroadcastDisabled(tournamentId);
+        }
         return ResponseEntity.ok(ApiResponse.success("Broadcast settings updated", map(t, true)));
     }
 

@@ -92,6 +92,19 @@ export default function PublicViewPage() {
     </div>
   );
 
+  if (config?.overlayEnabled === false) return (
+    <div className="min-h-screen flex items-center justify-center px-6"
+      style={{ background: 'var(--color-background)', color: 'var(--color-text-primary)' }}>
+      <div className="card max-w-md text-center">
+        <Wifi size={42} className="mx-auto mb-4" style={{ color: 'var(--color-text-secondary)' }} />
+        <h1 className="text-xl font-black mb-2">Broadcast currently disabled by Admin</h1>
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          The auction desk can continue running normally. Please wait for the admin to enable broadcaster mode again.
+        </p>
+      </div>
+    </div>
+  );
+
   const tournament = {
     name: config?.tournamentName,
     auctionDisplayName: config?.auctionDisplayName,

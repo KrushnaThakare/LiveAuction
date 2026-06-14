@@ -32,7 +32,21 @@ export default function PlayersPage() {
   // Edit modal
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [showManualModal, setShowManualModal] = useState(false);
-  const emptyPlayerForm = { name: '', role: 'BATSMAN', basePrice: '', imageUrl: '', cricheroesProfileUrl: '', retained: false, teamId: '' };
+  const emptyPlayerForm = {
+    name: '',
+    role: 'BATSMAN',
+    basePrice: '',
+    imageUrl: '',
+    cricheroesProfileUrl: '',
+    statsMatches: '',
+    statsRuns: '',
+    statsStrikeRate: '',
+    statsWickets: '',
+    statsEconomy: '',
+    statsAverage: '',
+    retained: false,
+    teamId: '',
+  };
   const [editForm, setEditForm]           = useState(emptyPlayerForm);
   const [editSaving, setEditSaving]       = useState(false);
   const [statsFetching, setStatsFetching] = useState(false);
@@ -105,6 +119,12 @@ export default function PlayersPage() {
       basePrice: player.basePrice,
       imageUrl:  player.imageUrl || '',
       cricheroesProfileUrl: player.cricheroesProfileUrl || '',
+      statsMatches: player.statsMatches ?? '',
+      statsRuns: player.statsRuns ?? '',
+      statsStrikeRate: player.statsStrikeRate ?? '',
+      statsWickets: player.statsWickets ?? '',
+      statsEconomy: player.statsEconomy ?? '',
+      statsAverage: player.statsAverage ?? '',
       retained:  Boolean(player.retained),
       teamId:    player.teamId || '',
     });
@@ -117,20 +137,30 @@ export default function PlayersPage() {
   };
 
   /* ── save edit ── */
+  const numberOrNull = (value) => value === '' || value === null || value === undefined ? null : Number(value);
+
+  const buildPlayerPayload = () => ({
+    name:      editForm.name,
+    role:      editForm.role,
+    basePrice: parseFloat(editForm.basePrice),
+    imageUrl:  editForm.imageUrl,
+    cricheroesProfileUrl: editForm.cricheroesProfileUrl,
+    statsMatches: numberOrNull(editForm.statsMatches),
+    statsRuns: numberOrNull(editForm.statsRuns),
+    statsStrikeRate: numberOrNull(editForm.statsStrikeRate),
+    statsWickets: numberOrNull(editForm.statsWickets),
+    statsEconomy: numberOrNull(editForm.statsEconomy),
+    statsAverage: numberOrNull(editForm.statsAverage),
+    retained:  Boolean(editForm.retained),
+    teamId:    editForm.retained && editForm.teamId ? Number(editForm.teamId) : null,
+  });
+
   const handleEditSave = async (e) => {
     e.preventDefault();
     const isEdit = Boolean(editingPlayer);
     setEditSaving(true);
     try {
-      const payload = {
-        name:      editForm.name,
-        role:      editForm.role,
-        basePrice: parseFloat(editForm.basePrice),
-        imageUrl:  editForm.imageUrl,
-        cricheroesProfileUrl: editForm.cricheroesProfileUrl,
-        retained:  Boolean(editForm.retained),
-        teamId:    editForm.retained && editForm.teamId ? Number(editForm.teamId) : null,
-      };
+      const payload = buildPlayerPayload();
       const res = isEdit
         ? await playerApi.update(activeTournament.id, editingPlayer.id, payload)
         : await playerApi.create(activeTournament.id, payload);
@@ -155,15 +185,7 @@ export default function PlayersPage() {
     try {
       let playerForFetch = editingPlayer;
       if ((editForm.cricheroesProfileUrl || '') !== (editingPlayer.cricheroesProfileUrl || '')) {
-        const payload = {
-          name:      editForm.name,
-          role:      editForm.role,
-          basePrice: parseFloat(editForm.basePrice),
-          imageUrl:  editForm.imageUrl,
-          cricheroesProfileUrl: editForm.cricheroesProfileUrl,
-          retained:  Boolean(editForm.retained),
-          teamId:    editForm.retained && editForm.teamId ? Number(editForm.teamId) : null,
-        };
+        const payload = buildPlayerPayload();
         const saved = await playerApi.update(activeTournament.id, editingPlayer.id, payload);
         playerForFetch = saved.data.data;
       }
@@ -190,6 +212,7 @@ export default function PlayersPage() {
     setBulkStatsProgress({ done: 0, total: candidates.length });
     let successCount = 0;
     let failedCount = 0;
+    let blockedByCricHeroes = false;
 
     try {
       for (const player of candidates) {
@@ -198,14 +221,24 @@ export default function PlayersPage() {
           const updated = res.data.data;
           setPlayers(prev => prev.map(x => x.id === player.id ? updated : x));
           successCount += 1;
-        } catch {
+        } catch (error) {
           failedCount += 1;
+          const message = error.response?.data?.message || '';
+          if (message.includes('CricHeroes blocked this backend request') || message.includes('status 403')) {
+            blockedByCricHeroes = true;
+            break;
+          }
         } finally {
           setBulkStatsProgress(progress => ({ ...progress, done: progress.done + 1 }));
         }
+        await new Promise(resolve => setTimeout(resolve, 1200));
       }
       if (successCount > 0) toast.success(`Fetched stats for ${successCount} player${successCount === 1 ? '' : 's'}`);
-      if (failedCount > 0) toast.error(`${failedCount} player${failedCount === 1 ? '' : 's'} failed. CricHeroes may be slow or blocking server requests.`);
+      if (blockedByCricHeroes) {
+        toast.error('CricHeroes is blocking backend fetches right now. Bulk fetch stopped; enter cached stats manually or retry later.');
+      } else if (failedCount > 0) {
+        toast.error(`${failedCount} player${failedCount === 1 ? '' : 's'} failed. CricHeroes may be slow or blocking server requests.`);
+      }
     } finally {
       setBulkStatsFetching(false);
     }
@@ -460,6 +493,31 @@ export default function PlayersPage() {
                   ))}
                 </div>
               )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+                {[
+                  ['statsMatches', 'Matches', '1'],
+                  ['statsRuns', 'Runs', '1'],
+                  ['statsStrikeRate', 'Strike Rate', '0.01'],
+                  ['statsWickets', 'Wickets', '1'],
+                  ['statsEconomy', 'Economy', '0.01'],
+                  ['statsAverage', 'Average', '0.01'],
+                ].map(([key, label, step]) => (
+                  <label key={key} className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                    {label}
+                    <input
+                      type="number"
+                      className="input mt-1 !py-1.5 text-sm"
+                      step={step}
+                      min="0"
+                      value={editForm[key]}
+                      onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+                    />
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs mt-2" style={{ color: 'var(--color-text-secondary)' }}>
+                If CricHeroes blocks backend fetching with 403, enter stats manually and save. These cached values are used by broadcaster overlays.
+              </p>
             </div>
           )}
           <label className="flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer"

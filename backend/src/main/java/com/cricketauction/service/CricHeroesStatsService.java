@@ -1,6 +1,8 @@
 package com.cricketauction.service;
 
 import com.cricketauction.entity.Player;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -12,12 +14,15 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
 public class CricHeroesStatsService {
+    private static final Logger log = LoggerFactory.getLogger(CricHeroesStatsService.class);
+
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(8))
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -42,29 +47,58 @@ public class CricHeroesStatsService {
     }
 
     private String fetchProfileHtml(String profileUrl) throws IOException, InterruptedException {
-        try {
-            return fetch(firstStatsUrl(profileUrl));
-        } catch (CricHeroesStatusException ex) {
-            if (ex.statusCode() == 403 || ex.statusCode() == 404) {
-                return fetch(normalizeUrl(profileUrl));
+        List<String> candidates = List.of(
+                firstStatsUrl(profileUrl),
+                normalizeUrl(profileUrl),
+                normalizeUrl(profileUrl).replaceAll("/+$", "") + "/profile"
+        );
+        CricHeroesStatusException lastStatus = null;
+        boolean blocked = false;
+
+        for (String candidate : candidates) {
+            try {
+                return fetch(candidate);
+            } catch (CricHeroesStatusException ex) {
+                lastStatus = ex;
+                if (ex.statusCode() == 403) {
+                    blocked = true;
+                    log.warn("CricHeroes blocked stats fetch with HTTP 403. url={} snippet={}", ex.url(), ex.bodySnippet());
+                    continue;
+                }
+                if (ex.statusCode() == 404) {
+                    log.info("CricHeroes stats candidate was not found. url={}", ex.url());
+                    continue;
+                }
+                throw ex;
             }
-            throw ex;
         }
+
+        if (blocked) {
+            throw new CricHeroesBlockedException();
+        }
+        if (lastStatus != null) throw lastStatus;
+        throw new IOException("CricHeroes stats page could not be fetched");
     }
 
     private String fetch(String url) throws IOException, InterruptedException {
         URI uri = validatedProfileUri(url);
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .timeout(Duration.ofSeconds(12))
-                .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36")
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                .header("Accept-Language", "en-US,en;q=0.9")
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+                .header("Accept-Language", "en-IN,en-US;q=0.9,en;q=0.8")
+                .header("Referer", "https://cricheroes.com/")
+                .header("Upgrade-Insecure-Requests", "1")
+                .header("Sec-Fetch-Dest", "document")
+                .header("Sec-Fetch-Mode", "navigate")
+                .header("Sec-Fetch-Site", "same-origin")
+                .header("Sec-Fetch-User", "?1")
                 .header("Cache-Control", "no-cache")
                 .GET()
                 .build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new CricHeroesStatusException(response.statusCode());
+            throw new CricHeroesStatusException(response.statusCode(), uri.toString(), snippet(response.body()));
         }
         return response.body();
     }
@@ -94,14 +128,32 @@ public class CricHeroesStatsService {
 
     public static class CricHeroesStatusException extends IOException {
         private final int statusCode;
+        private final String url;
+        private final String bodySnippet;
 
-        public CricHeroesStatusException(int statusCode) {
+        public CricHeroesStatusException(int statusCode, String url, String bodySnippet) {
             super("CricHeroes returned status " + statusCode);
             this.statusCode = statusCode;
+            this.url = url;
+            this.bodySnippet = bodySnippet;
         }
 
         public int statusCode() {
             return statusCode;
+        }
+
+        public String url() {
+            return url;
+        }
+
+        public String bodySnippet() {
+            return bodySnippet;
+        }
+    }
+
+    public static class CricHeroesBlockedException extends IOException {
+        public CricHeroesBlockedException() {
+            super("CricHeroes blocked this backend request with HTTP 403. This is server-side bot/IP protection, not an invalid profile URL. Use cached/manual stats or try again later from a trusted network.");
         }
     }
 
@@ -125,6 +177,12 @@ public class CricHeroesStatsService {
                 .replace("&amp;", "&")
                 .replaceAll("\\s+", " ")
                 .trim();
+    }
+
+    private String snippet(String body) {
+        if (body == null || body.isBlank()) return "";
+        String clean = body.replaceAll("\\s+", " ").trim();
+        return clean.substring(0, Math.min(180, clean.length()));
     }
 
     private Optional<Integer> parseInteger(String text, String label) {
