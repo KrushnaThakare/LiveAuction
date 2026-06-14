@@ -51,8 +51,14 @@ public class OverlayController {
     @GetMapping("/{tournamentId}/config")
     public ResponseEntity<ApiResponse<BroadcastSettingsDto>> config(@PathVariable Long tournamentId, @RequestParam(value = "token", required = false) String token) {
         Tournament t = tournamentService.findById(tournamentId);
-        validateOverlayAccess(t, token);
-        return ResponseEntity.ok(ApiResponse.success(BroadcastSettingsDto.builder()
+        if (Boolean.TRUE.equals(t.getOverlayEnabled())) {
+            validateOverlayAccess(t, token);
+        }
+        return ResponseEntity.ok(ApiResponse.success(mapConfig(t)));
+    }
+
+    private BroadcastSettingsDto mapConfig(Tournament t) {
+        return BroadcastSettingsDto.builder()
                 .overlayEnabled(t.getOverlayEnabled())
                 .overlayTheme(t.getOverlayTheme())
                 .overlayShowTeamBudget(t.getOverlayShowTeamBudget())
@@ -66,11 +72,13 @@ public class OverlayController {
                 .logoUrl(t.getLogoUrl())
                 .sport(t.getSport() == null ? "CRICKET" : t.getSport())
                 .playerRoles(playerRoleService.getRoles(t))
-                .build()));
+                .build();
     }
 
     private void validateOverlayAccess(Tournament t, String token) {
-        if (!Boolean.TRUE.equals(t.getOverlayEnabled())) throw new AuctionException("Overlay is disabled");
+        if (!Boolean.TRUE.equals(t.getOverlayEnabled())) {
+            throw new AuctionException("Broadcast currently disabled by Admin");
+        }
         String secret = t.getOverlaySecretToken();
         if (secret != null && !secret.isBlank() && (token == null || !secret.equals(token))) {
             throw new AuctionException("Invalid overlay token");

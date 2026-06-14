@@ -21,6 +21,13 @@ public class PlayerRequest {
 
     private String cricheroesProfileUrl;
 
+    private Integer statsMatches;
+    private Integer statsRuns;
+    private Double statsStrikeRate;
+    private Integer statsWickets;
+    private Double statsEconomy;
+    private Double statsAverage;
+
     private Boolean retained;
 
     private Long teamId;

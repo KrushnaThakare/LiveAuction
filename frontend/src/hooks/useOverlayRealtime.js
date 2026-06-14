@@ -126,21 +126,27 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
     };
 
     const loadInitial = async () => {
-      const [snapshotRes, configRes] = await Promise.all([
-        overlayApi.getSnapshot(tournamentId, token, { includePlayers }),
-        overlayApi.getConfig(tournamentId, token),
-      ]);
+      const configRes = await overlayApi.getConfig(tournamentId, token);
       if (!stopped) {
-        mergeSnapshot(snapshotRes.data.data, 'initial-snapshot');
         setConfig(configRes.data.data);
       }
+      if (configRes.data.data?.overlayEnabled === false) {
+        return false;
+      }
+      const snapshotRes = await overlayApi.getSnapshot(tournamentId, token, { includePlayers });
+      if (!stopped) {
+        mergeSnapshot(snapshotRes.data.data, 'initial-snapshot');
+      }
+      return true;
     };
 
     const connect = async () => {
       try {
-        await loadInitial();
+        const shouldConnect = await loadInitial();
+        if (!shouldConnect || stopped) return;
       } catch (e) {
         if (!stopped) setError(e);
+        return;
       }
 
       clearInterval(snapshotTimer);
@@ -176,7 +182,20 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
           }
           if (frame.command === 'MESSAGE' && frame.body) {
             try {
-              mergeSnapshot(JSON.parse(frame.body), 'websocket');
+              const payload = JSON.parse(frame.body);
+              if (payload?.broadcastDisabled) {
+                setConfig(current => ({ ...(current || {}), overlayEnabled: false }));
+                setConnected(false);
+                connectedRef.current = false;
+                stopped = true;
+                clearInterval(snapshotTimer);
+                clearTimeout(reconnectTimer);
+                try {
+                  ws.close();
+                } catch { /* already closing */ }
+                continue;
+              }
+              mergeSnapshot(payload, 'websocket');
             } catch (e) {
               setError(e);
             }
