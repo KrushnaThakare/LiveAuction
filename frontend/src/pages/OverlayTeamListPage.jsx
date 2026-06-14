@@ -12,7 +12,7 @@ export default function OverlayTeamListPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const { data, config } = useOverlayRealtime(tid, token);
+  const { data, config } = useOverlayRealtime(tid, token, { includePlayers: true });
   const teams = data?.teams || [];
 
   if (config && config.overlayShowTeamList === false) return null;

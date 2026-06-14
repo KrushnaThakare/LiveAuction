@@ -71,6 +71,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*/auction/state").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*/teams").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/tournaments/*/teams/summary").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*/players").permitAll()
 
                 .requestMatchers(HttpMethod.GET, "/api/tournaments/*/broadcast/settings").hasAnyRole("OPERATOR","SUPER_ADMIN")

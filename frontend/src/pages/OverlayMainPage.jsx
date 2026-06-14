@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Calendar, IndianRupee, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
+import { useTimedPlayerStatsOverlay } from '../hooks/useTimedPlayerStatsOverlay';
 import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
@@ -66,13 +67,19 @@ export default function OverlayMainPage() {
   const status = auction?.status || 'IDLE';
   const isSold = status === 'SOLD';
   const isUnsold = status === 'UNSOLD';
+  const showStatsIntro = useTimedPlayerStatsOverlay(
+    player,
+    auction?.sessionId,
+    config?.overlayShowPlayerStatsIntro !== false,
+    config?.overlayPlayerStatsIntroMs || 5500
+  );
 
   if (config && config.overlayEnabled === false) return null;
 
   return (
     <div className={styles.stage}>
       <OverlayFullscreenButton />
-      <PlayerStatsOverlay player={player} />
+      {showStatsIntro && <PlayerStatsOverlay player={player} />}
       <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
         <div className={styles.infoStack}>
           <div className={`${styles.glassCard} ${styles.playerNameCard}`}>
