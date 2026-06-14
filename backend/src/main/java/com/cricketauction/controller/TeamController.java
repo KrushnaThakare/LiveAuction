@@ -50,6 +50,11 @@ public class TeamController {
         return ResponseEntity.ok(ApiResponse.success(teamService.getTeamsByTournament(tournamentId)));
     }
 
+    @GetMapping("/summary")
+    public ResponseEntity<ApiResponse<List<TeamResponse>>> getTeamSummaries(@PathVariable Long tournamentId) {
+        return ResponseEntity.ok(ApiResponse.success(teamService.getTeamSummariesByTournament(tournamentId)));
+    }
+
     @GetMapping("/{teamId}")
     public ResponseEntity<ApiResponse<TeamResponse>> getTeamById(
             @PathVariable Long tournamentId, @PathVariable Long teamId) {

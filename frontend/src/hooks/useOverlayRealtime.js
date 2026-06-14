@@ -38,6 +38,20 @@ function parseStompFrames(raw) {
     });
 }
 
+function mergeTeams(currentTeams = [], incomingTeams = []) {
+  if (!Array.isArray(incomingTeams)) return currentTeams;
+  const currentById = new Map(currentTeams.map(team => [String(team.id), team]));
+  return incomingTeams.map(team => {
+    const existing = currentById.get(String(team.id));
+    if (!existing) return team;
+    return {
+      ...existing,
+      ...team,
+      players: Array.isArray(team.players) ? team.players : existing.players,
+    };
+  });
+}
+
 export function useOverlayRealtime(tournamentId, token) {
   const [data, setData] = useState(null);
   const [config, setConfig] = useState(null);
@@ -79,7 +93,7 @@ export function useOverlayRealtime(tournamentId, token) {
         const currentAuction = current?.auction;
         if (isOlderAuctionUpdate(currentAuction, incomingAuction)) {
           logUpdate(source, incomingAuction, 'reject-stale');
-          return snapshot ? { ...snapshot, auction: currentAuction } : current;
+          return snapshot ? { ...snapshot, auction: currentAuction, teams: mergeTeams(current?.teams, snapshot.teams) } : current;
         }
         if (
           fresh &&
@@ -93,13 +107,18 @@ export function useOverlayRealtime(tournamentId, token) {
           return {
             ...snapshot,
             auction: fresh.auction,
+            teams: mergeTeams(current?.teams, snapshot.teams),
           };
         }
         if (fresh && Number(incomingAuction?.currentBid) === Number(fresh.auction?.currentBid)) {
           freshLocalAuctionRef.current = null;
         }
         logUpdate(source, incomingAuction);
-        return snapshot || current;
+        if (!snapshot) return current;
+        return {
+          ...snapshot,
+          teams: mergeTeams(current?.teams, snapshot.teams),
+        };
       });
     };
 
@@ -130,7 +149,7 @@ export function useOverlayRealtime(tournamentId, token) {
         } catch (e) {
           if (!stopped) setError(e);
         }
-      }, 900);
+      }, 3000);
 
       if (stopped) return;
       ws = new WebSocket(`${WS_BASE}/ws-overlay-native`);

@@ -6,10 +6,13 @@ import com.cricketauction.entity.Team;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.exception.ResourceNotFoundException;
 import com.cricketauction.repository.TeamRepository;
+import com.cricketauction.repository.PlayerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -18,13 +21,16 @@ public class TeamService {
     private final TeamRepository teamRepository;
     private final TournamentService tournamentService;
     private final PlayerService playerService;
+    private final PlayerRepository playerRepository;
 
     public TeamService(TeamRepository teamRepository,
                        TournamentService tournamentService,
-                       PlayerService playerService) {
+                       PlayerService playerService,
+                       PlayerRepository playerRepository) {
         this.teamRepository = teamRepository;
         this.tournamentService = tournamentService;
         this.playerService = playerService;
+        this.playerRepository = playerRepository;
     }
 
     public TeamResponse createTeam(Long tournamentId, TeamRequest request) {
@@ -50,6 +56,18 @@ public class TeamService {
     public List<TeamResponse> getTeamsByTournament(Long tournamentId) {
         return teamRepository.findByTournamentId(tournamentId).stream()
                 .map(t -> mapToResponse(t, true))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TeamResponse> getTeamSummariesByTournament(Long tournamentId) {
+        Map<Long, Integer> playerCounts = playerRepository.countPlayersByTeamForTournament(tournamentId)
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> ((Number) row[1]).intValue()));
+        return teamRepository.findByTournamentId(tournamentId).stream()
+                .map(team -> mapSummary(team, playerCounts.getOrDefault(team.getId(), 0)))
                 .toList();
     }
 
@@ -97,5 +115,17 @@ public class TeamService {
         }
 
         return builder.build();
+    }
+
+    private TeamResponse mapSummary(Team team, int playerCount) {
+        return TeamResponse.builder()
+                .id(team.getId())
+                .name(team.getName())
+                .logoUrl(team.getLogoUrl())
+                .budget(team.getBudget())
+                .remainingBudget(team.getRemainingBudget())
+                .playerCount(playerCount)
+                .tournamentId(team.getTournament().getId())
+                .build();
     }
 }

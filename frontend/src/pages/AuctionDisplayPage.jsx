@@ -5,17 +5,11 @@ import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { hasPlayerStats, statValue } from '../utils/playerStats';
+import { getAuctionDisplayName, getRoleShortLabel } from '../utils/formatters';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
-
-const roleLabel = (role) => ({
-  BATSMAN: 'BAT',
-  BOWLER: 'BOWL',
-  ALL_ROUNDER: 'AR',
-  WICKET_KEEPER: 'WK',
-}[role] || role || 'ROLE');
 
 function PlayerStatsPanel({ player }) {
   if (!hasPlayerStats(player)) return null;
@@ -48,9 +42,9 @@ export default function AuctionDisplayPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const title = params.get('title') || 'Royal Champions Trophy Auction Live';
   const sponsor = params.get('sponsor') || 'Premium Auction Arena';
-  const { data, connected } = useOverlayRealtime(tid, token);
+  const { data, config, connected } = useOverlayRealtime(tid, token);
+  const title = params.get('title') || getAuctionDisplayName(config, 'Auction Live');
   const auction = data?.auction;
   const player = auction?.currentPlayer;
   const teams = data?.teams || [];
@@ -84,7 +78,7 @@ export default function AuctionDisplayPage() {
               </div>
               <div className={`${styles.glass} ${styles.detailCard}`}>
                 <div className={styles.label}>Role</div>
-                <div className={styles.value}>{roleLabel(player?.role)}</div>
+                <div className={styles.value}>{getRoleShortLabel(player?.role, config?.playerRoles)}</div>
               </div>
               <div className={`${styles.glass} ${styles.detailCard}`}>
                 <div className={styles.label}>Base Price</div>

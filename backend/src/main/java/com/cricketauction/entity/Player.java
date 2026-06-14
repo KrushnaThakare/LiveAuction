@@ -23,9 +23,8 @@ public class Player {
     @Column(nullable = false)
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PlayerRole role;
+    @Column(nullable = false, length = 50)
+    private String role;
 
     @Column(name = "base_price", nullable = false)
     private Double basePrice;
@@ -90,10 +89,6 @@ public class Player {
         if (currentBid == null) currentBid = 0.0;
         if (status == null) status = PlayerStatus.AVAILABLE;
         if (retained == null) retained = false;
-    }
-
-    public enum PlayerRole {
-        BATSMAN, BOWLER, ALL_ROUNDER, WICKET_KEEPER
     }
 
     public enum PlayerStatus {

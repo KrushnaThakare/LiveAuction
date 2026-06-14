@@ -9,6 +9,7 @@ import com.cricketauction.exception.AuctionException;
 import com.cricketauction.exception.ResourceNotFoundException;
 import com.cricketauction.repository.PlayerRegistrationRepository;
 import com.cricketauction.repository.PlayerRepository;
+import com.cricketauction.repository.FormFieldRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -36,17 +37,23 @@ public class PlayerRegistrationService {
     private final TournamentService tournamentService;
     private final FileStorageService fileStorage;
     private final RegistrationSheetSyncService sheetSyncService;
+    private final FormFieldRepository formFieldRepository;
+    private final PlayerRoleService playerRoleService;
 
     public PlayerRegistrationService(PlayerRegistrationRepository regRepo,
                                      PlayerRepository playerRepo,
                                      TournamentService tournamentService,
                                      FileStorageService fileStorage,
-                                     RegistrationSheetSyncService sheetSyncService) {
+                                     RegistrationSheetSyncService sheetSyncService,
+                                     FormFieldRepository formFieldRepository,
+                                     PlayerRoleService playerRoleService) {
         this.regRepo = regRepo;
         this.playerRepo = playerRepo;
         this.tournamentService = tournamentService;
         this.fileStorage = fileStorage;
         this.sheetSyncService = sheetSyncService;
+        this.formFieldRepository = formFieldRepository;
+        this.playerRoleService = playerRoleService;
     }
 
     public RegistrationResponse submit(Long tournamentId, String formData,
@@ -151,36 +158,28 @@ public class PlayerRegistrationService {
         return mapToResponse(saved);
     }
 
-    /** Import a single registration as an auction player.
-     *  Role is read from formData if a field mapped to 'role' exists; otherwise BATSMAN. */
+    /** Import a single registration as an auction player. */
     public PlayerResponse importToAuction(Long registrationId, String roleOverride, Double basePrice) {
         PlayerRegistration reg = regRepo.findById(registrationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Registration", registrationId));
 
-        // Try to read role from the submitted form data
         String roleStr = roleOverride;
         if ((roleStr == null || roleStr.isBlank()) && reg.getFormData() != null) {
             try {
                 com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
-                java.util.Map<?,?> data = om.readValue(reg.getFormData(), java.util.Map.class);
-                // Look for a field value that is a known role string
-                for (Object v : data.values()) {
-                    if (v instanceof String s) {
-                        String up = s.toUpperCase().replace(" ", "_").replace("-", "_");
-                        try { Player.PlayerRole.valueOf(up); roleStr = s; break; }
-                        catch (Exception ignored) {}
-                    }
-                }
+                java.util.Map<?, ?> data = om.readValue(reg.getFormData(), java.util.Map.class);
+                roleStr = formFieldRepository.findByTournamentIdOrderByPositionAsc(reg.getTournament().getId())
+                        .stream()
+                        .filter(field -> "role".equalsIgnoreCase(field.getMapsToPlayerField()))
+                        .map(field -> data.get(field.getFieldKey()))
+                        .filter(String.class::isInstance)
+                        .map(String.class::cast)
+                        .findFirst()
+                        .orElse(null);
             } catch (Exception ignored) {}
         }
 
-        Player.PlayerRole playerRole;
-        try {
-            playerRole = Player.PlayerRole.valueOf(
-                    roleStr.toUpperCase().replace(" ", "_").replace("-", "_"));
-        } catch (Exception e) {
-            playerRole = Player.PlayerRole.BATSMAN;
-        }
+        String playerRole = playerRoleService.resolveRole(reg.getTournament(), roleStr);
 
         Player player = Player.builder()
                 .name(reg.getPlayerName() != null ? reg.getPlayerName() : "Unknown")
@@ -211,7 +210,7 @@ public class PlayerRegistrationService {
         int count = 0;
         for (PlayerRegistration reg : pending) {
             try {
-                importToAuction(reg.getId(), "BATSMAN", defaultBasePrice);
+                importToAuction(reg.getId(), null, defaultBasePrice);
                 count++;
             } catch (Exception e) {
                 log.warn("Failed to import registration {}: {}", reg.getId(), e.getMessage());

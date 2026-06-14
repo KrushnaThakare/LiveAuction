@@ -9,32 +9,92 @@ export function formatCurrency(amount) {
   return `₹${amount.toLocaleString('en-IN')}`;
 }
 
-export function formatRole(role) {
-  const roleMap = {
-    BATSMAN: 'Batsman',
-    BOWLER: 'Bowler',
-    ALL_ROUNDER: 'All-Rounder',
-    WICKET_KEEPER: 'Wicket Keeper',
-  };
-  return roleMap[role] || role;
+export function getAuctionDisplayName(tournament, fallback = 'Auction') {
+  return tournament?.auctionDisplayName || tournament?.name || tournament?.tournamentName || fallback;
 }
 
-export function getRoleColor(role) {
-  const colors = {
-    BATSMAN: '#3b82f6',
-    BOWLER: '#ef4444',
-    ALL_ROUNDER: '#10b981',
-    WICKET_KEEPER: '#f59e0b',
-  };
-  return colors[role] || '#64748b';
+export const DEFAULT_PLAYER_ROLES = [
+  { key: 'BATSMAN', label: 'Batsman', shortLabel: 'BAT', color: '#3b82f6', icon: '🏏' },
+  { key: 'BOWLER', label: 'Bowler', shortLabel: 'BOWL', color: '#ef4444', icon: '🎳' },
+  { key: 'ALL_ROUNDER', label: 'All-Rounder', shortLabel: 'AR', color: '#10b981', icon: '⭐' },
+  { key: 'WICKET_KEEPER', label: 'Wicket Keeper', shortLabel: 'WK', color: '#f59e0b', icon: '🧤' },
+];
+
+export const FOOTBALL_PLAYER_ROLES = [
+  { key: 'FORWARD', label: 'Forward', shortLabel: 'FWD', color: '#3b82f6', icon: 'FWD' },
+  { key: 'MIDFIELDER', label: 'Midfielder', shortLabel: 'MID', color: '#10b981', icon: 'MID' },
+  { key: 'DEFENDER', label: 'Defender', shortLabel: 'DEF', color: '#ef4444', icon: 'DEF' },
+  { key: 'GOALKEEPER', label: 'Goalkeeper', shortLabel: 'GK', color: '#f59e0b', icon: 'GK' },
+];
+
+export function roleLinesToConfig(text) {
+  return String(text || '')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const [key, label, shortLabel, color] = line.split('|').map(part => part?.trim());
+      return {
+        key,
+        label: label || key,
+        shortLabel: shortLabel || key,
+        color: color || '#64748b',
+        icon: shortLabel || key,
+        aliases: [],
+      };
+    })
+    .filter(role => role.key);
 }
 
-export function getRoleBg(role) {
-  const colors = {
-    BATSMAN: 'rgba(59,130,246,0.15)',
-    BOWLER: 'rgba(239,68,68,0.15)',
-    ALL_ROUNDER: 'rgba(16,185,129,0.15)',
-    WICKET_KEEPER: 'rgba(245,158,11,0.15)',
-  };
-  return colors[role] || 'rgba(100,116,139,0.15)';
+export function roleConfigToLines(roles) {
+  return (roles || DEFAULT_PLAYER_ROLES)
+    .map(role => [role.key, role.label, role.shortLabel, role.color].filter(Boolean).join('|'))
+    .join('\n');
+}
+
+export function getPlayerRoles(tournament) {
+  return Array.isArray(tournament?.playerRoles) && tournament.playerRoles.length
+    ? tournament.playerRoles
+    : DEFAULT_PLAYER_ROLES;
+}
+
+function findRole(role, roles) {
+  return (roles || DEFAULT_PLAYER_ROLES).find(r => r.key === role);
+}
+
+function titleizeRole(role) {
+  return String(role || 'Role')
+    .toLowerCase()
+    .split('_')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+export function formatRole(role, roles) {
+  return findRole(role, roles)?.label || titleizeRole(role);
+}
+
+export function getRoleShortLabel(role, roles) {
+  return findRole(role, roles)?.shortLabel || titleizeRole(role).toUpperCase();
+}
+
+export function getRoleIcon(role, roles) {
+  return findRole(role, roles)?.icon || '🏷️';
+}
+
+export function getRoleColor(role, roles) {
+  return findRole(role, roles)?.color || '#64748b';
+}
+
+export function getRoleBg(role, roles) {
+  const hex = getRoleColor(role, roles);
+  const cleaned = hex.replace('#', '');
+  if (cleaned.length === 6) {
+    const r = parseInt(cleaned.slice(0, 2), 16);
+    const g = parseInt(cleaned.slice(2, 4), 16);
+    const b = parseInt(cleaned.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},0.15)`;
+  }
+  return 'rgba(100,116,139,0.15)';
 }

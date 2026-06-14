@@ -8,7 +8,7 @@ import {
   announceAuctionStart, announceBid,
   announcePlayerSold, announcePlayerUnsold, stopSpeaking,
 } from '../utils/voiceAnnouncement';
-import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
+import { formatCurrency, formatRole, getRoleColor, getRoleBg, getRoleIcon, getPlayerRoles, getAuctionDisplayName } from '../utils/formatters';
 import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
 import { matchesPlayerIdOrName, playerIdLabel } from '../utils/playerSearch';
@@ -101,6 +101,7 @@ export default function AuctionPage() {
   const [bidRules, setBidRules]                 = useState([]);
   const [loading, setLoading]                   = useState(true);
   const [actionLoading, setActionLoading]       = useState(false);
+  const [assigningTeamId, setAssigningTeamId]   = useState(null);
   const [fullscreen, setFullscreen]             = useState(false);
   const [voiceEnabled, setVoiceEnabled]         = useState(true);
   const [bidFlash, setBidFlash]                 = useState(false);
@@ -115,6 +116,7 @@ export default function AuctionPage() {
   const pendingCallingBidRef = useRef(null);
   const latestCallingBidRef = useRef(null);
   const pendingCallingBidAuctionRef = useRef(null);
+  const assignPromiseRef = useRef(null);
   const debugBidRef = useRef(false);
 
   useEffect(() => {
@@ -183,7 +185,7 @@ export default function AuctionPage() {
         auctionApi.getState(activeTournament.id),
         playerApi.getAll(activeTournament.id, 'AVAILABLE'),
         playerApi.getAll(activeTournament.id, 'UNSOLD'),
-        teamApi.getAll(activeTournament.id),
+        teamApi.getSummary(activeTournament.id),
         bidRuleApi.getRules(activeTournament.id),
       ]);
       applyServerAuctionState(sRes.data.data, 'fetch-all-state');
@@ -240,6 +242,7 @@ export default function AuctionPage() {
     try {
       const res = await auctionApi.startAuction(activeTournament.id, player.id);
       setAuctionState(res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
       setProposedBid(null);
       setBidKey(k => k + 1);
       setAvailablePlayers(p => p.filter(pl => pl.id !== player.id));
@@ -258,6 +261,7 @@ export default function AuctionPage() {
       const res = await auctionApi.startRandom(activeTournament.id);
       const state = res.data.data;
       setAuctionState(state);
+      publishOverlayAuctionUpdate(activeTournament.id, state);
       setProposedBid(null);
       setBidKey(k => k + 1);
       if (state.currentPlayer) {
@@ -279,7 +283,7 @@ export default function AuctionPage() {
    * is bidding at the visible price.
    */
   const handleAssignBid = useCallback(async (teamId) => {
-    if (!activeTournament || actionLoading) return;
+    if (!activeTournament || actionLoading || assigningTeamId) return;
     const team = teams.find(t => t.id === teamId);
     const currentBid = auctionState?.currentBid ?? 0;
     const optimisticBid = proposedBid ?? currentBid;
@@ -293,7 +297,7 @@ export default function AuctionPage() {
         ? { ...auctionState.currentPlayer, currentBid: optimisticBid }
         : auctionState.currentPlayer,
     } : null;
-    setActionLoading(true);
+    setAssigningTeamId(teamId);
     if (optimisticAuction) {
       pendingCallingBidAuctionRef.current = optimisticAuction;
     }
@@ -313,7 +317,9 @@ export default function AuctionPage() {
     setTimeout(() => setBidFlash(false), 800);
     try {
       const amount = proposedBid ?? currentBid;
-      const res = await auctionApi.assignBid(activeTournament.id, teamId, amount);
+      const request = auctionApi.assignBid(activeTournament.id, teamId, amount);
+      assignPromiseRef.current = request;
+      const res = await request;
       pendingCallingBidAuctionRef.current = null;
       setAuctionState(res.data.data);
       publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
@@ -326,9 +332,10 @@ export default function AuctionPage() {
       setProposedBid(proposedBid ?? null);
       throw error;
     } finally {
-      setActionLoading(false);
+      assignPromiseRef.current = null;
+      setAssigningTeamId(null);
     }
-  }, [activeTournament, actionLoading, proposedBid, voiceEnabled, teams, auctionState]);
+  }, [activeTournament, actionLoading, assigningTeamId, proposedBid, voiceEnabled, teams, auctionState]);
 
   /* ── sell ── */
   const handleSell = useCallback(async () => {
@@ -336,12 +343,23 @@ export default function AuctionPage() {
     setActionLoading(true);
     try {
       const prev = auctionState;
+      if (assignPromiseRef.current) {
+        await assignPromiseRef.current;
+      }
       const res = await auctionApi.sellPlayer(activeTournament.id);
       setAuctionState(res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
       setProposedBid(null);
       // Find winning team from local state BEFORE refreshing
       const winningTeamId = res.data.data.highestBidderTeamId;
       const winningTeam   = teams.find(t => t.id === winningTeamId);
+      setTeams(current => current.map(team => team.id === winningTeamId
+        ? {
+            ...team,
+            remainingBudget: Math.max(0, Number(team.remainingBudget || 0) - Number(res.data.data.currentBid || 0)),
+            playerCount: Number(team.playerCount || 0) + 1,
+          }
+        : team));
       setSoldOverlay({
         verdict:  'SOLD',
         name:     prev?.currentPlayer?.name,
@@ -351,8 +369,9 @@ export default function AuctionPage() {
       });
       setTimeout(() => setSoldOverlay(null), 5000);
       if (voiceEnabled) announcePlayerSold(prev?.currentPlayer?.name, res.data.data.highestBidderTeamName, res.data.data.currentBid);
-      const tRes = await teamApi.getAll(activeTournament.id);
-      setTeams(tRes.data.data || []);
+      teamApi.getSummary(activeTournament.id)
+        .then(tRes => setTeams(tRes.data.data || []))
+        .catch(() => {});
     } finally {
       setActionLoading(false);
     }
@@ -366,15 +385,20 @@ export default function AuctionPage() {
       const prev = auctionState;
       const res = await auctionApi.markUnsold(activeTournament.id);
       setAuctionState(res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
       setProposedBid(null);
+      if (prev?.currentPlayer) {
+        const unsoldPlayer = { ...prev.currentPlayer, status: 'UNSOLD', currentBid: 0 };
+        setUnsoldPlayers(list => list.some(p => p.id === unsoldPlayer.id) ? list : [unsoldPlayer, ...list]);
+        setAvailablePlayers(list => list.filter(p => p.id !== unsoldPlayer.id));
+      }
       if (voiceEnabled && prev?.currentPlayer?.name) announcePlayerUnsold(prev.currentPlayer.name);
       setSoldOverlay({ verdict: 'UNSOLD', name: prev?.currentPlayer?.name });
       setTimeout(() => setSoldOverlay(null), 4000);
-      fetchAll();
     } finally {
       setActionLoading(false);
     }
-  }, [activeTournament, actionLoading, auctionState, voiceEnabled, fetchAll]);
+  }, [activeTournament, actionLoading, auctionState, voiceEnabled]);
 
   /* ── stop auction ── */
   const handleStop = useCallback(async () => {
@@ -382,13 +406,19 @@ export default function AuctionPage() {
     if (!confirm('Stop the current auction? The player will go back to Available.')) return;
     setActionLoading(true);
     try {
-      await auctionApi.stopAuction(activeTournament.id);
+      const prev = auctionState;
+      const res = await auctionApi.stopAuction(activeTournament.id);
+      setAuctionState(res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
+      if (prev?.currentPlayer) {
+        const returnedPlayer = { ...prev.currentPlayer, status: 'AVAILABLE', currentBid: 0 };
+        setAvailablePlayers(list => list.some(p => p.id === returnedPlayer.id) ? list : [returnedPlayer, ...list]);
+      }
       toast('Auction stopped — player returned to Available', { icon: '⏹' });
-      fetchAll();
     } finally {
       setActionLoading(false);
     }
-  }, [activeTournament, actionLoading, fetchAll]);
+  }, [activeTournament, actionLoading, auctionState]);
 
   /* ── undo last sold/unsold decision ── */
   const handleUndo = useCallback(async () => {
@@ -398,10 +428,12 @@ export default function AuctionPage() {
     try {
       const res = await auctionApi.undo(activeTournament.id);
       setAuctionState(res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
       setSoldOverlay(null);
       toast.success('Decision undone — player returned to Available');
-      const tRes = await teamApi.getAll(activeTournament.id);
-      setTeams(tRes.data.data || []);
+      teamApi.getSummary(activeTournament.id)
+        .then(tRes => setTeams(tRes.data.data || []))
+        .catch(() => {});
       fetchAll();
     } catch { /* handled */ }
     finally { setActionLoading(false); }
@@ -555,6 +587,8 @@ export default function AuctionPage() {
   const isActive   = auctionState?.status === 'ACTIVE';
   const displayBid = proposedBid ?? auctionState?.currentBid ?? 0;
   const allDone    = availablePlayers.length === 0 && !isActive && unsoldPlayers.length > 0;
+  const playerRoles = getPlayerRoles(activeTournament);
+  const auctionTitle = getAuctionDisplayName(activeTournament, activeTournament.name);
 
   return (
     <div ref={containerRef} className="flex flex-col"
@@ -566,7 +600,7 @@ export default function AuctionPage() {
         <div className="flex items-center gap-3">
           <Gavel size={18} style={{ color: 'var(--color-primary)' }} />
           <span className="font-bold" style={{ color: 'var(--color-text-primary)' }}>Live Auction</span>
-          <span className="hidden sm:inline text-sm" style={{ color: 'var(--color-text-secondary)' }}>— {activeTournament.name}</span>
+          <span className="hidden sm:inline text-sm" style={{ color: 'var(--color-text-secondary)' }}>— {auctionTitle}</span>
           {isActive && <span className="badge-in-auction">● LIVE</span>}
         </div>
         <div className="flex items-center gap-2">
@@ -618,6 +652,7 @@ export default function AuctionPage() {
                 highestBidderTeamName={auctionState.highestBidderTeamName}
                 bidFlash={bidFlash}
                 bidKey={bidKey}
+                roles={playerRoles}
               />
 
               {/* SOLD / UNSOLD / STOP */}
@@ -659,7 +694,7 @@ export default function AuctionPage() {
                 displayBid={displayBid}
                 proposedBid={proposedBid}
                 onAssign={handleAssignBid}
-                disabled={actionLoading}
+                disabled={actionLoading || Boolean(assigningTeamId)}
               />
             </>
           ) : (
@@ -669,6 +704,7 @@ export default function AuctionPage() {
               unsoldPlayers={unsoldPlayers}
               allDone={allDone}
               actionLoading={actionLoading}
+              roles={playerRoles}
               onStart={handleStartAuction}
               onRandom={handleStartRandom}
               onReAuction={handleReAuction}
@@ -689,9 +725,9 @@ export default function AuctionPage() {
 /* ═══════════════════════════════════════════════════════════
    STAGE CARD
 ═══════════════════════════════════════════════════════════ */
-function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, bidFlash, bidKey }) {
-  const roleColor = getRoleColor(player.role);
-  const roleBg    = getRoleBg(player.role);
+function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, bidFlash, bidKey, roles }) {
+  const roleColor = getRoleColor(player.role, roles);
+  const roleBg    = getRoleBg(player.role, roles);
   const imgUrl    = driveImg(player.imageUrl);
 
   return (
@@ -790,7 +826,7 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
           </h1>
 
           <div className="flex items-center justify-center gap-2 mt-2">
-            <RoleBadge role={player.role} roleColor={roleColor} roleBg={roleBg} />
+            <RoleBadge role={player.role} roleColor={roleColor} roleBg={roleBg} roles={roles} />
           </div>
 
           <p className="text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
@@ -814,16 +850,9 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
 /* ═══════════════════════════════════════════════════════════
    ROLE BADGE — sport-style pill displayed below player name
 ═══════════════════════════════════════════════════════════ */
-const ROLE_ICONS = {
-  BATSMAN:       '🏏',
-  BOWLER:        '🎳',
-  ALL_ROUNDER:   '⭐',
-  WICKET_KEEPER: '🧤',
-};
-
-function RoleBadge({ role, roleColor, roleBg }) {
-  const icon  = ROLE_ICONS[role] || '🏏';
-  const label = formatRole(role);
+function RoleBadge({ role, roleColor, roleBg, roles }) {
+  const icon  = getRoleIcon(role, roles);
+  const label = formatRole(role, roles);
 
   return (
     <div
@@ -1026,7 +1055,7 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
    IDLE STAGE — between players
 ═══════════════════════════════════════════════════════════ */
 function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
-                     actionLoading, onStart, onRandom, onReAuction, onUndo }) {
+                     actionLoading, roles, onStart, onRandom, onReAuction, onUndo }) {
   const canUndo = auctionState?.undoable;
   const [playerSearch, setPlayerSearch] = useState('');
   const filteredAvailablePlayers = availablePlayers.filter(player => matchesPlayerIdOrName(player, playerSearch));
@@ -1122,8 +1151,8 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
                   onMouseEnter={e => e.currentTarget.style.borderColor='var(--color-primary)'}
                   onMouseLeave={e => e.currentTarget.style.borderColor='var(--color-border)'}>
                   <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 relative flex items-center justify-center"
-                    style={{ backgroundColor: getRoleBg(player.role) }}>
-                    <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={getRoleColor(player.role)} />
+                    style={{ backgroundColor: getRoleBg(player.role, roles) }}>
+                    <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={getRoleColor(player.role, roles)} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>{player.name}</p>
@@ -1131,7 +1160,7 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
                       {playerIdLabel(player)}
                     </p>
                     <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                      {formatRole(player.role)} · {formatCurrency(player.basePrice)}
+                      {formatRole(player.role, roles)} · {formatCurrency(player.basePrice)}
                     </p>
                   </div>
                   <ChevronRight size={15} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />

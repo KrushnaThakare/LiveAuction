@@ -25,6 +25,17 @@ public class Tournament {
     @Column(nullable = false, unique = true)
     private String name;
 
+    @Column(name = "auction_display_name", length = 120)
+    private String auctionDisplayName;
+
+    @Column(length = 50)
+    @Builder.Default
+    private String sport = "CRICKET";
+
+    @Lob
+    @Column(name = "player_roles_config", columnDefinition = "TEXT")
+    private String playerRolesConfig;
+
     private String description;
 
     @Column(name = "created_at")
