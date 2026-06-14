@@ -1,0 +1,20 @@
+{
+  "name": "cricheroes-worker",
+  "version": "1.0.0",
+  "description": "Authenticated CricHeroes stats worker for LiveAuction",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "login": "node src/login.js",
+    "check": "node --check src/server.js && node --check src/login.js && node --check src/stats.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "playwright": "^1.60.0"
+  }
+}

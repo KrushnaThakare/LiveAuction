@@ -1,8 +1,11 @@
 package com.cricketauction.service;
 
 import com.cricketauction.entity.Player;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -15,7 +18,9 @@ import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,15 +28,32 @@ import java.util.regex.Pattern;
 public class CricHeroesStatsService {
     private static final Logger log = LoggerFactory.getLogger(CricHeroesStatsService.class);
 
+    private final ObjectMapper objectMapper;
+
+    @Value("${cricheroes.worker.url:}")
+    private String workerUrl;
+
+    @Value("${cricheroes.worker.token:}")
+    private String workerToken;
+
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(8))
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
 
+    public CricHeroesStatsService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
     public void fetchAndApply(Player player) throws IOException, InterruptedException {
         String profileUrl = player.getCricheroesProfileUrl();
         if (profileUrl == null || profileUrl.isBlank()) {
             throw new IllegalArgumentException("CricHeroes profile URL is required before fetching stats");
+        }
+
+        if (isWorkerConfigured()) {
+            fetchViaWorkerAndApply(player, profileUrl);
+            return;
         }
 
         String html = fetchProfileHtml(profileUrl);
@@ -44,6 +66,47 @@ public class CricHeroesStatsService {
         player.setStatsEconomy(parseDecimal(text, "economy|econ").orElse(player.getStatsEconomy()));
         player.setStatsAverage(parseDecimal(text, "average|avg").orElse(player.getStatsAverage()));
         player.setStatsLastUpdatedAt(LocalDateTime.now());
+    }
+
+    private boolean isWorkerConfigured() {
+        return workerUrl != null && !workerUrl.isBlank();
+    }
+
+    private void fetchViaWorkerAndApply(Player player, String profileUrl) throws IOException, InterruptedException {
+        String endpoint = workerUrl.replaceAll("/+$", "") + "/fetch-stats";
+        String body = objectMapper.writeValueAsString(Map.of("profileUrl", profileUrl));
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(endpoint))
+                .timeout(Duration.ofSeconds(35))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body));
+        if (workerToken != null && !workerToken.isBlank()) {
+            builder.header("Authorization", "Bearer " + workerToken);
+        }
+
+        HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        JsonNode root = parseJson(response.body());
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            String code = root.path("code").asText("WORKER_ERROR");
+            String message = root.path("message").asText("CricHeroes worker failed with HTTP " + response.statusCode());
+            log.warn("CricHeroes worker failed. status={} code={} playerId={} url={} message={}",
+                    response.statusCode(), code, player.getId(), profileUrl, message);
+            throw new IOException("CricHeroes worker failed (" + code + "): " + message);
+        }
+
+        JsonNode data = root.path("data");
+        boolean changed = false;
+        changed |= applyInt(data, "statsMatches", player::setStatsMatches);
+        changed |= applyInt(data, "statsRuns", player::setStatsRuns);
+        changed |= applyInt(data, "statsWickets", player::setStatsWickets);
+        changed |= applyDouble(data, "statsStrikeRate", player::setStatsStrikeRate);
+        changed |= applyDouble(data, "statsEconomy", player::setStatsEconomy);
+        changed |= applyDouble(data, "statsAverage", player::setStatsAverage);
+
+        if (!changed) {
+            throw new IOException("CricHeroes worker returned no stats for this player");
+        }
+        player.setStatsLastUpdatedAt(LocalDateTime.now());
+        log.info("CricHeroes stats fetched via worker. playerId={} source={}", player.getId(), data.path("sourceUrl").asText(""));
     }
 
     private String fetchProfileHtml(String profileUrl) throws IOException, InterruptedException {
@@ -183,6 +246,25 @@ public class CricHeroesStatsService {
         if (body == null || body.isBlank()) return "";
         String clean = body.replaceAll("\\s+", " ").trim();
         return clean.substring(0, Math.min(180, clean.length()));
+    }
+
+    private JsonNode parseJson(String body) throws IOException {
+        if (body == null || body.isBlank()) return objectMapper.createObjectNode();
+        return objectMapper.readTree(body);
+    }
+
+    private boolean applyInt(JsonNode node, String field, Consumer<Integer> setter) {
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull()) return false;
+        setter.accept(value.asInt());
+        return true;
+    }
+
+    private boolean applyDouble(JsonNode node, String field, Consumer<Double> setter) {
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull()) return false;
+        setter.accept(value.asDouble());
+        return true;
     }
 
     private Optional<Integer> parseInteger(String text, String label) {
