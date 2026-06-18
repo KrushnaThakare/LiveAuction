@@ -66,6 +66,8 @@ public class OverlayController {
                 .overlayShowTicker(t.getOverlayShowTicker())
                 .overlayShowPlayerStatsIntro(t.getOverlayShowPlayerStatsIntro())
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
+                .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())
+                .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .tournamentName(t.getName())
                 .auctionDisplayName(t.getAuctionDisplayName())

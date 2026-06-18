@@ -322,13 +322,16 @@ public class AuctionService {
 
         Optional<AuctionSession> last = auctionSessionRepository
                 .findTopByTournamentIdOrderByIdDesc(tournamentId);
-        return last.map(this::mapToResponse).orElse(
-                AuctionStateResponse.builder()
+        return last.map(this::mapToResponse).orElseGet(() -> {
+                Tournament tournament = tournamentService.findById(tournamentId);
+                return AuctionStateResponse.builder()
                         .status(AuctionSession.AuctionStatus.IDLE)
                         .tournamentId(tournamentId)
                         .bidRevision(0L)
                         .currentBid(0.0)
-                        .build());
+                        .cinematicIntroLive(cinematicIntroLive(tournament))
+                        .build();
+        });
     }
 
     /* ── history ── */
@@ -415,7 +418,12 @@ public class AuctionService {
                 .tournamentId(session.getTournament().getId())
                 .undoable(undoable)
                 .undoSessionId(undoable ? session.getId() : null)
+                .cinematicIntroLive(cinematicIntroLive(session.getTournament()))
                 .build();
+    }
+
+    private boolean cinematicIntroLive(Tournament tournament) {
+        return !Boolean.FALSE.equals(tournament.getOverlayCinematicIntroLive());
     }
 
     private Player resolveSessionPlayer(AuctionSession session) {

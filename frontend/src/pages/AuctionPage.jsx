@@ -4,6 +4,7 @@ import { auctionApi } from '../api/auction';
 import { playerApi } from '../api/players';
 import { teamApi } from '../api/teams';
 import { bidRuleApi } from '../api/bidRules';
+import { broadcastApi } from '../api/broadcast';
 import {
   announceAuctionStart, announceBid,
   announcePlayerSold, announcePlayerUnsold, stopSpeaking,
@@ -20,7 +21,7 @@ import toast from 'react-hot-toast';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
-  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X,
+  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X, Clapperboard,
 } from 'lucide-react';
 
 function getDynamicIncrement(rules, amount, fallbackNextBid) {
@@ -109,6 +110,8 @@ export default function AuctionPage() {
   /* proposedBid = number the host has typed/arrowed; null means "not set" */
   const [proposedBid, setProposedBid]           = useState(null);
   const [showKeyHelp, setShowKeyHelp]           = useState(false);
+  const [cinematicIntroSetting, setCinematicIntroSetting] = useState(false);
+  const [cinematicIntroLive, setCinematicIntroLive] = useState(true);
   const [soldOverlay, setSoldOverlay]           = useState(null); // { verdict, name, team, teamLogo, amount }
   const containerRef = useRef(null);
   const bidUpdateSeq = useRef(0);
@@ -181,14 +184,21 @@ export default function AuctionPage() {
   const fetchAll = useCallback(async () => {
     if (!activeTournament) return;
     try {
-      const [sRes, pRes, uRes, tRes, rRes] = await Promise.all([
+      const [sRes, pRes, uRes, tRes, rRes, bRes] = await Promise.all([
         auctionApi.getState(activeTournament.id),
         playerApi.getAll(activeTournament.id, 'AVAILABLE'),
         playerApi.getAll(activeTournament.id, 'UNSOLD'),
         teamApi.getSummary(activeTournament.id),
         bidRuleApi.getRules(activeTournament.id),
+        broadcastApi.getSettings(activeTournament.id),
       ]);
       applyServerAuctionState(sRes.data.data, 'fetch-all-state');
+      setCinematicIntroSetting(bRes.data.data?.overlayShowCinematicIntro === true);
+      if (sRes.data.data?.cinematicIntroLive != null) {
+        setCinematicIntroLive(sRes.data.data.cinematicIntroLive !== false);
+      } else if (bRes.data.data?.overlayCinematicIntroLive != null) {
+        setCinematicIntroLive(bRes.data.data.overlayCinematicIntroLive !== false);
+      }
       setAvailablePlayers(pRes.data.data || []);
       setUnsoldPlayers(uRes.data.data || []);
       setTeams(tRes.data.data || []);
@@ -197,6 +207,30 @@ export default function AuctionPage() {
       setLoading(false);
     }
   }, [activeTournament, applyServerAuctionState]);
+
+  const toggleCinematicIntroLive = useCallback(async () => {
+    if (!activeTournament) return;
+    const next = !cinematicIntroLive;
+    setCinematicIntroLive(next);
+    setAuctionState(state => state ? { ...state, cinematicIntroLive: next } : state);
+    if (auctionState) {
+      publishOverlayAuctionUpdate(activeTournament.id, { ...auctionState, cinematicIntroLive: next });
+    }
+    try {
+      await broadcastApi.setCinematicIntroLive(activeTournament.id, next);
+      toast.success(next ? 'Audience intro enabled' : 'Audience intro skipped');
+    } catch {
+      setCinematicIntroLive(!next);
+      setAuctionState(state => state ? { ...state, cinematicIntroLive: !next } : state);
+      toast.error('Could not update intro setting');
+    }
+  }, [activeTournament, auctionState, cinematicIntroLive]);
+
+  useEffect(() => {
+    if (auctionState?.cinematicIntroLive != null) {
+      setCinematicIntroLive(auctionState.cinematicIntroLive !== false);
+    }
+  }, [auctionState?.cinematicIntroLive]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -622,6 +656,16 @@ export default function AuctionPage() {
           >
             {voiceEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
+          {cinematicIntroSetting && (
+            <button
+              className={`btn-secondary !px-3 !py-2 text-xs font-bold ${cinematicIntroLive ? '' : 'opacity-70'}`}
+              title="Toggle Audience Display cinematic intro"
+              onClick={toggleCinematicIntroLive}
+            >
+              <Clapperboard size={14} className="inline mr-1.5" />
+              Intro: {cinematicIntroLive ? 'ON' : 'OFF'}
+            </button>
+          )}
           <button className="btn-secondary !p-2" onClick={toggleFullscreen} title="F=Fullscreen">
             {fullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
           </button>

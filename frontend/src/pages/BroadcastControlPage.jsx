@@ -15,6 +15,8 @@ export default function BroadcastControlPage() {
     overlayShowTicker: true,
     overlayShowPlayerStatsIntro: true,
     overlayPlayerStatsIntroMs: 5500,
+    overlayShowCinematicIntro: false,
+    overlayCinematicIntroLive: true,
     tokenEnabled: false,
     overlaySecretToken: '',
   });
@@ -83,6 +85,10 @@ export default function BroadcastControlPage() {
             />
           </label>
         )}
+        <label><input type='checkbox' checked={!!settings.overlayShowCinematicIntro} onChange={e=>setSettings(s=>({...s,overlayShowCinematicIntro:e.target.checked}))} /> Enable cinematic player intro (Audience Display only)</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Plays a premium reveal sequence on the Audience Display when the next player is picked. Does not affect the admin auction screen or other overlays.
+        </p>
         <label><input type='checkbox' checked={!!settings.tokenEnabled} onChange={e=>setSettings(s=>({...s,tokenEnabled:e.target.checked}))} /> Enable token</label>
         {settings.tokenEnabled && <input className='input' value={settings.overlaySecretToken||''} onChange={e=>setSettings(s=>({...s,overlaySecretToken:e.target.value}))} placeholder='secret token'/>}
         <button className='btn-primary' onClick={save}>Save</button>

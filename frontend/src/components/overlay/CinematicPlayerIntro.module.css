@@ -1,0 +1,256 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: hidden;
+  pointer-events: none;
+  font-family: Inter, Rajdhani, "Arial Black", system-ui, sans-serif;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: #02040b;
+  transition: opacity 0.35s ease;
+}
+
+.scene1 .backdrop {
+  animation: cinematicDarken 0.4s ease forwards;
+}
+
+.scene4 .backdrop {
+  opacity: 0;
+}
+
+.spotlight {
+  position: absolute;
+  top: -20%;
+  left: 50%;
+  width: 70vw;
+  height: 70vh;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.14) 0%, transparent 68%);
+  opacity: 0;
+  animation: cinematicSpotlight 0.5s ease 0.1s forwards;
+}
+
+.particles {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.06) 0 1px, transparent 2px),
+    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.05) 0 1px, transparent 2px),
+    radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.04) 0 1px, transparent 2px);
+  background-size: 180px 180px, 220px 220px, 260px 260px;
+  opacity: 0;
+  animation: cinematicParticles 2.2s linear 0.15s forwards;
+}
+
+.scanLine {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  top: 42%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00d26a, #7dffb8, #00d26a, transparent);
+  box-shadow: 0 0 24px rgba(0, 210, 106, 0.75);
+  opacity: 0;
+  transform: translateX(-120%);
+}
+
+.scene2 .scanLine,
+.scene3 .scanLine,
+.scene4 .scanLine {
+  animation: cinematicScan 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.05s forwards;
+}
+
+.nextPlayerBlock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  opacity: 0;
+}
+
+.scene2 .nextPlayerBlock {
+  animation: cinematicFadeIn 0.35s ease 0.25s forwards;
+}
+
+.scene3 .nextPlayerBlock,
+.scene4 .nextPlayerBlock {
+  opacity: 0;
+}
+
+.rule {
+  width: min(520px, 72vw);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+}
+
+.nextPlayerTitle {
+  color: #ffffff;
+  font-size: clamp(28px, 4.5vw, 56px);
+  font-weight: 900;
+  letter-spacing: 0.38em;
+  text-indent: 0.38em;
+  text-transform: uppercase;
+  text-shadow: 0 0 40px rgba(255, 255, 255, 0.25);
+}
+
+.revealBlock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2vh, 22px);
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.scene3 .revealBlock {
+  animation: cinematicReveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.scene4 .revealBlock {
+  animation: cinematicSlideOut 0.5s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
+}
+
+.photoFrame {
+  width: clamp(180px, 22vw, 280px);
+  height: clamp(220px, 28vw, 340px);
+  border-radius: 24px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  transform: scale(0.96);
+  animation: cinematicPhotoScale 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.photoFrame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photoFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.silhouette {
+  width: clamp(160px, 20vw, 240px);
+  height: clamp(200px, 26vw, 300px);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
+  opacity: 0;
+  filter: blur(1px);
+}
+
+.scene2 .silhouette {
+  animation: cinematicFadeIn 0.45s ease 0.15s forwards;
+}
+
+.scene3 .silhouette,
+.scene4 .silhouette {
+  display: none;
+}
+
+.playerName {
+  color: #ffffff;
+  font-size: clamp(34px, 5vw, 72px);
+  font-weight: 1000;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1;
+  text-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
+  animation: cinematicNameRise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+}
+
+.playerRole {
+  color: #ffc72c;
+  font-size: clamp(16px, 2vw, 28px);
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+  text-transform: uppercase;
+}
+
+.basePriceBlock {
+  margin-top: 8px;
+  text-align: center;
+}
+
+.basePriceLabel {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: clamp(12px, 1.2vw, 16px);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.basePriceValue {
+  margin-top: 6px;
+  color: #00d26a;
+  font-size: clamp(24px, 3.2vw, 44px);
+  font-weight: 1000;
+  letter-spacing: 0.04em;
+}
+
+@keyframes cinematicDarken {
+  from { background: transparent; }
+  to { background: #02040b; }
+}
+
+@keyframes cinematicSpotlight {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cinematicParticles {
+  0% { opacity: 0; transform: translateY(0); }
+  15% { opacity: 0.5; }
+  100% { opacity: 0.35; transform: translateY(-18px); }
+}
+
+@keyframes cinematicScan {
+  0% { opacity: 0; transform: translateX(-120%); }
+  20% { opacity: 1; }
+  100% { opacity: 0.85; transform: translateX(120%); }
+}
+
+@keyframes cinematicFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cinematicReveal {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cinematicPhotoScale {
+  from { transform: scale(0.96); }
+  to { transform: scale(1); }
+}
+
+@keyframes cinematicNameRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cinematicSlideOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(8vh); }
+}

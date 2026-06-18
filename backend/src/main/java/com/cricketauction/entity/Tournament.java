@@ -99,6 +99,16 @@ public class Tournament {
     @Builder.Default
     private Integer overlayPlayerStatsIntroMs = 5500;
 
+    /** Audience Display: cinematic next-player reveal (admin setting) */
+    @Column(name = "overlay_show_cinematic_intro")
+    @Builder.Default
+    private Boolean overlayShowCinematicIntro = false;
+
+    /** Runtime toggle during auction — skip intros when behind schedule */
+    @Column(name = "overlay_cinematic_intro_live")
+    @Builder.Default
+    private Boolean overlayCinematicIntroLive = true;
+
     @Column(name = "overlay_secret_token", length = 120)
     private String overlaySecretToken;
 
