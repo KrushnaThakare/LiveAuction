@@ -15,6 +15,8 @@ public class BroadcastSettingsDto {
     private Integer overlayPlayerStatsIntroMs;
     private Boolean overlayShowCinematicIntro;
     private Boolean overlayCinematicIntroLive;
+    private Boolean overlayShowPlayerTransition;
+    private Boolean overlayShowBidPop;
     private Boolean tokenEnabled;
     private String overlaySecretToken;
     private String tournamentName;

@@ -1087,3 +1087,94 @@
     animation-duration: 12s;
   }
 }
+
+/* ── Main overlay player transition (broadcast-style) ── */
+
+.playerTransitionRoot {
+  grid-column: 1 / 3;
+  display: grid;
+  grid-template-columns: minmax(270px, 1fr) clamp(190px, 15.5vw, 270px);
+  gap: clamp(10px, 1vw, 16px);
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.playerTransitionLayer {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: stretch;
+  min-width: 0;
+  min-height: 0;
+}
+
+@supports not (grid-template-columns: subgrid) {
+  .playerTransitionLayer {
+    grid-template-columns: minmax(270px, 1fr) clamp(190px, 15.5vw, 270px);
+    gap: clamp(10px, 1vw, 16px);
+  }
+}
+
+.playerExitLayer {
+  z-index: 3;
+  pointer-events: none;
+  animation: playerCardExit 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: 100ms;
+}
+
+.playerEnterLayer {
+  z-index: 2;
+  animation: playerCardEnter 450ms cubic-bezier(0, 0, 0.2, 1) 250ms both;
+}
+
+.playerPhotoEnter .playerImage,
+.playerPhotoEnter .imageFallback {
+  animation: playerPhotoReveal 350ms cubic-bezier(0, 0, 0.2, 1) 250ms both;
+}
+
+.playerNameEnter {
+  animation: playerTextReveal 250ms cubic-bezier(0, 0, 0.2, 1) 600ms both;
+}
+
+.playerStatEnterRole {
+  animation: playerTextReveal 250ms cubic-bezier(0, 0, 0.2, 1) 650ms both;
+}
+
+.playerStatEnterBase {
+  animation: playerTextReveal 250ms cubic-bezier(0, 0, 0.2, 1) 700ms both;
+}
+
+@keyframes playerCardExit {
+  0% { opacity: 1; transform: translateX(0); }
+  28% { opacity: 0.4; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(-22%); }
+}
+
+@keyframes playerCardEnter {
+  from { opacity: 0; transform: translateX(80px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes playerPhotoReveal {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes playerTextReveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playerExitLayer,
+  .playerEnterLayer,
+  .playerPhotoEnter .playerImage,
+  .playerPhotoEnter .imageFallback,
+  .playerNameEnter,
+  .playerStatEnterRole,
+  .playerStatEnterBase {
+    animation: none !important;
+  }
+}

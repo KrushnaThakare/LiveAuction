@@ -40,6 +40,8 @@ public class BroadcastController {
         }
         if (d.getOverlayShowCinematicIntro() != null) t.setOverlayShowCinematicIntro(d.getOverlayShowCinematicIntro());
         if (d.getOverlayCinematicIntroLive() != null) t.setOverlayCinematicIntroLive(d.getOverlayCinematicIntroLive());
+        if (d.getOverlayShowPlayerTransition() != null) t.setOverlayShowPlayerTransition(d.getOverlayShowPlayerTransition());
+        if (d.getOverlayShowBidPop() != null) t.setOverlayShowBidPop(d.getOverlayShowBidPop());
         if (Boolean.FALSE.equals(d.getTokenEnabled())) t.setOverlaySecretToken(null);
         if (d.getOverlaySecretToken() != null) t.setOverlaySecretToken(d.getOverlaySecretToken().isBlank() ? null : d.getOverlaySecretToken());
         tournamentService.saveTournament(t);
@@ -74,6 +76,8 @@ public class BroadcastController {
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
                 .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())
                 .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
+                .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())
+                .overlayShowBidPop(t.getOverlayShowBidPop())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .overlaySecretToken(includeSecret ? t.getOverlaySecretToken() : null)
                 .build();

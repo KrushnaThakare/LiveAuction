@@ -6,6 +6,7 @@ import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { resolveUrl } from '../utils/resolveUrl';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
+import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
 import SequentialImage from '../components/common/SequentialImage';
 import GavelOverlay from '../components/common/GavelOverlay';
 import { Gavel, ShieldCheck, Trophy, XCircle, Wifi, ChevronDown, ChevronUp } from 'lucide-react';
@@ -166,7 +167,14 @@ export default function PublicViewPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-3">
-        {tab === 'auction' && <AuctionView auctionState={auctionState} teams={summaryTeams} roles={playerRoles} />}
+        {tab === 'auction' && (
+          <AuctionView
+            auctionState={auctionState}
+            teams={summaryTeams}
+            roles={playerRoles}
+            bidPopEnabled={config?.overlayShowBidPop !== false}
+          />
+        )}
         {tab === 'teams'   && <TeamsView teams={teamsForTab} roles={playerRoles} loading={tabLoading && !fullTeams} />}
         {tab === 'sold'    && <PlayerListView players={sold} roles={playerRoles} loading={tabLoading && !loadedTabs.sold} emptyMsg="No players sold yet" label="Sold" />}
         {tab === 'unsold'  && <PlayerListView players={unsold} roles={playerRoles} loading={tabLoading && !loadedTabs.unsold} emptyMsg="No unsold players yet" label="Unsold" />}
@@ -181,9 +189,10 @@ export default function PublicViewPage() {
 /* GavelOverlay handles both SOLD and UNSOLD — imported from components/common */
 
 /* ═══ AUCTION VIEW ═══ */
-function AuctionView({ auctionState, teams, roles }) {
+function AuctionView({ auctionState, teams, roles, bidPopEnabled = true }) {
   const isActive = auctionState?.status === 'ACTIVE';
   const player   = auctionState?.currentPlayer;
+  const bidPopping = useOverlayBidPop(auctionState?.bidRevision, bidPopEnabled && isActive);
 
   if (!isActive || !player) {
     return (
@@ -246,8 +255,11 @@ function AuctionView({ auctionState, teams, roles }) {
                  boxShadow: '0 0 20px rgba(59,130,246,0.2)' }}>
         <p className="text-xs uppercase tracking-widest font-semibold mb-1"
           style={{ color: 'var(--color-text-secondary)' }}>Current Bid</p>
-        <p className="font-black animate-bid-glow" style={{ fontSize: 'clamp(2rem,8vw,3.5rem)',
-          color: 'var(--color-primary)', textShadow: '0 0 20px rgba(59,130,246,0.5)' }}>
+        <p
+          className={`font-black ${bidPopping ? 'overlay-bid-pop' : ''}`}
+          style={{ fontSize: 'clamp(2rem,8vw,3.5rem)',
+            color: 'var(--color-primary)', textShadow: '0 0 20px rgba(59,130,246,0.5)' }}
+        >
           {formatCurrency(auctionState.currentBid)}
         </p>
         {auctionState.highestBidderTeamName ? (
