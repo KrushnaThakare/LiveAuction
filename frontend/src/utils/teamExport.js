@@ -157,3 +157,208 @@ function escHtml(str = '') {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+function escCsv(value = '') {
+  const text = String(value ?? '');
+  if (/[",\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+  return text;
+}
+
+function parseFormData(reg) {
+  if (!reg?.formData) return {};
+  try {
+    const parsed = JSON.parse(reg.formData);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function normalizeExportCell(value) {
+  if (value == null) return '';
+  if (Array.isArray(value)) return value.map(normalizeExportCell).filter(Boolean).join(', ');
+  if (typeof value === 'object') {
+    const url = value.url || value.secure_url || value.fileUrl;
+    if (url) return normalizeExportCell(url);
+    return '';
+  }
+  return String(value).trim();
+}
+
+function buildRegistrationIndex(registrations = []) {
+  const byPlayerId = new Map();
+  const byName = new Map();
+  for (const reg of registrations) {
+    if (reg.importedPlayerId != null) {
+      byPlayerId.set(Number(reg.importedPlayerId), reg);
+    }
+    const nameKey = String(reg.playerName || '').trim().toLowerCase();
+    if (nameKey) byName.set(nameKey, reg);
+  }
+  return { byPlayerId, byName };
+}
+
+function findRegistrationForPlayer(player, index) {
+  if (!player) return null;
+  if (player.id != null && index.byPlayerId.has(Number(player.id))) {
+    return index.byPlayerId.get(Number(player.id));
+  }
+  const nameKey = String(player.name || '').trim().toLowerCase();
+  return nameKey ? index.byName.get(nameKey) || null : null;
+}
+
+const SKIP_FIELD_TYPES = new Set(['FILE_UPLOAD', 'STATIC_IMAGE']);
+const SKIP_PLAYER_MAPS = new Set(['name', 'role', 'basePrice']);
+
+function collectDetailColumns(formSections = []) {
+  const columns = [];
+  const seen = new Set();
+  const fields = (formSections || [])
+    .flatMap(section => section.fields || [])
+    .sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+
+  for (const field of fields) {
+    if (!field?.fieldKey || seen.has(field.fieldKey)) continue;
+    if (SKIP_FIELD_TYPES.has(field.type)) continue;
+    if (SKIP_PLAYER_MAPS.has(field.mapsToPlayerField)) continue;
+    if (field.type === 'PHONE' || field.fieldKey === 'mobile' || field.fieldKey === 'phone') continue;
+    if (/mobile|phone/i.test(field.label || '')) continue;
+    seen.add(field.fieldKey);
+    columns.push({ key: field.fieldKey, label: field.label || field.fieldKey });
+  }
+  return columns;
+}
+
+function resolveMobile(reg, formData, extraColumns) {
+  if (reg?.mobile) return reg.mobile;
+  for (const col of extraColumns) {
+    if (col.key === 'mobile' || col.key === 'phone' || /mobile|phone/i.test(col.label)) {
+      const value = normalizeExportCell(formData[col.key]);
+      if (value) return value;
+    }
+  }
+  return normalizeExportCell(formData.mobile || formData.phone || '');
+}
+
+function buildPlayerDetailRow(player, index, extraColumns) {
+  const reg = findRegistrationForPlayer(player, index);
+  const formData = parseFormData(reg);
+  return {
+    name: player?.name || '',
+    role: formatRole(player?.role),
+    mobile: resolveMobile(reg, formData, extraColumns),
+    soldPrice: formatCurrency(player?.currentBid || 0),
+    extras: extraColumns.map(col => normalizeExportCell(formData[col.key])),
+  };
+}
+
+const BASE_DETAIL_HEADERS = ['#', 'Name', 'Role', 'Mobile', 'Sold Price'];
+
+/**
+ * Opens a printable team-wise squad details table (PDF via print) and downloads CSV.
+ * Uses registration data fetched once at export time — no ongoing backend load.
+ */
+export function exportTeamSquadDetails(teams, tournamentName = '', registrations = [], formSections = []) {
+  const extraColumns = collectDetailColumns(formSections);
+  const headers = [...BASE_DETAIL_HEADERS, ...extraColumns.map(col => col.label)];
+  const index = buildRegistrationIndex(registrations);
+  const generatedOn = new Date().toLocaleString();
+
+  const teamBlocks = teams.map((team) => {
+    const players = team.players || [];
+    const rows = players.map((player, idx) => {
+      const detail = buildPlayerDetailRow(player, index, extraColumns);
+      return [idx + 1, detail.name, detail.role, detail.mobile, detail.soldPrice, ...detail.extras];
+    });
+    return { team, headers, rows };
+  });
+
+  downloadSquadDetailsCsv(teamBlocks, tournamentName, generatedOn);
+
+  const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; margin: 0; background: #f8fafc; color: #0f172a; }
+    .page { width: 100%; min-height: 100vh; padding: 28px 32px 40px; page-break-after: always; }
+    .page:last-child { page-break-after: auto; }
+    .header { margin-bottom: 18px; border-bottom: 3px solid #0f766e; padding-bottom: 14px; }
+    .team-name { font-size: 1.85rem; font-weight: 900; color: #0f766e; }
+    .meta { margin-top: 6px; font-size: 0.85rem; color: #475569; }
+    .note { margin: 0 0 16px; font-size: 0.78rem; color: #64748b; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; background: white; }
+    th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #ecfeff; color: #0f172a; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .empty { text-align: center; color: #94a3b8; padding: 28px; border: 1px dashed #cbd5e1; border-radius: 12px; }
+    .footer { margin-top: 22px; font-size: 0.72rem; color: #94a3b8; text-align: right; }
+    .toolbar { position: sticky; top: 0; background: #0f172a; color: white; padding: 12px 20px;
+               display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+    .toolbar button { background: #0f766e; color: white; border: none; border-radius: 8px;
+                      padding: 8px 14px; font-weight: 700; cursor: pointer; }
+    @media print {
+      .toolbar { display: none; }
+      body { background: white; }
+      .page { padding: 18px 0 0; }
+    }
+  `;
+
+  const pages = teamBlocks.map(({ team, headers: teamHeaders, rows }) => {
+    const head = teamHeaders.map(h => `<th>${escHtml(h)}</th>`).join('');
+    const body = rows.length
+      ? rows.map(cells => `<tr>${cells.map(cell => `<td>${escHtml(cell)}</td>`).join('')}</tr>`).join('')
+      : `<tr><td colspan="${teamHeaders.length}" class="empty">No players in this squad yet</td></tr>`;
+
+    return `
+      <section class="page">
+        <div class="header">
+          <div class="team-name">${escHtml(team.name)}</div>
+          <div class="meta">${escHtml(tournamentName)} · Squad details · ${team.playerCount || rows.length} players</div>
+        </div>
+        <p class="note">Registration details for team formation. Photos are omitted intentionally.</p>
+        <table>
+          <thead><tr>${head}</tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+        <div class="footer">Generated ${escHtml(generatedOn)}</div>
+      </section>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Squad Details — ${escHtml(tournamentName)}</title>
+    <style>${css}</style></head><body>
+    <div class="toolbar">
+      <span>Squad details export · CSV already downloaded</span>
+      <button onclick="window.print()">Print / Save as PDF</button>
+    </div>
+    ${pages}
+    </body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => win.focus();
+}
+
+function downloadSquadDetailsCsv(teamBlocks, tournamentName, generatedOn) {
+  const lines = [`Tournament,${escCsv(tournamentName)}`, `Generated,${escCsv(generatedOn)}`, ''];
+
+  for (const { team, headers, rows } of teamBlocks) {
+    lines.push(`Team,${escCsv(team.name)}`);
+    lines.push(headers.map(escCsv).join(','));
+    for (const row of rows) {
+      lines.push(row.map(escCsv).join(','));
+    }
+    lines.push('');
+  }
+
+  const blob = new Blob([`\uFEFF${lines.join('\n')}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  const safeName = String(tournamentName || 'tournament').replace(/[^\w\-]+/g, '-').toLowerCase();
+  anchor.href = url;
+  anchor.download = `squad-details-${safeName || 'export'}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
