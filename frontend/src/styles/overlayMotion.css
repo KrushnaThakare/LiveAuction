@@ -3,27 +3,28 @@
 @keyframes overlayBidPop {
   0% {
     transform: scale(1);
-    text-shadow: 0 0 0 transparent;
+    filter: drop-shadow(0 0 0 transparent);
   }
   42% {
     transform: scale(1.05);
-    text-shadow: 0 0 18px rgba(0, 210, 106, 0.42), 0 0 36px rgba(0, 210, 106, 0.18);
+    filter: drop-shadow(0 0 14px rgba(0, 210, 106, 0.5));
   }
   100% {
     transform: scale(1);
-    text-shadow: 0 0 0 transparent;
+    filter: drop-shadow(0 0 0 transparent);
   }
 }
 
 .overlay-bid-pop {
   display: inline-block;
   transform-origin: center center;
-  animation: overlayBidPop 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
+  animation: overlayBidPop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .overlay-ticker-pop {
-  animation: overlayBidPop 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+  display: inline-block;
+  transform-origin: center center;
+  animation: overlayBidPop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
