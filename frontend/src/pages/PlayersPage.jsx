@@ -378,6 +378,11 @@ export default function PlayersPage() {
           {' '}| CricHeroes Profile URL (optional)
         </span>
         <div className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+          <strong style={{ color: 'var(--color-accent)' }}>Optional extra columns</strong>
+          {' '}(any header after the standard columns — e.g. Mobile, T-Shirt Size, Pant Size).
+          These are stored for squad export only and are not shown in the auction UI.
+        </div>
+        <div className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>
           <strong style={{ color: 'var(--color-accent)' }}>Valid roles:</strong>
           {' '}{playerRoles.map(r => r.label).join(' · ')}
           &nbsp;·&nbsp; Hover a player card to Edit or Delete.

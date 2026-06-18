@@ -86,6 +86,10 @@ public class Player {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    /** Optional kit/contact fields from Excel upload — export only, not shown in auction UI */
+    @Column(name = "extra_data", columnDefinition = "TEXT")
+    private String extraData;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
