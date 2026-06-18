@@ -76,10 +76,30 @@ export default function OverlayMainPage() {
 
   if (config && config.overlayEnabled === false) return null;
 
+  const showVerdict = isSold || isUnsold;
+  const verdictStampKey = showVerdict ? `${auction?.sessionId || 'session'}-${status}` : 'idle';
+
   return (
     <div className={styles.stage}>
       <OverlayFullscreenButton />
       {showStatsIntro && <PlayerStatsOverlay player={player} />}
+      {showVerdict && (
+        <div
+          key={verdictStampKey}
+          className={`${styles.verdictStampStrip} ${isSold ? styles.verdictStampSold : styles.verdictStampUnsold}`}
+          aria-live="polite"
+        >
+          <div className={styles.verdictStampSeal}>
+            <div className={styles.verdictStampRing} aria-hidden />
+            <div className={styles.verdictStampBody}>
+              <span className={styles.verdictStampKicker}>Official Auction Order</span>
+              <span className={styles.verdictStampText}>{isSold ? 'SOLD' : 'UNSOLD'}</span>
+              <span className={styles.verdictStampFooter}>Verified &amp; Recorded</span>
+            </div>
+            <div className={styles.verdictStampImpact} aria-hidden />
+          </div>
+        </div>
+      )}
       <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
         <div className={styles.infoStack}>
           <div className={`${styles.glassCard} ${styles.playerNameCard}`}>
@@ -106,11 +126,13 @@ export default function OverlayMainPage() {
           )}
         </div>
 
-        <div className={styles.bidPanel}>
-          <div className={styles.liveBadge}>
-            <Radio size={15} />
-            LIVE BID
-          </div>
+        <div className={`${styles.bidPanel} ${showVerdict ? styles.bidPanelSoldLayout : ''}`}>
+          {!showVerdict && (
+            <div className={styles.liveBadge}>
+              <Radio size={15} />
+              LIVE BID
+            </div>
+          )}
 
           <div className={`${styles.glassCard} ${styles.amountCard}`}>
             <div className={styles.bidLabel}>Current Bid</div>
@@ -119,13 +141,6 @@ export default function OverlayMainPage() {
             </div>
             <div className={styles.status}>{status === 'ACTIVE' ? 'Auction Active' : status}</div>
           </div>
-
-          {(isSold || isUnsold) && (
-            <div className={`${styles.glassCard} ${styles.resultStamp}`}>
-              {isSold && <img src="/gavel.png" alt="" />}
-              <span>{isSold ? 'SOLD' : 'UNSOLD'}</span>
-            </div>
-          )}
 
           <div className={`${styles.glassCard} ${styles.teamBid} ${isSold ? styles.teamBidSold : ''}`}>
             {team?.logoUrl ? (
