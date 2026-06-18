@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
@@ -8,6 +9,7 @@ import { playerIdLabel } from '../utils/playerSearch';
 import { hasPlayerStats, statValue } from '../utils/playerStats';
 import { getAuctionDisplayName, getRoleShortLabel } from '../utils/formatters';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
+import GavelOverlay from '../components/common/GavelOverlay';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -53,12 +55,39 @@ export default function AuctionDisplayPage() {
   const status = auction?.status || 'IDLE';
   const liveText = status === 'ACTIVE' ? 'Auction Live' : status === 'SOLD' ? 'Sold' : status === 'UNSOLD' ? 'Unsold' : 'Auction Standby';
   const isResult = status === 'SOLD' || status === 'UNSOLD';
+  const isSold = status === 'SOLD';
+  const [soldOverlay, setSoldOverlay] = useState(null);
+  const previousAuctionRef = useRef(null);
   const showStatsIntro = useTimedPlayerStatsOverlay(
     player,
     auction?.sessionId,
     config?.overlayShowPlayerStatsIntro !== false,
     config?.overlayPlayerStatsIntroMs || 5500
   );
+
+  useEffect(() => {
+    const current = auction;
+    const previous = previousAuctionRef.current;
+    if (!current) return;
+    if (previous?.status === 'ACTIVE' && current.status === 'SOLD') {
+      setSoldOverlay({
+        verdict: 'SOLD',
+        name: previous.currentPlayer?.name || current.currentPlayer?.name,
+        team: current.highestBidderTeamName,
+        teamLogo: resolveUrl(team?.logoUrl),
+        amount: current.currentBid,
+      });
+      setTimeout(() => setSoldOverlay(null), 5600);
+    }
+    if (previous?.status === 'ACTIVE' && current.status === 'UNSOLD') {
+      setSoldOverlay({
+        verdict: 'UNSOLD',
+        name: previous.currentPlayer?.name || current.currentPlayer?.name,
+      });
+      setTimeout(() => setSoldOverlay(null), 4200);
+    }
+    previousAuctionRef.current = current;
+  }, [auction, team]);
 
   return (
     <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''}`}>
@@ -114,7 +143,7 @@ export default function AuctionDisplayPage() {
               </div>
             </div>
 
-            <div className={`${styles.glass} ${styles.teamCard}`}>
+            <div className={`${styles.glass} ${styles.teamCard} ${isSold ? styles.teamCardSold : ''}`}>
               {team?.logoUrl ? (
                 <img className={styles.teamLogo} src={resolveUrl(team.logoUrl)} alt={team.name} />
               ) : (
@@ -123,7 +152,7 @@ export default function AuctionDisplayPage() {
                 </div>
               )}
               <div>
-                <div className={styles.label}>Currently Bidding</div>
+                <div className={styles.label}>{isSold ? 'Winning Team' : 'Currently Bidding'}</div>
                 <div className={styles.teamName}>{auction?.highestBidderTeamName || 'Awaiting Bid'}</div>
               </div>
             </div>
@@ -149,7 +178,13 @@ export default function AuctionDisplayPage() {
             {status === 'SOLD' ? (
               <>
                 <div className={styles.resultTeam}>
-                  {team?.logoUrl && <img src={resolveUrl(team.logoUrl)} alt={team.name} />}
+                  {team?.logoUrl ? (
+                    <img className={styles.resultTeamLogo} src={resolveUrl(team.logoUrl)} alt={team.name} />
+                  ) : (
+                    <div className={styles.resultTeamLogoFallback}>
+                      {(auction?.highestBidderTeamName || 'W')[0]}
+                    </div>
+                  )}
                   <span>{auction?.highestBidderTeamName || 'Winning Team'}</span>
                 </div>
                 <div className={styles.resultAmount}>{money(auction?.currentBid)}</div>
@@ -159,6 +194,13 @@ export default function AuctionDisplayPage() {
             )}
           </div>
         </section>
+      )}
+
+      {soldOverlay && (
+        <GavelOverlay
+          {...soldOverlay}
+          duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
+        />
       )}
     </main>
   );
