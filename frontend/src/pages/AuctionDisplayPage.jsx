@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { useTimedPlayerStatsOverlay } from '../hooks/useTimedPlayerStatsOverlay';
+import { useCinematicPlayerIntro } from '../hooks/useCinematicPlayerIntro';
 import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
@@ -10,6 +11,7 @@ import { hasPlayerStats, statValue } from '../utils/playerStats';
 import { getAuctionDisplayName, getRoleShortLabel, formatSquadPickLabel } from '../utils/formatters';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import GavelOverlay from '../components/common/GavelOverlay';
+import CinematicPlayerIntro from '../components/overlay/CinematicPlayerIntro';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -59,10 +61,16 @@ export default function AuctionDisplayPage() {
   const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
   const [soldOverlay, setSoldOverlay] = useState(null);
   const previousAuctionRef = useRef(null);
+  const cinematicEnabled = config?.overlayShowCinematicIntro === true && auction?.cinematicIntroLive !== false;
+  const { isPlaying: cinematicPlaying, sessionReady } = useCinematicPlayerIntro(
+    auction?.sessionId,
+    status,
+    cinematicEnabled
+  );
   const showStatsIntro = useTimedPlayerStatsOverlay(
     player,
     auction?.sessionId,
-    config?.overlayShowPlayerStatsIntro !== false,
+    config?.overlayShowPlayerStatsIntro !== false && sessionReady,
     config?.overlayPlayerStatsIntroMs || 5500
   );
 
@@ -93,9 +101,9 @@ export default function AuctionDisplayPage() {
   }, [auction, teams]);
 
   return (
-    <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''}`}>
+    <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''} ${cinematicPlaying ? styles.cinematicMode : ''}`}>
       <OverlayFullscreenButton />
-      <div className={styles.shell}>
+      <div className={`${styles.shell} ${cinematicPlaying ? styles.shellDuringCinematic : ''}`}>
         <header className={styles.topBar}>
           <div>
             <div className={styles.brandKicker}>{connected ? 'Live Sync Connected' : 'Connecting Live Feed'}</div>
@@ -209,6 +217,14 @@ export default function AuctionDisplayPage() {
         <GavelOverlay
           {...soldOverlay}
           duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
+        />
+      )}
+
+      {cinematicPlaying && (
+        <CinematicPlayerIntro
+          player={player}
+          playerRoles={config?.playerRoles}
+          scene={auction?.sessionId}
         />
       )}
     </main>

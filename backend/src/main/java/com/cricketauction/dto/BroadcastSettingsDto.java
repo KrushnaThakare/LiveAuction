@@ -13,6 +13,8 @@ public class BroadcastSettingsDto {
     private Boolean overlayShowTicker;
     private Boolean overlayShowPlayerStatsIntro;
     private Integer overlayPlayerStatsIntroMs;
+    private Boolean overlayShowCinematicIntro;
+    private Boolean overlayCinematicIntroLive;
     private Boolean tokenEnabled;
     private String overlaySecretToken;
     private String tournamentName;

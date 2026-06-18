@@ -38,6 +38,8 @@ public class BroadcastController {
         if (d.getOverlayPlayerStatsIntroMs() != null) {
             t.setOverlayPlayerStatsIntroMs(Math.max(1000, Math.min(15000, d.getOverlayPlayerStatsIntroMs())));
         }
+        if (d.getOverlayShowCinematicIntro() != null) t.setOverlayShowCinematicIntro(d.getOverlayShowCinematicIntro());
+        if (d.getOverlayCinematicIntroLive() != null) t.setOverlayCinematicIntroLive(d.getOverlayCinematicIntroLive());
         if (Boolean.FALSE.equals(d.getTokenEnabled())) t.setOverlaySecretToken(null);
         if (d.getOverlaySecretToken() != null) t.setOverlaySecretToken(d.getOverlaySecretToken().isBlank() ? null : d.getOverlaySecretToken());
         tournamentService.saveTournament(t);
@@ -45,6 +47,20 @@ public class BroadcastController {
             overlayPushService.pushBroadcastDisabled(tournamentId);
         }
         return ResponseEntity.ok(ApiResponse.success("Broadcast settings updated", map(t, true)));
+    }
+
+    /** Instant runtime toggle for cinematic intro during live auction */
+    @PatchMapping("/cinematic-intro-live")
+    public ResponseEntity<ApiResponse<BroadcastSettingsDto>> setCinematicIntroLive(
+            @PathVariable Long tournamentId,
+            @RequestBody BroadcastSettingsDto d) {
+        Tournament t = tournamentService.findById(tournamentId);
+        if (d.getOverlayCinematicIntroLive() != null) {
+            t.setOverlayCinematicIntroLive(d.getOverlayCinematicIntroLive());
+            tournamentService.saveTournament(t);
+            overlayPushService.pushLightweightSnapshot(tournamentId);
+        }
+        return ResponseEntity.ok(ApiResponse.success(map(t, false)));
     }
 
     private BroadcastSettingsDto map(Tournament t, boolean includeSecret) {
@@ -56,6 +72,8 @@ public class BroadcastController {
                 .overlayShowTicker(t.getOverlayShowTicker())
                 .overlayShowPlayerStatsIntro(t.getOverlayShowPlayerStatsIntro())
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
+                .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())
+                .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .overlaySecretToken(includeSecret ? t.getOverlaySecretToken() : null)
                 .build();
