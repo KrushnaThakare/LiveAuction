@@ -103,7 +103,7 @@ export default function AuctionPage() {
   const [actionLoading, setActionLoading]       = useState(false);
   const [assigningTeamId, setAssigningTeamId]   = useState(null);
   const [fullscreen, setFullscreen]             = useState(false);
-  const [voiceEnabled, setVoiceEnabled]         = useState(true);
+  const [voiceEnabled, setVoiceEnabled]         = useState(false);
   const [bidFlash, setBidFlash]                 = useState(false);
   const [bidKey, setBidKey]                     = useState(0);
   /* proposedBid = number the host has typed/arrowed; null means "not set" */
@@ -615,7 +615,11 @@ export default function AuctionPage() {
               <Share2 size={15} />
             </button>
           )}
-          <button className="btn-secondary !p-2" onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}>
+          <button
+            className="btn-secondary !p-2"
+            title={voiceEnabled ? 'Turn voice announcements off' : 'Turn voice announcements on'}
+            onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}
+          >
             {voiceEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
           <button className="btn-secondary !p-2" onClick={toggleFullscreen} title="F=Fullscreen">
@@ -628,7 +632,7 @@ export default function AuctionPage() {
       {showKeyHelp && (
         <div className="flex-shrink-0 px-4 py-2 flex flex-wrap gap-4 text-xs items-center"
           style={{ backgroundColor: 'var(--color-surface-2)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-          {[['↑↓','Set bid'],['1–9','Assign to team'],['S','Sell'],['U','Unsold'],['R','Random player'],['M','Mute/Unmute'],['F','Fullscreen']].map(([k,v]) => (
+          {[['↑↓','Set bid'],['1–9','Assign to team'],['S','Sell'],['U','Unsold'],['R','Random player'],['M','Toggle voice'],['F','Fullscreen']].map(([k,v]) => (
             <span key={k}>
               <kbd className="px-1.5 py-0.5 rounded font-mono font-bold mr-1"
                 style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>{k}</kbd>
