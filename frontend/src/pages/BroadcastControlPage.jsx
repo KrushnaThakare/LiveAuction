@@ -17,6 +17,8 @@ export default function BroadcastControlPage() {
     overlayPlayerStatsIntroMs: 5500,
     overlayShowCinematicIntro: false,
     overlayCinematicIntroLive: true,
+    overlayShowPlayerTransition: true,
+    overlayShowBidPop: true,
     tokenEnabled: false,
     overlaySecretToken: '',
   });
@@ -88,6 +90,14 @@ export default function BroadcastControlPage() {
         <label><input type='checkbox' checked={!!settings.overlayShowCinematicIntro} onChange={e=>setSettings(s=>({...s,overlayShowCinematicIntro:e.target.checked}))} /> Enable cinematic player intro (Audience Display only)</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
           Plays a premium reveal sequence on the Audience Display when the next player is picked. Does not affect the admin auction screen or other overlays.
+        </p>
+        <label><input type='checkbox' checked={settings.overlayShowPlayerTransition !== false} onChange={e=>setSettings(s=>({...s,overlayShowPlayerTransition:e.target.checked}))} /> Enable main overlay player transition</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Premium slide transition on the Main overlay when the next player is selected.
+        </p>
+        <label><input type='checkbox' checked={settings.overlayShowBidPop !== false} onChange={e=>setSettings(s=>({...s,overlayShowBidPop:e.target.checked}))} /> Enable bid amount pop on overlays</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Subtle scale pulse on current bid across overlay displays when the amount changes.
         </p>
         <label><input type='checkbox' checked={!!settings.tokenEnabled} onChange={e=>setSettings(s=>({...s,tokenEnabled:e.target.checked}))} /> Enable token</label>
         {settings.tokenEnabled && <input className='input' value={settings.overlaySecretToken||''} onChange={e=>setSettings(s=>({...s,overlaySecretToken:e.target.value}))} placeholder='secret token'/>}

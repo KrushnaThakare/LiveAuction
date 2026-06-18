@@ -4,6 +4,7 @@ import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRou
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { useTimedPlayerStatsOverlay } from '../hooks/useTimedPlayerStatsOverlay';
 import { useCinematicPlayerIntro } from '../hooks/useCinematicPlayerIntro';
+import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
 import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
@@ -62,6 +63,8 @@ export default function AuctionDisplayPage() {
   const [soldOverlay, setSoldOverlay] = useState(null);
   const previousAuctionRef = useRef(null);
   const cinematicEnabled = config?.overlayShowCinematicIntro === true && auction?.cinematicIntroLive !== false;
+  const bidPopEnabled = config?.overlayShowBidPop !== false;
+  const bidPopping = useOverlayBidPop(auction?.bidRevision, bidPopEnabled && status === 'ACTIVE');
   const { isPlaying: cinematicPlaying, sessionReady } = useCinematicPlayerIntro(
     auction?.sessionId,
     status,
@@ -149,7 +152,7 @@ export default function AuctionDisplayPage() {
           <aside className={styles.bidPanel}>
             <div className={`${styles.glass} ${styles.bidCard}`}>
               <div className={styles.label}>Current Bid</div>
-              <div className={styles.bidAmount}>
+              <div className={`${styles.bidAmount} ${bidPopping ? 'overlay-bid-pop' : ''}`}>
                 {money(auction?.currentBid)}
               </div>
             </div>

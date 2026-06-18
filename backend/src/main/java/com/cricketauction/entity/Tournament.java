@@ -109,6 +109,16 @@ public class Tournament {
     @Builder.Default
     private Boolean overlayCinematicIntroLive = true;
 
+    /** Main overlay: premium player card transition on next player */
+    @Column(name = "overlay_show_player_transition")
+    @Builder.Default
+    private Boolean overlayShowPlayerTransition = true;
+
+    /** Overlay displays: subtle bid amount pop on bid change */
+    @Column(name = "overlay_show_bid_pop")
+    @Builder.Default
+    private Boolean overlayShowBidPop = true;
+
     @Column(name = "overlay_secret_token", length = 120)
     private String overlaySecretToken;
 

@@ -1,28 +1,17 @@
 import { useSearchParams } from 'react-router-dom';
-import { Activity, BarChart3, Calendar, IndianRupee, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
+import { BarChart3, Activity, Radio, Shield, Target, TrendingUp, Trophy } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { useTimedPlayerStatsOverlay } from '../hooks/useTimedPlayerStatsOverlay';
+import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
 import { resolveUrl } from '../utils/resolveUrl';
-import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { hasPlayerStats, statValue } from '../utils/playerStats';
-import { getRoleShortLabel, formatSquadPickLabel } from '../utils/formatters';
+import { formatSquadPickLabel } from '../utils/formatters';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
+import OverlayMainPlayerPanel from '../components/overlay/OverlayMainPlayerPanel';
 import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
-
-function Stat({ icon: Icon, label, value }) {
-  return (
-    <div className={`${styles.glassCard} ${styles.statCard}`}>
-      <span className={styles.statIcon}><Icon size={17} /></span>
-      <span>
-        <span className={styles.statLabel}>{label}</span>
-        <span className={styles.statValue}>{value}</span>
-      </span>
-    </div>
-  );
-}
 
 function PlayerStatsOverlay({ player }) {
   if (!hasPlayerStats(player)) return null;
@@ -68,6 +57,8 @@ export default function OverlayMainPage() {
   const isSold = status === 'SOLD';
   const isUnsold = status === 'UNSOLD';
   const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
+  const bidPopEnabled = config?.overlayShowBidPop !== false;
+  const bidPopping = useOverlayBidPop(auction?.bidRevision, bidPopEnabled && status === 'ACTIVE');
   const showStatsIntro = useTimedPlayerStatsOverlay(
     player,
     auction?.sessionId,
@@ -107,30 +98,13 @@ export default function OverlayMainPage() {
         </div>
       )}
       <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
-        <div className={styles.infoStack}>
-          <div className={`${styles.glassCard} ${styles.playerNameCard}`}>
-            <div className={styles.eyebrow}>
-              <span className={styles.liveDot} />
-              {player?.id ? playerIdLabel(player) : 'Player Name'} {connected ? 'Live' : 'Syncing'}
-            </div>
-            <h1 className={styles.playerName}>{player?.name || 'Waiting for Player'}</h1>
-          </div>
-
-          <div className={styles.statsGrid}>
-            <Stat icon={Shield} label="Role" value={getRoleShortLabel(player?.role, config?.playerRoles)} />
-            <Stat icon={IndianRupee} label="Base Price" value={money(player?.basePrice)} />
-            <Stat icon={Calendar} label="Age" value={player?.age || 'Auction Pool'} />
-            <Stat icon={Trophy} label="History" value={player?.teamName || player?.stats || 'Fresh pick'} />
-          </div>
-        </div>
-
-        <div className={styles.imageWrap}>
-          {player?.imageUrl ? (
-            <img className={styles.playerImage} src={driveImg(player.imageUrl) || resolveUrl(player.imageUrl)} alt={player.name} />
-          ) : (
-            <div className={styles.imageFallback}><UserRound size={96} /></div>
-          )}
-        </div>
+        <OverlayMainPlayerPanel
+          player={player}
+          sessionId={auction?.sessionId}
+          transitionEnabled={config?.overlayShowPlayerTransition !== false}
+          connected={connected}
+          playerRoles={config?.playerRoles}
+        />
 
         <div className={`${styles.bidPanel} ${showVerdict ? styles.bidPanelSoldLayout : ''}`}>
           {!showVerdict && (
@@ -142,7 +116,7 @@ export default function OverlayMainPage() {
 
           <div className={`${styles.glassCard} ${styles.amountCard}`}>
             <div className={styles.bidLabel}>Current Bid</div>
-            <div className={styles.bidAmount}>
+            <div className={`${styles.bidAmount} ${bidPopping ? 'overlay-bid-pop' : ''}`}>
               {money(auction?.currentBid)}
             </div>
             <div className={styles.status}>{status === 'ACTIVE' ? 'Auction Active' : status}</div>
