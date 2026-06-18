@@ -46,6 +46,7 @@
 .shellDuringCinematic {
   opacity: 0;
   pointer-events: none;
+  transition: opacity 0.65s ease 0.15s;
 }
 
 .cinematicMode {

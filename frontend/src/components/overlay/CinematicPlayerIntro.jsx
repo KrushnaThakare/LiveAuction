@@ -3,6 +3,7 @@ import { UserRound } from 'lucide-react';
 import { resolveUrl } from '../../utils/resolveUrl';
 import { driveImg } from '../../utils/driveImage';
 import { formatRole } from '../../utils/formatters';
+import { CINEMATIC_SCENE_MS } from '../../constants/cinematicIntroTiming';
 import styles from './CinematicPlayerIntro.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -14,9 +15,9 @@ export default function CinematicPlayerIntro({ player, playerRoles, scene }) {
   useEffect(() => {
     if (!scene) return undefined;
     setActiveScene(1);
-    const t2 = setTimeout(() => setActiveScene(2), 400);
-    const t3 = setTimeout(() => setActiveScene(3), 1000);
-    const t4 = setTimeout(() => setActiveScene(4), 2000);
+    const t2 = setTimeout(() => setActiveScene(2), CINEMATIC_SCENE_MS.scene2);
+    const t3 = setTimeout(() => setActiveScene(3), CINEMATIC_SCENE_MS.scene3);
+    const t4 = setTimeout(() => setActiveScene(4), CINEMATIC_SCENE_MS.scene4);
     return () => {
       clearTimeout(t2);
       clearTimeout(t3);
@@ -29,9 +30,12 @@ export default function CinematicPlayerIntro({ player, playerRoles, scene }) {
   return (
     <div className={`${styles.overlay} ${styles[`scene${activeScene}`]}`} aria-hidden="true">
       <div className={styles.backdrop} />
+      <div className={styles.vignette} />
       <div className={styles.spotlight} />
       <div className={styles.particles} />
+      <div className={styles.grain} />
       <div className={styles.scanLine} />
+      <div className={styles.scanGlow} />
 
       <div className={styles.nextPlayerBlock}>
         <div className={styles.rule} />
@@ -41,6 +45,7 @@ export default function CinematicPlayerIntro({ player, playerRoles, scene }) {
       </div>
 
       <div className={styles.revealBlock}>
+        <div className={styles.photoGlow} />
         <div className={styles.photoFrame}>
           {imageSrc ? (
             <img src={imageSrc} alt="" />
