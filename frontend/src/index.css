@@ -310,6 +310,38 @@ body {
   100% { transform:scale(1)    translateY(0);    opacity:1 }
 }
 @keyframes detailFadeUp   { 0% { transform:translateY(28px); opacity:0 } 100% { transform:translateY(0); opacity:1 } }
+@keyframes teamLogoReveal {
+  0%   { transform: scale(0.15) rotate(-18deg); opacity: 0; filter: blur(10px); }
+  55%  { transform: scale(1.14) rotate(5deg);  opacity: 1; filter: blur(0); }
+  72%  { transform: scale(0.94) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0);       opacity: 1; }
+}
+@keyframes logoRingSpin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes logoGlowPulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.08); }
+}
+@keyframes logoShineSweep {
+  0%   { transform: translateX(-160%) skewX(-18deg); opacity: 0; }
+  18%  { opacity: 0.85; }
+  100% { transform: translateX(220%) skewX(-18deg); opacity: 0; }
+}
+@keyframes confettiBurst {
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(540deg) scale(0.4); opacity: 0; }
+}
+@keyframes teamNameGlow {
+  0%, 100% { text-shadow: 0 0 18px rgba(251,191,36,0.45), 0 2px 8px rgba(0,0,0,0.5); }
+  50%      { text-shadow: 0 0 36px rgba(251,191,36,0.95), 0 0 64px rgba(251,191,36,0.35), 0 2px 8px rgba(0,0,0,0.5); }
+}
+@keyframes amountPop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  65%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
 @keyframes overlayFadeIn  { 0% { opacity:0 } 100% { opacity:1 } }
 @keyframes boardShake     { 0%,100% { transform:translateX(0) rotate(0) } 20% { transform:translateX(-4px) rotate(-1deg) } 40% { transform:translateX(4px) rotate(1deg) } 60% { transform:translateX(-3px) rotate(-0.5deg) } 80% { transform:translateX(3px) rotate(0.5deg) } }
 @keyframes scanline       { 0% { top:-8% } 100% { top:108% } }
@@ -330,6 +362,9 @@ body {
 .animate-sold         { animation: soldBounce  0.7s cubic-bezier(0.175,0.885,0.32,1.275) forwards }
 .animate-verdict-slam { animation: verdictSlam 0.65s cubic-bezier(0.175,0.885,0.32,1.275) forwards }
 .animate-detail-up    { animation: detailFadeUp 0.5s ease-out forwards }
+.animate-team-logo    { animation: teamLogoReveal 0.85s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards }
+.animate-team-name    { animation: teamNameGlow 2.2s ease-in-out infinite }
+.animate-amount-pop   { animation: amountPop 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards }
 .animate-team-highlight { animation: teamHighlight 1.2s ease-in-out infinite }
 .animate-bid-flash    { animation: bidFlash 0.6s ease-in-out }
 

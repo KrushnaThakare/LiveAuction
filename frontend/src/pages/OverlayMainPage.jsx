@@ -127,7 +127,7 @@ export default function OverlayMainPage() {
             </div>
           )}
 
-          <div className={`${styles.glassCard} ${styles.teamBid}`}>
+          <div className={`${styles.glassCard} ${styles.teamBid} ${isSold ? styles.teamBidSold : ''}`}>
             {team?.logoUrl ? (
               <img className={styles.teamLogo} src={resolveUrl(team.logoUrl)} alt={team.name} />
             ) : (
@@ -136,13 +136,20 @@ export default function OverlayMainPage() {
               </div>
             )}
             <div>
-              <div className={styles.teamLabel}>Currently Bidding</div>
+              <div className={styles.teamLabel}>{isSold ? 'Winning Team' : 'Currently Bidding'}</div>
               <div className={styles.teamName}>{auction?.highestBidderTeamName || 'Awaiting Bidder'}</div>
             </div>
-            <div className={styles.increment}>
-              <TrendingUp size={18} />
-              +{money(increment)}
-            </div>
+            {!isSold && (
+              <div className={styles.increment}>
+                <TrendingUp size={18} />
+                +{money(increment)}
+              </div>
+            )}
+            {isSold && (
+              <div className={styles.soldAmount}>
+                {money(auction?.currentBid)}
+              </div>
+            )}
           </div>
         </div>
       </section>

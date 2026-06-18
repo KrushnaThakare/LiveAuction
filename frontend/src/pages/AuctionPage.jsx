@@ -717,7 +717,7 @@ export default function AuctionPage() {
         <TeamsSidebar teams={teams} auctionState={auctionState} />
       </div>
 
-      {soldOverlay && <GavelOverlay {...soldOverlay} duration={soldOverlay.verdict === 'SOLD' ? 5000 : 4000} />}
+      {soldOverlay && <GavelOverlay {...soldOverlay} duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000} />}
     </div>
   );
 }

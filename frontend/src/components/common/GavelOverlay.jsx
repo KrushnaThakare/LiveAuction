@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { formatCurrency } from '../../utils/formatters';
 
 /**
@@ -171,44 +171,173 @@ export default function GavelOverlay({ verdict, name, team, teamLogo, amount, du
           </div>
         )}
 
-        {/* SOLD details */}
+        {/* SOLD details — grand team reveal */}
         {showDetails && isSold && (
           <div
             className="animate-detail-up"
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center',
-              gap: 12, marginTop: 16,
+              gap: 18, marginTop: 20,
               animationDelay: '0.12s',
               animationFillMode: 'both',
             }}
           >
-            {teamLogo && (
+            {/* Confetti burst */}
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>
+              {[
+                { left: '18%', top: '22%', dx: '-80px', dy: '120px', color: '#fbbf24', delay: 0 },
+                { left: '82%', top: '24%', dx: '90px',  dy: '140px', color: accent,    delay: 0.05 },
+                { left: '12%', top: '48%', dx: '-60px', dy: '100px', color: '#fff',    delay: 0.1 },
+                { left: '88%', top: '50%', dx: '70px',  dy: '110px', color: '#fbbf24', delay: 0.08 },
+                { left: '28%', top: '18%', dx: '-40px', dy: '160px', color: accent,    delay: 0.15 },
+                { left: '72%', top: '20%', dx: '50px',  dy: '150px', color: '#fff',    delay: 0.12 },
+                { left: '50%', top: '14%', dx: '0px',   dy: '180px', color: '#fbbf24', delay: 0.06 },
+                { left: '38%', top: '62%', dx: '-100px',dy: '80px',  color: accent,    delay: 0.18 },
+                { left: '62%', top: '60%', dx: '100px', dy: '90px',  color: '#fbbf24', delay: 0.14 },
+                { left: '8%',  top: '35%', dx: '-110px',dy: '130px', color: '#fff',    delay: 0.2 },
+                { left: '92%', top: '38%', dx: '110px', dy: '125px', color: accent,    delay: 0.16 },
+                { left: '50%', top: '70%', dx: '20px',  dy: '60px',  color: '#fbbf24', delay: 0.22 },
+              ].map((p, i) => (
+                <span
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    left: p.left,
+                    top: p.top,
+                    width: i % 3 === 0 ? 10 : 7,
+                    height: i % 3 === 0 ? 10 : 7,
+                    borderRadius: i % 2 === 0 ? '50%' : 2,
+                    background: p.color,
+                    boxShadow: `0 0 10px ${p.color}`,
+                    ['--dx']: p.dx,
+                    ['--dy']: p.dy,
+                    animation: `confettiBurst 1.4s ease-out ${p.delay + 0.9}s forwards`,
+                    opacity: 0,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Team logo hero */}
+            <div style={{ position: 'relative', zIndex: 2, marginTop: 8 }}>
+              {/* Pulsing glow halo */}
               <div style={{
-                width: 'clamp(64px,12vw,88px)',
-                height: 'clamp(64px,12vw,88px)',
-                borderRadius: 16,
-                overflow: 'hidden',
-                border: `3px solid ${accent}`,
-                boxShadow: `0 0 28px rgba(${accentRgb},0.6), 0 0 60px rgba(${accentRgb},0.25)`,
-              }}>
-                <img src={teamLogo} alt={team}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                position: 'absolute',
+                inset: '-18%',
+                borderRadius: '50%',
+                background: `radial-gradient(circle, rgba(${accentRgb},0.45) 0%, rgba(${accentRgb},0) 70%)`,
+                animation: 'logoGlowPulse 2.4s ease-in-out infinite',
+                pointerEvents: 'none',
+              }} />
+
+              {/* Rotating ring */}
+              <div
+                className="animate-team-logo"
+                style={{
+                  position: 'relative',
+                  width: 'clamp(148px, 30vw, 240px)',
+                  height: 'clamp(148px, 30vw, 240px)',
+                  borderRadius: '50%',
+                  padding: 5,
+                  background: `conic-gradient(from 0deg, ${accent}, #fbbf24, #fff, ${accent})`,
+                  boxShadow: `0 0 50px rgba(${accentRgb},0.55), 0 0 100px rgba(${accentRgb},0.25)`,
+                }}
+              >
+                <div style={{
+                  position: 'absolute',
+                  inset: -4,
+                  borderRadius: '50%',
+                  background: `conic-gradient(from 0deg, transparent, rgba(${accentRgb},0.35), transparent, rgba(251,191,36,0.35), transparent)`,
+                  animation: 'logoRingSpin 4s linear infinite',
+                  pointerEvents: 'none',
+                }} />
+
+                <div style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  background: 'rgba(0,0,0,0.35)',
+                  border: '4px solid rgba(255,255,255,0.22)',
+                  boxShadow: 'inset 0 0 30px rgba(0,0,0,0.45)',
+                }}>
+                  {teamLogo ? (
+                    <img
+                      src={teamLogo}
+                      alt={team}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: '100%', height: '100%',
+                      display: 'grid', placeItems: 'center',
+                      fontSize: 'clamp(3rem, 10vw, 5rem)',
+                      fontWeight: 900, color: '#fbbf24',
+                    }}>
+                      {(team || '?')[0]}
+                    </div>
+                  )}
+
+                  {/* Shine sweep */}
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.55) 50%, transparent 65%)',
+                    animation: 'logoShineSweep 1.8s ease-in-out 1.1s forwards',
+                    pointerEvents: 'none',
+                  }} />
+                </div>
               </div>
-            )}
-            <p style={{
-              fontWeight: 800,
-              fontSize: 'clamp(1.2rem, 4vw, 2rem)',
-              color: '#fbbf24',
-              textShadow: '0 0 20px rgba(251,191,36,0.5)',
-            }}>
+
+              {/* Trophy badge */}
+              <div style={{
+                position: 'absolute',
+                bottom: -6,
+                right: -6,
+                width: 'clamp(42px, 8vw, 56px)',
+                height: 'clamp(42px, 8vw, 56px)',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                border: '3px solid rgba(255,255,255,0.85)',
+                display: 'grid',
+                placeItems: 'center',
+                fontSize: 'clamp(1.2rem, 3vw, 1.6rem)',
+                boxShadow: '0 4px 20px rgba(251,191,36,0.6)',
+                animation: 'teamLogoReveal 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.5s both',
+              }}>
+                🏆
+              </div>
+            </div>
+
+            <p
+              className="animate-team-name"
+              style={{
+                position: 'relative', zIndex: 2,
+                fontWeight: 900,
+                fontSize: 'clamp(1.5rem, 5.5vw, 2.8rem)',
+                color: '#fbbf24',
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase',
+                margin: 0,
+              }}
+            >
               {team}
             </p>
-            <p style={{
-              fontWeight: 900,
-              fontSize: 'clamp(1.5rem, 5vw, 2.8rem)',
-              color: accent,
-              textShadow: `0 0 24px rgba(${accentRgb},0.6)`,
-            }}>
+
+            <p
+              className="animate-amount-pop"
+              style={{
+                position: 'relative', zIndex: 2,
+                fontWeight: 900,
+                fontSize: 'clamp(1.8rem, 6vw, 3.2rem)',
+                color: accent,
+                textShadow: `0 0 30px rgba(${accentRgb},0.7), 0 0 60px rgba(${accentRgb},0.3)`,
+                margin: 0,
+                animationDelay: '0.35s',
+                animationFillMode: 'both',
+              }}
+            >
               {formatCurrency(amount)}
             </p>
           </div>

@@ -173,7 +173,7 @@ export default function PublicViewPage() {
       </div>
 
       {/* Gavel overlay — same for SOLD and UNSOLD */}
-      {soldOverlay && <GavelOverlay {...soldOverlay} duration={soldOverlay.verdict === 'SOLD' ? 5000 : 4000} />}
+      {soldOverlay && <GavelOverlay {...soldOverlay} duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000} />}
     </div>
   );
 }
