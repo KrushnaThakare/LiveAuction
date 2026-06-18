@@ -6,7 +6,7 @@ import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { hasPlayerStats, statValue } from '../utils/playerStats';
-import { getRoleShortLabel } from '../utils/formatters';
+import { getRoleShortLabel, formatSquadPickLabel } from '../utils/formatters';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import styles from './OverlayBroadcast.module.css';
 
@@ -67,6 +67,7 @@ export default function OverlayMainPage() {
   const status = auction?.status || 'IDLE';
   const isSold = status === 'SOLD';
   const isUnsold = status === 'UNSOLD';
+  const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
   const showStatsIntro = useTimedPlayerStatsOverlay(
     player,
     auction?.sessionId,
@@ -94,6 +95,11 @@ export default function OverlayMainPage() {
             <div className={styles.verdictStampBody}>
               <span className={styles.verdictStampKicker}>Official Auction Order</span>
               <span className={styles.verdictStampText}>{isSold ? 'SOLD' : 'UNSOLD'}</span>
+              {isSold && squadPickLabel && (
+                <span className={styles.verdictStampSquad}>
+                  {squadPickLabel} · {auction?.highestBidderTeamName || team?.name}
+                </span>
+              )}
               <span className={styles.verdictStampFooter}>Verified &amp; Recorded</span>
             </div>
             <div className={styles.verdictStampImpact} aria-hidden />
@@ -152,7 +158,10 @@ export default function OverlayMainPage() {
             )}
             <div>
               <div className={styles.teamLabel}>{isSold ? 'Winning Team' : 'Currently Bidding'}</div>
-              <div className={styles.teamName}>{auction?.highestBidderTeamName || 'Awaiting Bidder'}</div>
+              <div className={styles.teamName}>
+                {auction?.highestBidderTeamName || 'Awaiting Bidder'}
+                {squadPickLabel && <span className={styles.squadPickBadge}>{squadPickLabel}</span>}
+              </div>
             </div>
             {!isSold && (
               <div className={styles.increment}>

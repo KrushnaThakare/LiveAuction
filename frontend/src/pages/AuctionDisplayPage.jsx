@@ -7,7 +7,7 @@ import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { hasPlayerStats, statValue } from '../utils/playerStats';
-import { getAuctionDisplayName, getRoleShortLabel } from '../utils/formatters';
+import { getAuctionDisplayName, getRoleShortLabel, formatSquadPickLabel } from '../utils/formatters';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import GavelOverlay from '../components/common/GavelOverlay';
 import styles from './AuctionDisplay.module.css';
@@ -56,6 +56,7 @@ export default function AuctionDisplayPage() {
   const liveText = status === 'ACTIVE' ? 'Auction Live' : status === 'SOLD' ? 'Sold' : status === 'UNSOLD' ? 'Unsold' : 'Auction Standby';
   const isResult = status === 'SOLD' || status === 'UNSOLD';
   const isSold = status === 'SOLD';
+  const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
   const [soldOverlay, setSoldOverlay] = useState(null);
   const previousAuctionRef = useRef(null);
   const showStatsIntro = useTimedPlayerStatsOverlay(
@@ -70,12 +71,14 @@ export default function AuctionDisplayPage() {
     const previous = previousAuctionRef.current;
     if (!current) return;
     if (previous?.status === 'ACTIVE' && current.status === 'SOLD') {
+      const winningTeam = teams.find(t => t.id === current.highestBidderTeamId || t.name === current.highestBidderTeamName);
       setSoldOverlay({
         verdict: 'SOLD',
         name: previous.currentPlayer?.name || current.currentPlayer?.name,
         team: current.highestBidderTeamName,
-        teamLogo: resolveUrl(team?.logoUrl),
+        teamLogo: resolveUrl(winningTeam?.logoUrl),
         amount: current.currentBid,
+        squadPick: formatSquadPickLabel(winningTeam?.playerCount),
       });
       setTimeout(() => setSoldOverlay(null), 5600);
     }
@@ -87,7 +90,7 @@ export default function AuctionDisplayPage() {
       setTimeout(() => setSoldOverlay(null), 4200);
     }
     previousAuctionRef.current = current;
-  }, [auction, team]);
+  }, [auction, teams]);
 
   return (
     <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''}`}>
@@ -153,7 +156,10 @@ export default function AuctionDisplayPage() {
               )}
               <div>
                 <div className={styles.label}>{isSold ? 'Winning Team' : 'Currently Bidding'}</div>
-                <div className={styles.teamName}>{auction?.highestBidderTeamName || 'Awaiting Bid'}</div>
+                <div className={styles.teamName}>
+                  {auction?.highestBidderTeamName || 'Awaiting Bid'}
+                  {squadPickLabel && <span className={styles.squadPickBadge}>{squadPickLabel}</span>}
+                </div>
               </div>
             </div>
 
@@ -185,7 +191,10 @@ export default function AuctionDisplayPage() {
                       {(auction?.highestBidderTeamName || 'W')[0]}
                     </div>
                   )}
-                  <span>{auction?.highestBidderTeamName || 'Winning Team'}</span>
+                  <span>
+                    {auction?.highestBidderTeamName || 'Winning Team'}
+                    {squadPickLabel && <small className={styles.resultSquadPick}>{squadPickLabel} in Squad</small>}
+                  </span>
                 </div>
                 <div className={styles.resultAmount}>{money(auction?.currentBid)}</div>
               </>
