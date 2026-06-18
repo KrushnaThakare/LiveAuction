@@ -224,18 +224,70 @@ function collectDetailColumns(formSections = []) {
     if (field.type === 'PHONE' || field.fieldKey === 'mobile' || field.fieldKey === 'phone') continue;
     if (/mobile|phone/i.test(field.label || '')) continue;
     seen.add(field.fieldKey);
-    columns.push({ key: field.fieldKey, label: field.label || field.fieldKey });
+    columns.push({
+      key: field.fieldKey,
+      label: field.label || field.fieldKey,
+      lookupKeys: [field.fieldKey, field.label].filter(Boolean),
+    });
   }
   return columns;
 }
 
-function resolveMobile(reg, formData, extraColumns) {
-  if (reg?.mobile) return reg.mobile;
-  for (const col of extraColumns) {
-    if (col.key === 'mobile' || col.key === 'phone' || /mobile|phone/i.test(col.label)) {
-      const value = normalizeExportCell(formData[col.key]);
-      if (value) return value;
+function parsePlayerExtraData(player) {
+  const raw = player?.extraData;
+  if (!raw || typeof raw !== 'object') return {};
+  return raw;
+}
+
+function normalizeColKey(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function isMobileLabel(label) {
+  return /mobile|phone/i.test(label || '');
+}
+
+function collectAllExportColumns(formSections, teams) {
+  const formCols = collectDetailColumns(formSections);
+  const ordered = [...formCols];
+  const seenNorm = new Set(formCols.map(col => normalizeColKey(col.label)));
+
+  for (const team of teams || []) {
+    for (const player of team.players || []) {
+      for (const [label, value] of Object.entries(parsePlayerExtraData(player))) {
+        if (!value || isMobileLabel(label)) continue;
+        const norm = normalizeColKey(label);
+        if (!norm || seenNorm.has(norm)) continue;
+        seenNorm.add(norm);
+        ordered.push({ key: label, label, lookupKeys: [label] });
+      }
     }
+  }
+  return ordered;
+}
+
+function getColumnValue(formData, playerExtra, col) {
+  const keys = col.lookupKeys || [col.key, col.label];
+  for (const key of keys) {
+    if (formData?.[key] != null && formData[key] !== '') {
+      return normalizeExportCell(formData[key]);
+    }
+    if (playerExtra?.[key] != null && playerExtra[key] !== '') {
+      return normalizeExportCell(playerExtra[key]);
+    }
+  }
+  for (const [label, value] of Object.entries(playerExtra || {})) {
+    if (normalizeColKey(label) === normalizeColKey(col.label)) {
+      return normalizeExportCell(value);
+    }
+  }
+  return '';
+}
+
+function resolveMobile(reg, formData, playerExtra) {
+  if (reg?.mobile) return reg.mobile;
+  for (const [label, value] of Object.entries(playerExtra || {})) {
+    if (isMobileLabel(label) && value) return normalizeExportCell(value);
   }
   return normalizeExportCell(formData.mobile || formData.phone || '');
 }
@@ -243,12 +295,13 @@ function resolveMobile(reg, formData, extraColumns) {
 function buildPlayerDetailRow(player, index, extraColumns) {
   const reg = findRegistrationForPlayer(player, index);
   const formData = parseFormData(reg);
+  const playerExtra = parsePlayerExtraData(player);
   return {
     name: player?.name || '',
     role: formatRole(player?.role),
-    mobile: resolveMobile(reg, formData, extraColumns),
+    mobile: resolveMobile(reg, formData, playerExtra),
     soldPrice: formatCurrency(player?.currentBid || 0),
-    extras: extraColumns.map(col => normalizeExportCell(formData[col.key])),
+    extras: extraColumns.map(col => getColumnValue(formData, playerExtra, col)),
   };
 }
 
@@ -259,7 +312,7 @@ const BASE_DETAIL_HEADERS = ['#', 'Name', 'Role', 'Mobile', 'Sold Price'];
  * Uses registration data fetched once at export time — no ongoing backend load.
  */
 export function exportTeamSquadDetails(teams, tournamentName = '', registrations = [], formSections = []) {
-  const extraColumns = collectDetailColumns(formSections);
+  const extraColumns = collectAllExportColumns(formSections, teams);
   const headers = [...BASE_DETAIL_HEADERS, ...extraColumns.map(col => col.label)];
   const index = buildRegistrationIndex(registrations);
   const generatedOn = new Date().toLocaleString();

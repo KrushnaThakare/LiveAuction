@@ -20,11 +20,17 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @Transactional
 public class PlayerService {
     private static final Logger log = LoggerFactory.getLogger(PlayerService.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final PlayerRepository  playerRepository;
     private final TournamentService tournamentService;
@@ -218,7 +224,19 @@ public class PlayerService {
                 .tournamentId(player.getTournament() != null ? player.getTournament().getId() : null)
                 .teamId(player.getTeam() != null ? player.getTeam().getId() : null)
                 .teamName(player.getTeam() != null ? player.getTeam().getName() : null)
+                .extraData(parseExtraData(player.getExtraData()))
                 .build();
+    }
+
+    private Map<String, String> parseExtraData(String raw) {
+        if (raw == null || raw.isBlank()) return Map.of();
+        try {
+            Map<String, String> parsed = OBJECT_MAPPER.readValue(raw, new TypeReference<LinkedHashMap<String, String>>() {});
+            return parsed != null ? parsed : Map.of();
+        } catch (Exception e) {
+            log.warn("Could not parse player extraData JSON");
+            return Map.of();
+        }
     }
 
     private void applyRetainedAssignment(Player player, Long teamId) {
