@@ -14,7 +14,7 @@ export default function OverlayTickerPage() {
   if (config && config.overlayShowTicker === false) return null;
 
   const bidPopEnabled = config?.overlayShowBidPop !== false;
-  const bidPopping = useOverlayBidPop(auction?.bidRevision, bidPopEnabled && auction?.status === 'ACTIVE');
+  const bidPopToken = useOverlayBidPop(auction?.currentBid, auction?.sessionId, bidPopEnabled && auction?.status === 'ACTIVE');
 
   const text = auction?.status === 'SOLD'
     ? `${auction.highestBidderTeamName || 'A team'} bought ${auction.currentPlayer?.name || 'the player'} for ${money(auction.currentBid)}`
@@ -23,7 +23,7 @@ export default function OverlayTickerPage() {
   return <div className="overlay-stage">
     <OverlayFullscreenButton />
     <div className="overlay-ticker">
-      <div className={`overlay-ticker-text ${bidPopping ? 'overlay-ticker-pop' : ''}`}>{text}</div>
+      <div className={`overlay-ticker-text ${bidPopToken > 0 ? 'overlay-ticker-pop' : ''}`} key={bidPopToken}>{text}</div>
     </div>
   </div>;
 }

@@ -1,7 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useRef, useState } from 'react';
-
-const TRANSITION_MS = 800;
+import { PLAYER_TRANSITION_MS } from '../constants/playerTransitionTiming';
 
 /**
  * Tracks player changes for main overlay card transition.
@@ -45,7 +44,7 @@ export function useOverlayPlayerTransition(sessionId, player, enabled = true) {
     const timer = setTimeout(() => {
       setExitingPlayer(null);
       setIsEntering(false);
-    }, TRANSITION_MS);
+    }, PLAYER_TRANSITION_MS);
 
     return () => clearTimeout(timer);
   }, [sessionId, player, enabled]);

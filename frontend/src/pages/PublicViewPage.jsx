@@ -9,6 +9,7 @@ import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
 import SequentialImage from '../components/common/SequentialImage';
 import GavelOverlay from '../components/common/GavelOverlay';
+import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import { Gavel, ShieldCheck, Trophy, XCircle, Wifi, ChevronDown, ChevronUp } from 'lucide-react';
 
 async function get(path) {
@@ -192,7 +193,7 @@ export default function PublicViewPage() {
 function AuctionView({ auctionState, teams, roles, bidPopEnabled = true }) {
   const isActive = auctionState?.status === 'ACTIVE';
   const player   = auctionState?.currentPlayer;
-  const bidPopping = useOverlayBidPop(auctionState?.bidRevision, bidPopEnabled && isActive);
+  const bidPopToken = useOverlayBidPop(auctionState?.currentBid, auctionState?.sessionId, bidPopEnabled && isActive);
 
   if (!isActive || !player) {
     return (
@@ -255,13 +256,13 @@ function AuctionView({ auctionState, teams, roles, bidPopEnabled = true }) {
                  boxShadow: '0 0 20px rgba(59,130,246,0.2)' }}>
         <p className="text-xs uppercase tracking-widest font-semibold mb-1"
           style={{ color: 'var(--color-text-secondary)' }}>Current Bid</p>
-        <p
-          className={`font-black ${bidPopping ? 'overlay-bid-pop' : ''}`}
-          style={{ fontSize: 'clamp(2rem,8vw,3.5rem)',
-            color: 'var(--color-primary)', textShadow: '0 0 20px rgba(59,130,246,0.5)' }}
-        >
-          {formatCurrency(auctionState.currentBid)}
-        </p>
+        <BidAmountDisplay
+          className="font-black"
+          amount={auctionState.currentBid}
+          formatAmount={formatCurrency}
+          popToken={bidPopToken}
+          style={{ fontSize: 'clamp(2rem,8vw,3.5rem)', color: 'var(--color-primary)', textShadow: '0 0 20px rgba(59,130,246,0.5)' }}
+        />
         {auctionState.highestBidderTeamName ? (
           <p className="text-base font-bold mt-1" style={{ color: 'var(--color-accent)' }}>
             🏏 {auctionState.highestBidderTeamName}

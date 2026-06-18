@@ -13,6 +13,7 @@ import { getAuctionDisplayName, getRoleShortLabel, formatSquadPickLabel } from '
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import GavelOverlay from '../components/common/GavelOverlay';
 import CinematicPlayerIntro from '../components/overlay/CinematicPlayerIntro';
+import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -64,7 +65,7 @@ export default function AuctionDisplayPage() {
   const previousAuctionRef = useRef(null);
   const cinematicEnabled = config?.overlayShowCinematicIntro === true && auction?.cinematicIntroLive !== false;
   const bidPopEnabled = config?.overlayShowBidPop !== false;
-  const bidPopping = useOverlayBidPop(auction?.bidRevision, bidPopEnabled && status === 'ACTIVE');
+  const bidPopToken = useOverlayBidPop(auction?.currentBid, auction?.sessionId, bidPopEnabled && status === 'ACTIVE');
   const { isPlaying: cinematicPlaying, sessionReady } = useCinematicPlayerIntro(
     auction?.sessionId,
     status,
@@ -152,9 +153,12 @@ export default function AuctionDisplayPage() {
           <aside className={styles.bidPanel}>
             <div className={`${styles.glass} ${styles.bidCard}`}>
               <div className={styles.label}>Current Bid</div>
-              <div className={`${styles.bidAmount} ${bidPopping ? 'overlay-bid-pop' : ''}`}>
-                {money(auction?.currentBid)}
-              </div>
+              <BidAmountDisplay
+                className={styles.bidAmount}
+                amount={auction?.currentBid}
+                formatAmount={money}
+                popToken={bidPopToken}
+              />
             </div>
 
             <div className={`${styles.glass} ${styles.teamCard} ${isSold ? styles.teamCardSold : ''}`}>

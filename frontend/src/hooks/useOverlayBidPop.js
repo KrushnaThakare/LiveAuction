@@ -1,30 +1,35 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useRef, useState } from 'react';
+import { PLAYER_TRANSITION_MS } from '../constants/playerTransitionTiming';
 
 /**
- * Fires a short CSS pop class when bidRevision changes — no extra network load.
+ * Fires a short CSS pop when the live bid amount changes.
+ * Uses currentBid (not only bidRevision) so optimistic overlay updates still animate.
  */
-export function useOverlayBidPop(bidRevision, enabled = true) {
-  const [isPopping, setIsPopping] = useState(false);
-  const lastRevisionRef = useRef(null);
+export function useOverlayBidPop(currentBid, sessionId, enabled = true) {
+  const [popToken, setPopToken] = useState(0);
+  const lastBidRef = useRef(null);
+  const lastSessionRef = useRef(null);
   const skipInitialRef = useRef(true);
 
   useEffect(() => {
-    if (!enabled || bidRevision == null) return undefined;
+    if (!enabled || sessionId == null) return undefined;
 
-    if (skipInitialRef.current) {
+    const bid = Number(currentBid ?? 0);
+
+    if (skipInitialRef.current || lastSessionRef.current !== sessionId) {
       skipInitialRef.current = false;
-      lastRevisionRef.current = bidRevision;
+      lastSessionRef.current = sessionId;
+      lastBidRef.current = bid;
       return undefined;
     }
 
-    if (lastRevisionRef.current === bidRevision) return undefined;
-    lastRevisionRef.current = bidRevision;
+    if (lastBidRef.current === bid) return undefined;
+    lastBidRef.current = bid;
+    setPopToken(token => token + 1);
 
-    setIsPopping(true);
-    const timer = setTimeout(() => setIsPopping(false), 420);
-    return () => clearTimeout(timer);
-  }, [bidRevision, enabled]);
+    return undefined;
+  }, [currentBid, sessionId, enabled]);
 
-  return isPopping;
+  return popToken;
 }

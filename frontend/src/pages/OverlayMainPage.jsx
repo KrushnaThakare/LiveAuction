@@ -9,6 +9,7 @@ import { hasPlayerStats, statValue } from '../utils/playerStats';
 import { formatSquadPickLabel } from '../utils/formatters';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import OverlayMainPlayerPanel from '../components/overlay/OverlayMainPlayerPanel';
+import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -58,7 +59,7 @@ export default function OverlayMainPage() {
   const isUnsold = status === 'UNSOLD';
   const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
   const bidPopEnabled = config?.overlayShowBidPop !== false;
-  const bidPopping = useOverlayBidPop(auction?.bidRevision, bidPopEnabled && status === 'ACTIVE');
+  const bidPopToken = useOverlayBidPop(auction?.currentBid, auction?.sessionId, bidPopEnabled && status === 'ACTIVE');
   const showStatsIntro = useTimedPlayerStatsOverlay(
     player,
     auction?.sessionId,
@@ -116,9 +117,12 @@ export default function OverlayMainPage() {
 
           <div className={`${styles.glassCard} ${styles.amountCard}`}>
             <div className={styles.bidLabel}>Current Bid</div>
-            <div className={`${styles.bidAmount} ${bidPopping ? 'overlay-bid-pop' : ''}`}>
-              {money(auction?.currentBid)}
-            </div>
+            <BidAmountDisplay
+              className={styles.bidAmount}
+              amount={auction?.currentBid}
+              formatAmount={money}
+              popToken={bidPopToken}
+            />
             <div className={styles.status}>{status === 'ACTIVE' ? 'Auction Active' : status}</div>
           </div>
 
