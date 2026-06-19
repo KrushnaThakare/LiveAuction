@@ -4,6 +4,9 @@ import { overlayApi } from '../api/overlay';
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
 const WS_BASE = API_BASE.replace(/^http/i, 'ws');
 
+const OVERLAY_POLL_MS = 8000;
+const OVERLAY_POLL_JITTER_MS = 2000;
+
 function getBidRevision(auction) {
   const revision = Number(auction?.bidRevision);
   return Number.isFinite(revision) ? revision : null;
@@ -150,6 +153,7 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       }
 
       clearInterval(snapshotTimer);
+      const pollDelay = OVERLAY_POLL_MS + Math.floor(Math.random() * OVERLAY_POLL_JITTER_MS);
       snapshotTimer = setInterval(async () => {
         if (connectedRef.current) return;
         try {
@@ -158,7 +162,7 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
         } catch (e) {
           if (!stopped) setError(e);
         }
-      }, 3000);
+      }, pollDelay);
 
       if (stopped) return;
       ws = new WebSocket(`${WS_BASE}/ws-overlay-native`);

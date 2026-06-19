@@ -1,28 +1,26 @@
 package com.cricketauction.service;
 
 import com.cricketauction.dto.AuctionStateResponse;
-import com.cricketauction.dto.TeamResponse;
 import com.cricketauction.entity.Tournament;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Map;
 
 @Service
 public class OverlayPushService {
     private final AuctionService auctionService;
-    private final TeamService teamService;
+    private final OverlaySnapshotService overlaySnapshotService;
     private final TournamentService tournamentService;
     private final SimpMessagingTemplate messagingTemplate;
 
     public OverlayPushService(AuctionService auctionService,
-                              TeamService teamService,
+                              OverlaySnapshotService overlaySnapshotService,
                               TournamentService tournamentService,
                               SimpMessagingTemplate messagingTemplate) {
         this.auctionService = auctionService;
-        this.teamService = teamService;
+        this.overlaySnapshotService = overlaySnapshotService;
         this.tournamentService = tournamentService;
         this.messagingTemplate = messagingTemplate;
     }
@@ -60,10 +58,7 @@ public class OverlayPushService {
         if (!Boolean.TRUE.equals(tournament.getOverlayEnabled())) {
             return;
         }
-        List<TeamResponse> teams = includePlayers
-                ? teamService.getTeamsByTournament(tournamentId)
-                : teamService.getTeamSummariesByTournament(tournamentId);
-        Map<String, Object> payload = Map.of("auction", auction, "teams", teams);
+        Map<String, Object> payload = overlaySnapshotService.cacheSnapshot(tournamentId, includePlayers, auction);
         messagingTemplate.convertAndSend("/topic/overlay/" + tournamentId + "/snapshot", payload);
     }
 }

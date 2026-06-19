@@ -4,6 +4,7 @@ import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.dto.BroadcastSettingsDto;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.service.OverlayPushService;
+import com.cricketauction.service.OverlaySnapshotService;
 import com.cricketauction.service.TournamentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,10 +14,14 @@ import org.springframework.web.bind.annotation.*;
 public class BroadcastController {
     private final TournamentService tournamentService;
     private final OverlayPushService overlayPushService;
+    private final OverlaySnapshotService overlaySnapshotService;
 
-    public BroadcastController(TournamentService tournamentService, OverlayPushService overlayPushService) {
+    public BroadcastController(TournamentService tournamentService,
+                               OverlayPushService overlayPushService,
+                               OverlaySnapshotService overlaySnapshotService) {
         this.tournamentService = tournamentService;
         this.overlayPushService = overlayPushService;
+        this.overlaySnapshotService = overlaySnapshotService;
     }
 
     @GetMapping("/settings")
@@ -45,6 +50,7 @@ public class BroadcastController {
         if (Boolean.FALSE.equals(d.getTokenEnabled())) t.setOverlaySecretToken(null);
         if (d.getOverlaySecretToken() != null) t.setOverlaySecretToken(d.getOverlaySecretToken().isBlank() ? null : d.getOverlaySecretToken());
         tournamentService.saveTournament(t);
+        overlaySnapshotService.invalidate(tournamentId);
         if (wasEnabled && Boolean.FALSE.equals(t.getOverlayEnabled())) {
             overlayPushService.pushBroadcastDisabled(tournamentId);
         }

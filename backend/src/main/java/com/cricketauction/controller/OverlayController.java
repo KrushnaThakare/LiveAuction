@@ -1,32 +1,28 @@
 package com.cricketauction.controller;
 
 import com.cricketauction.dto.ApiResponse;
-import com.cricketauction.dto.AuctionStateResponse;
 import com.cricketauction.dto.BroadcastSettingsDto;
-import com.cricketauction.dto.TeamResponse;
-import com.cricketauction.service.AuctionService;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.exception.AuctionException;
-import com.cricketauction.service.TeamService;
-import com.cricketauction.service.TournamentService;
+import com.cricketauction.service.OverlaySnapshotService;
 import com.cricketauction.service.PlayerRoleService;
+import com.cricketauction.service.TournamentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/overlay")
 public class OverlayController {
-    private final AuctionService auctionService;
-    private final TeamService teamService;
+    private final OverlaySnapshotService overlaySnapshotService;
     private final TournamentService tournamentService;
     private final PlayerRoleService playerRoleService;
 
-    public OverlayController(AuctionService auctionService, TeamService teamService, TournamentService tournamentService, PlayerRoleService playerRoleService) {
-        this.auctionService = auctionService;
-        this.teamService = teamService;
+    public OverlayController(OverlaySnapshotService overlaySnapshotService,
+                             TournamentService tournamentService,
+                             PlayerRoleService playerRoleService) {
+        this.overlaySnapshotService = overlaySnapshotService;
         this.tournamentService = tournamentService;
         this.playerRoleService = playerRoleService;
     }
@@ -38,14 +34,8 @@ public class OverlayController {
             @RequestParam(value = "includePlayers", defaultValue = "false") boolean includePlayers) {
         Tournament t = tournamentService.findById(tournamentId);
         validateOverlayAccess(t, token);
-        AuctionStateResponse auction = auctionService.getAuctionState(tournamentId);
-        List<TeamResponse> teams = includePlayers
-                ? teamService.getTeamsByTournament(tournamentId)
-                : teamService.getTeamSummariesByTournament(tournamentId);
-        return ResponseEntity.ok(ApiResponse.success(Map.of(
-                "auction", auction,
-                "teams", teams
-        )));
+        return ResponseEntity.ok(ApiResponse.success(
+                overlaySnapshotService.getSnapshot(tournamentId, includePlayers)));
     }
 
     @GetMapping("/{tournamentId}/config")
