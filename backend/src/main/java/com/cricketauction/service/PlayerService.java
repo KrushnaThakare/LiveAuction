@@ -225,6 +225,9 @@ public class PlayerService {
                 .teamId(player.getTeam() != null ? player.getTeam().getId() : null)
                 .teamName(player.getTeam() != null ? player.getTeam().getName() : null)
                 .extraData(parseExtraData(player.getExtraData()))
+                .whatsappNotifyStatus(player.getWhatsappNotifyStatus())
+                .whatsappNotifyError(player.getWhatsappNotifyError())
+                .whatsappSentAt(player.getWhatsappSentAt() != null ? player.getWhatsappSentAt().toString() : null)
                 .build();
     }
 
