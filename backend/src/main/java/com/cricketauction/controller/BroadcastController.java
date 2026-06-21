@@ -42,14 +42,11 @@ public class BroadcastController {
         if (d.getOverlayCinematicIntroLive() != null) t.setOverlayCinematicIntroLive(d.getOverlayCinematicIntroLive());
         if (d.getOverlayShowPlayerTransition() != null) t.setOverlayShowPlayerTransition(d.getOverlayShowPlayerTransition());
         if (d.getOverlayShowBidPop() != null) t.setOverlayShowBidPop(d.getOverlayShowBidPop());
-        if (d.getOverlayShowSquadAnimation() != null) t.setOverlayShowSquadAnimation(d.getOverlayShowSquadAnimation());
         if (Boolean.FALSE.equals(d.getTokenEnabled())) t.setOverlaySecretToken(null);
         if (d.getOverlaySecretToken() != null) t.setOverlaySecretToken(d.getOverlaySecretToken().isBlank() ? null : d.getOverlaySecretToken());
         tournamentService.saveTournament(t);
         if (wasEnabled && Boolean.FALSE.equals(t.getOverlayEnabled())) {
             overlayPushService.pushBroadcastDisabled(tournamentId);
-        } else if (Boolean.TRUE.equals(t.getOverlayEnabled())) {
-            overlayPushService.pushLightweightSnapshot(tournamentId);
         }
         return ResponseEntity.ok(ApiResponse.success("Broadcast settings updated", map(t, true)));
     }
@@ -81,7 +78,6 @@ public class BroadcastController {
                 .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
                 .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())
                 .overlayShowBidPop(t.getOverlayShowBidPop())
-                .overlayShowSquadAnimation(t.getOverlayShowSquadAnimation())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .overlaySecretToken(includeSecret ? t.getOverlaySecretToken() : null)
                 .build();
