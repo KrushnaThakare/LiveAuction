@@ -33,12 +33,10 @@ export default function SoldPlayersPage() {
   const [players, setPlayers] = useState([]);
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(() => new Set());
-  const [sentIds, setSentIds] = useState(() => new Set());
-  const [bulkQueue, setBulkQueue] = useState(null);
-  const [bulkIndex, setBulkIndex] = useState(0);
   const tournamentId = activeTournament?.id;
   const hasLoadedRef = useRef(false);
   const fetchInFlightRef = useRef(false);
@@ -48,12 +46,15 @@ export default function SoldPlayersPage() {
     [registrations]
   );
 
-  const fetchSold = useCallback(async () => {
+  const fetchSold = useCallback(async ({ blocking = false } = {}) => {
     if (!tournamentId) return;
     if (fetchInFlightRef.current) return;
     fetchInFlightRef.current = true;
-    const showBlockingLoader = !hasLoadedRef.current;
+
+    const showBlockingLoader = blocking || !hasLoadedRef.current;
     if (showBlockingLoader) setLoading(true);
+    else setRefreshing(true);
+
     try {
       const [playersRes, regsRes] = await Promise.all([
         playerApi.getAll(tournamentId, 'SOLD'),
@@ -61,26 +62,31 @@ export default function SoldPlayersPage() {
       ]);
       setPlayers(playersRes.data.data || []);
       setRegistrations(regsRes.data.data || []);
-      setSentIds(loadWhatsAppSentIds(tournamentId));
       if (!hasLoadedRef.current) setSelected(new Set());
       hasLoadedRef.current = true;
+    } catch {
+      // Keep the current list visible during background refresh failures.
     } finally {
       fetchInFlightRef.current = false;
       if (showBlockingLoader) setLoading(false);
+      else setRefreshing(false);
     }
   }, [tournamentId]);
 
   useEffect(() => {
     hasLoadedRef.current = false;
-    fetchSold();
-  }, [fetchSold]);
+    setPlayers([]);
+    setRegistrations([]);
+    setSelected(new Set());
+    fetchSold({ blocking: true });
+  }, [tournamentId, fetchSold]);
 
-  const hasPending = players.some(p => p.whatsappNotifyStatus === 'PENDING');
+  const hasPending = players.some((p) => p.whatsappNotifyStatus === 'PENDING');
   useEffect(() => {
-    if (!hasPending || !activeTournament) return undefined;
-    const timer = setInterval(fetchSold, 5000);
+    if (!hasPending || !tournamentId) return undefined;
+    const timer = setInterval(() => fetchSold({ blocking: false }), 5000);
     return () => clearInterval(timer);
-  }, [hasPending, activeTournament, fetchSold]);
+  }, [hasPending, tournamentId, fetchSold]);
 
   const filtered = players.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -116,7 +122,7 @@ export default function SoldPlayersPage() {
     setRetrying(true);
     try {
       await playerApi.retryWhatsAppBulk(activeTournament.id, playerIds);
-      await fetchSold();
+      await fetchSold({ blocking: false });
       toast.success(`Retried WhatsApp for ${playerIds.length} player(s)`);
     } catch (e) {
       toast.error(e.response?.data?.message || 'WhatsApp retry failed');
@@ -162,10 +168,16 @@ export default function SoldPlayersPage() {
           </h1>
           <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             {tournamentLabel} — {players.length} sold • {withMobileCount} with mobile • Total: {formatCurrency(totalSpend)}
+            {refreshing && ' • Updating…'}
           </p>
         </div>
-        <button type="button" className="btn-secondary" onClick={fetchSold} disabled={loading}>
-          <RefreshCw size={15} /> Refresh
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => fetchSold({ blocking: false })}
+          disabled={loading || refreshing}
+        >
+          <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
 
