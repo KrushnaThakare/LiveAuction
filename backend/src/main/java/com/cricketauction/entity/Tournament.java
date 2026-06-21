@@ -70,6 +70,11 @@ public class Tournament {
     @Column(name = "registration_redirect_link", length = 500)
     private String registrationRedirectLink;
 
+    /** Send WhatsApp congratulations automatically when a player is sold */
+    @Column(name = "whatsapp_auto_enabled")
+    @Builder.Default
+    private Boolean whatsappAutoEnabled = false;
+
     // Broadcast overlay settings
     @Column(name = "overlay_enabled")
     @Builder.Default

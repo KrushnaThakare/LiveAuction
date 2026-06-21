@@ -90,6 +90,16 @@ public class Player {
     @Column(name = "extra_data", columnDefinition = "TEXT")
     private String extraData;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "whatsapp_notify_status", length = 20)
+    private WhatsAppNotifyStatus whatsappNotifyStatus;
+
+    @Column(name = "whatsapp_notify_error", length = 500)
+    private String whatsappNotifyError;
+
+    @Column(name = "whatsapp_sent_at")
+    private LocalDateTime whatsappSentAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -100,5 +110,9 @@ public class Player {
 
     public enum PlayerStatus {
         AVAILABLE, IN_AUCTION, SOLD, UNSOLD
+    }
+
+    public enum WhatsAppNotifyStatus {
+        PENDING, SENT, FAILED, SKIPPED
     }
 }

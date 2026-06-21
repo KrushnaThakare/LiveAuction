@@ -5,25 +5,35 @@ import { registrationApi } from '../api/registration';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg, getAuctionDisplayName } from '../utils/formatters';
 import {
   buildRegistrationIndex,
-  buildSoldPlayerContact,
-  clearWhatsAppSentIds,
-  loadWhatsAppSentIds,
-  markPlayerWhatsAppSent,
   maskMobile,
-  normalizeWhatsAppPhone,
-  openWhatsApp,
+  resolvePlayerMobile,
 } from '../utils/whatsappMessaging';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
-import WhatsAppBulkModal from '../components/sold/WhatsAppBulkModal';
 import toast from 'react-hot-toast';
-import { Trophy, Search, MessageCircle, Copy, CheckCircle2 } from 'lucide-react';
+import { Trophy, Search, MessageCircle, RefreshCw } from 'lucide-react';
+
+function statusMeta(status) {
+  switch (status) {
+    case 'SENT':
+      return { label: 'Sent', color: 'var(--color-success)', bg: 'rgba(16,185,129,0.12)' };
+    case 'FAILED':
+      return { label: 'Failed', color: 'var(--color-danger)', bg: 'rgba(239,68,68,0.12)' };
+    case 'SKIPPED':
+      return { label: 'Skipped', color: 'var(--color-warning)', bg: 'rgba(245,158,11,0.12)' };
+    case 'PENDING':
+      return { label: 'Sending…', color: 'var(--color-primary)', bg: 'rgba(59,130,246,0.12)' };
+    default:
+      return { label: '—', color: 'var(--color-text-secondary)', bg: 'transparent' };
+  }
+}
 
 export default function SoldPlayersPage() {
   const { activeTournament } = useTournament();
   const [players, setPlayers] = useState([]);
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(() => new Set());
   const [sentIds, setSentIds] = useState(() => new Set());
@@ -65,13 +75,12 @@ export default function SoldPlayersPage() {
     fetchSold();
   }, [fetchSold]);
 
-  const contactsByPlayerId = useMemo(() => {
-    const map = new Map();
-    for (const player of players) {
-      map.set(player.id, buildSoldPlayerContact(player, registrationIndex, activeTournament));
-    }
-    return map;
-  }, [players, registrationIndex, activeTournament]);
+  const hasPending = players.some(p => p.whatsappNotifyStatus === 'PENDING');
+  useEffect(() => {
+    if (!hasPending || !activeTournament) return undefined;
+    const timer = setInterval(fetchSold, 5000);
+    return () => clearInterval(timer);
+  }, [hasPending, activeTournament, fetchSold]);
 
   const filtered = players.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -80,9 +89,9 @@ export default function SoldPlayersPage() {
 
   const filteredIds = useMemo(() => new Set(filtered.map(p => p.id)), [filtered]);
   const allFilteredSelected = filtered.length > 0 && filtered.every(p => selected.has(p.id));
-
   const totalSpend = players.reduce((s, p) => s + p.currentBid, 0);
-  const withMobileCount = players.filter(p => contactsByPlayerId.get(p.id)?.phone).length;
+  const withMobileCount = players.filter(p => resolvePlayerMobile(p, registrationIndex)).length;
+  const failedCount = players.filter(p => p.whatsappNotifyStatus === 'FAILED').length;
 
   const toggleSelect = (playerId) => {
     setSelected(prev => {
@@ -96,89 +105,42 @@ export default function SoldPlayersPage() {
   const toggleSelectAllFiltered = () => {
     setSelected(prev => {
       const next = new Set(prev);
-      if (allFilteredSelected) {
-        filtered.forEach(p => next.delete(p.id));
-      } else {
-        filtered.forEach(p => next.add(p.id));
-      }
+      if (allFilteredSelected) filtered.forEach(p => next.delete(p.id));
+      else filtered.forEach(p => next.add(p.id));
       return next;
     });
   };
 
-  const startBulkSend = (playerIds) => {
-    const queue = [...playerIds]
-      .map(id => contactsByPlayerId.get(id))
-      .filter(contact => contact?.url);
-
-    if (!queue.length) {
-      toast.error('No selected players have a valid mobile number');
-      return;
+  const retryPlayers = async (playerIds) => {
+    if (!activeTournament || !playerIds.length) return;
+    setRetrying(true);
+    try {
+      await playerApi.retryWhatsAppBulk(activeTournament.id, playerIds);
+      await fetchSold();
+      toast.success(`Retried WhatsApp for ${playerIds.length} player(s)`);
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'WhatsApp retry failed');
+    } finally {
+      setRetrying(false);
     }
-
-    const skipped = playerIds.length - queue.length;
-    if (skipped > 0) {
-      toast(`${skipped} selected player(s) skipped — no mobile on file`, { icon: 'ℹ️' });
-    }
-
-    setBulkQueue(queue);
-    setBulkIndex(0);
   };
 
-  const sendSelectedBulk = () => {
+  const retrySelected = () => {
     const ids = [...selected].filter(id => filteredIds.has(id));
     if (!ids.length) {
       toast.error('Select at least one player');
       return;
     }
-    startBulkSend(ids);
+    retryPlayers(ids);
   };
 
-  const handleCopyNumbers = () => {
-    const ids = selected.size ? [...selected].filter(id => filteredIds.has(id)) : filtered.map(p => p.id);
-    const phones = ids
-      .map(id => contactsByPlayerId.get(id)?.phone)
-      .filter(Boolean);
-    const unique = [...new Set(phones)];
-
-    if (!unique.length) {
-      toast.error('No mobile numbers available to copy');
+  const retryAllFailed = () => {
+    const ids = players.filter(p => p.whatsappNotifyStatus === 'FAILED').map(p => p.id);
+    if (!ids.length) {
+      toast.error('No failed WhatsApp messages to retry');
       return;
     }
-
-    navigator.clipboard.writeText(unique.join(', '));
-    toast.success(`Copied ${unique.length} number(s) for WhatsApp broadcast list`);
-  };
-
-  const handleClearSentMarks = () => {
-    if (!activeTournament) return;
-    if (!confirm('Clear all “sent” marks for this tournament?')) return;
-    setSentIds(clearWhatsAppSentIds(activeTournament.id));
-    toast.success('Sent marks cleared');
-  };
-
-  const handleMarkSentAndNext = (playerId) => {
-    if (!activeTournament) return;
-    setSentIds(prev => markPlayerWhatsAppSent(activeTournament.id, playerId, prev));
-    setBulkIndex(i => {
-      const next = i + 1;
-      if (bulkQueue && next >= bulkQueue.length) {
-        toast.success('WhatsApp queue finished');
-        setBulkQueue(null);
-        return 0;
-      }
-      return next;
-    });
-  };
-
-  const handleBulkSkip = () => {
-    setBulkIndex(i => {
-      const next = i + 1;
-      if (bulkQueue && next >= bulkQueue.length) {
-        setBulkQueue(null);
-        return 0;
-      }
-      return next;
-    });
+    retryPlayers(ids);
   };
 
   if (!activeTournament) {
@@ -202,28 +164,31 @@ export default function SoldPlayersPage() {
             {tournamentLabel} — {players.length} sold • {withMobileCount} with mobile • Total: {formatCurrency(totalSpend)}
           </p>
         </div>
+        <button type="button" className="btn-secondary" onClick={fetchSold} disabled={loading}>
+          <RefreshCw size={15} /> Refresh
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
         <button
           type="button"
           className="btn-primary"
-          disabled={!selected.size}
-          onClick={sendSelectedBulk}
+          disabled={!selected.size || retrying}
+          onClick={retrySelected}
         >
-          <MessageCircle size={15} /> Send WhatsApp to selected ({selected.size})
+          <MessageCircle size={15} /> Retry WhatsApp ({selected.size})
         </button>
-        <button type="button" className="btn-secondary" onClick={handleCopyNumbers}>
-          <Copy size={15} /> Copy numbers
-        </button>
-        <button type="button" className="btn-secondary" onClick={handleClearSentMarks}>
-          Clear sent marks
-        </button>
+        {failedCount > 0 && (
+          <button type="button" className="btn-secondary" disabled={retrying} onClick={retryAllFailed}>
+            Retry all failed ({failedCount})
+          </button>
+        )}
       </div>
 
       <p className="text-xs mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-        Manual WhatsApp: opens a pre-filled chat — you still tap Send in WhatsApp for each player.
-        Use <strong>Copy numbers</strong> to paste into a WhatsApp Broadcast list.
+        Congratulations messages are sent <strong>automatically</strong> when a player is sold.
+        Enable this under Registration Settings → Auto WhatsApp on sell, and configure
+        <code className="mx-1">WHATSAPP_API_TOKEN</code> + <code>WHATSAPP_PHONE_NUMBER_ID</code> on the server.
       </p>
 
       <div className="relative mb-6">
@@ -261,9 +226,8 @@ export default function SoldPlayersPage() {
           {filtered.map((player, idx) => {
             const roleColor = getRoleColor(player.role);
             const roleBg = getRoleBg(player.role);
-            const contact = contactsByPlayerId.get(player.id);
-            const hasMobile = Boolean(contact?.phone);
-            const isSent = sentIds.has(Number(player.id));
+            const mobile = resolvePlayerMobile(player, registrationIndex);
+            const status = statusMeta(player.whatsappNotifyStatus);
             const isChecked = selected.has(player.id);
 
             return (
@@ -272,7 +236,7 @@ export default function SoldPlayersPage() {
                 className="grid grid-cols-12 items-center px-4 py-3 rounded-xl gap-1 transition-all duration-200"
                 style={{
                   backgroundColor: 'var(--color-surface)',
-                  border: `1px solid ${isSent ? 'rgba(16,185,129,0.45)' : 'var(--color-border)'}`,
+                  border: '1px solid var(--color-border)',
                 }}
               >
                 <div className="col-span-1">
@@ -299,9 +263,6 @@ export default function SoldPlayersPage() {
                   </div>
                   <span className="font-semibold text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>
                     {player.name}
-                    {isSent && (
-                      <CheckCircle2 size={14} className="inline ml-1.5" style={{ color: 'var(--color-success)' }} />
-                    )}
                   </span>
                 </div>
                 <div className="col-span-1">
@@ -328,40 +289,21 @@ export default function SoldPlayersPage() {
                   </span>
                 </div>
                 <div className="col-span-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                  {hasMobile ? maskMobile(contact.mobile) : '—'}
+                  {mobile ? maskMobile(mobile) : '—'}
                 </div>
                 <div className="col-span-1">
-                  {hasMobile ? (
-                    <button
-                      type="button"
-                      className="btn-secondary !px-2 !py-1.5 text-xs"
-                      title="Open WhatsApp"
-                      onClick={() => {
-                        openWhatsApp(contact.mobile, contact.message);
-                        setSentIds(prev => markPlayerWhatsAppSent(activeTournament.id, player.id, prev));
-                      }}
-                    >
-                      <MessageCircle size={14} />
-                    </button>
-                  ) : (
-                    <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }} title="Add mobile via registration or Excel">N/A</span>
-                  )}
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                    style={{ backgroundColor: status.bg, color: status.color }}
+                    title={player.whatsappNotifyError || status.label}
+                  >
+                    {status.label}
+                  </span>
                 </div>
               </div>
             );
           })}
         </div>
-      )}
-
-      {bulkQueue && (
-        <WhatsAppBulkModal
-          queue={bulkQueue}
-          currentIndex={bulkIndex}
-          sentIds={sentIds}
-          onMarkSentAndNext={handleMarkSentAndNext}
-          onSkip={handleBulkSkip}
-          onClose={() => setBulkQueue(null)}
-        />
       )}
     </div>
   );
