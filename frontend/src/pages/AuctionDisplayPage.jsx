@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { useTimedPlayerStatsOverlay } from '../hooks/useTimedPlayerStatsOverlay';
 import { useCinematicPlayerIntro } from '../hooks/useCinematicPlayerIntro';
 import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
-import { useAudienceSquads } from '../hooks/useAudienceSquads';
 import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
@@ -15,9 +14,6 @@ import OverlayFullscreenButton from '../components/common/OverlayFullscreenButto
 import GavelOverlay from '../components/common/GavelOverlay';
 import CinematicPlayerIntro from '../components/overlay/CinematicPlayerIntro';
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
-import AudienceSquadRail from '../components/audienceDisplay/AudienceSquadRail';
-import SquadFlyCard from '../components/audienceDisplay/SquadFlyCard';
-import squadStyles from '../components/audienceDisplay/AudienceSquad.module.css';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -64,7 +60,6 @@ export default function AuctionDisplayPage() {
   const liveText = status === 'ACTIVE' ? 'Auction Live' : status === 'SOLD' ? 'Sold' : status === 'UNSOLD' ? 'Unsold' : 'Auction Standby';
   const isResult = status === 'SOLD' || status === 'UNSOLD';
   const isSold = status === 'SOLD';
-  const squadAnimationEnabled = config?.overlayShowSquadAnimation === true;
   const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
   const [soldOverlay, setSoldOverlay] = useState(null);
   const previousAuctionRef = useRef(null);
@@ -82,66 +77,37 @@ export default function AuctionDisplayPage() {
     config?.overlayShowPlayerStatsIntro !== false && sessionReady,
     config?.overlayPlayerStatsIntroMs || 5500
   );
-  const {
-    squads,
-    imageFrameRef,
-    registerSlot,
-    queueSoldFly,
-    startFlyFromHammer,
-    completeFly,
-    flyRequest,
-    highlightTeamId,
-    newPlayerId,
-  } = useAudienceSquads(squadAnimationEnabled, teams);
-
-  const handleGavelComplete = useCallback(() => {
-    if (soldOverlay?.verdict === 'SOLD' && squadAnimationEnabled) {
-      startFlyFromHammer();
-    }
-    setSoldOverlay(null);
-  }, [soldOverlay, squadAnimationEnabled, startFlyFromHammer]);
 
   useEffect(() => {
     const current = auction;
     const previous = previousAuctionRef.current;
     if (!current) return;
-
     if (previous?.status === 'ACTIVE' && current.status === 'SOLD') {
       const winningTeam = teams.find(t => t.id === current.highestBidderTeamId || t.name === current.highestBidderTeamName);
-      const soldPlayer = previous.currentPlayer || current.currentPlayer;
-      if (squadAnimationEnabled) {
-        queueSoldFly(soldPlayer, current.highestBidderTeamId || winningTeam?.id);
-      }
       setSoldOverlay({
         verdict: 'SOLD',
-        name: soldPlayer?.name,
+        name: previous.currentPlayer?.name || current.currentPlayer?.name,
         team: current.highestBidderTeamName,
         teamLogo: resolveUrl(winningTeam?.logoUrl),
         amount: current.currentBid,
         squadPick: formatSquadPickLabel(winningTeam?.playerCount),
       });
-      if (!squadAnimationEnabled) {
-        window.setTimeout(() => setSoldOverlay(null), 5600);
-      }
+      setTimeout(() => setSoldOverlay(null), 5600);
     }
-
     if (previous?.status === 'ACTIVE' && current.status === 'UNSOLD') {
       setSoldOverlay({
         verdict: 'UNSOLD',
         name: previous.currentPlayer?.name || current.currentPlayer?.name,
       });
-      window.setTimeout(() => setSoldOverlay(null), 4200);
+      setTimeout(() => setSoldOverlay(null), 4200);
     }
-
     previousAuctionRef.current = current;
-  }, [auction, teams, squadAnimationEnabled, queueSoldFly]);
-
-  const showClassicResultLayer = isResult && !(squadAnimationEnabled && isSold);
+  }, [auction, teams]);
 
   return (
-    <main className={`${styles.screen} ${squadAnimationEnabled ? styles.squadMode : ''} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''} ${cinematicPlaying ? styles.cinematicMode : ''}`}>
+    <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''} ${cinematicPlaying ? styles.cinematicMode : ''}`}>
       <OverlayFullscreenButton />
-      <div className={`${styles.shell} ${cinematicPlaying ? styles.shellDuringCinematic : ''} ${squadAnimationEnabled ? styles.shellSquadMode : ''}`}>
+      <div className={`${styles.shell} ${cinematicPlaying ? styles.shellDuringCinematic : ''}`}>
         <header className={styles.topBar}>
           <div>
             <div className={styles.brandKicker}>{connected ? 'Live Sync Connected' : 'Connecting Live Feed'}</div>
@@ -176,7 +142,7 @@ export default function AuctionDisplayPage() {
             </div>
           </aside>
 
-          <div className={styles.imageFrame} ref={imageFrameRef}>
+          <div className={styles.imageFrame}>
             {player?.imageUrl ? (
               <img className={styles.playerImage} src={driveImg(player.imageUrl) || resolveUrl(player.imageUrl)} alt={player.name} />
             ) : (
@@ -216,27 +182,14 @@ export default function AuctionDisplayPage() {
           </aside>
         </section>
 
-        {squadAnimationEnabled && (
-          <AudienceSquadRail
-            teams={teams}
-            squads={squads}
-            playerRoles={config?.playerRoles}
-            highlightTeamId={highlightTeamId}
-            newPlayerId={newPlayerId}
-            slotRef={registerSlot}
-          />
-        )}
-
         <footer className={styles.statusBar}>
-          <div className={`${styles.livePill} ${squadAnimationEnabled ? squadStyles.liveBadgePremium : ''}`}>
-            <span className={styles.dot} /> {status}
-          </div>
+          <div className={styles.livePill}><span className={styles.dot} /> {status}</div>
           <div className={styles.statusText}><Radio size={34} /> {liveText}</div>
           <div className={styles.nextBid}>Next: {money(auction?.nextBidAmount)}</div>
         </footer>
       </div>
 
-      {showClassicResultLayer && (
+      {isResult && (
         <section className={styles.resultLayer}>
           <div className={`${styles.resultBursts} ${status === 'UNSOLD' ? styles.unsoldBursts : ''}`} />
           <div className={styles.resultCard}>
@@ -271,17 +224,6 @@ export default function AuctionDisplayPage() {
         <GavelOverlay
           {...soldOverlay}
           duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
-          onComplete={squadAnimationEnabled && soldOverlay.verdict === 'SOLD' ? handleGavelComplete : undefined}
-        />
-      )}
-
-      {flyRequest && (
-        <SquadFlyCard
-          player={flyRequest.player}
-          fromRect={flyRequest.fromRect}
-          toRect={flyRequest.toRect}
-          playerRoles={config?.playerRoles}
-          onComplete={completeFly}
         />
       )}
 

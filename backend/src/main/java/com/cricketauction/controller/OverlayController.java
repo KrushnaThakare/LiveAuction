@@ -70,7 +70,6 @@ public class OverlayController {
                 .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
                 .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())
                 .overlayShowBidPop(t.getOverlayShowBidPop())
-                .overlayShowSquadAnimation(t.getOverlayShowSquadAnimation())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .tournamentName(t.getName())
                 .auctionDisplayName(t.getAuctionDisplayName())

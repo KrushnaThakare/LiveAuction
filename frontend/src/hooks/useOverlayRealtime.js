@@ -90,9 +90,6 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
     };
 
     const mergeSnapshot = (snapshot, source = 'snapshot') => {
-      if (snapshot?.display && typeof snapshot.display === 'object') {
-        setConfig(current => ({ ...(current || {}), ...snapshot.display }));
-      }
       setData(current => {
         const fresh = freshLocalAuctionRef.current;
         const incomingAuction = snapshot?.auction;
