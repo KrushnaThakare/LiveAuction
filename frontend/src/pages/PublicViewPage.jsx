@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg, getPlayerRoles, getAuctionDisplayName } from '../utils/formatters';
@@ -32,11 +32,13 @@ export default function PublicViewPage() {
   const [tabLoading, setTabLoading]   = useState(false);
   const [soldOverlay, setSoldOverlay] = useState(null); // { name, team, teamLogo, amount }
   const previousAuctionRef = useRef(null);
+  const loadedTabsRef = useRef({});
 
   const loadTabData = useCallback(async (targetTab, force = false) => {
-    if (!tournamentId || (!force && loadedTabs[targetTab])) return;
+    if (!tournamentId || (!force && loadedTabsRef.current[targetTab])) return;
     if (!['teams', 'sold', 'unsold'].includes(targetTab)) return;
-    setTabLoading(true);
+    const isFirstLoad = !loadedTabsRef.current[targetTab];
+    if (isFirstLoad) setTabLoading(true);
     try {
       if (targetTab === 'teams') {
         const tm = await get(`/tournaments/${tournamentId}/teams`);
@@ -48,10 +50,13 @@ export default function PublicViewPage() {
         const u = await get(`/tournaments/${tournamentId}/players?status=UNSOLD`);
         setUnsold(u || []);
       }
-      setLoadedTabs(tabs => ({ ...tabs, [targetTab]: true }));
+      loadedTabsRef.current = { ...loadedTabsRef.current, [targetTab]: true };
+      setLoadedTabs(loadedTabsRef.current);
     } catch { /* silent */ }
-    finally { setTabLoading(false); }
-  }, [tournamentId, loadedTabs]);
+    finally {
+      if (isFirstLoad) setTabLoading(false);
+    }
+  }, [tournamentId]);
 
   const handleTabChange = (nextTab) => {
     setTab(nextTab);
@@ -72,16 +77,24 @@ export default function PublicViewPage() {
         amount: current.currentBid,
       });
       setTimeout(() => setSoldOverlay(null), 5200);
-      if (loadedTabs.teams) loadTabData('teams', true);
-      if (loadedTabs.sold) loadTabData('sold', true);
+      if (loadedTabsRef.current.teams) loadTabData('teams', true);
+      if (loadedTabsRef.current.sold) loadTabData('sold', true);
     }
     if (previous?.status === 'ACTIVE' && current.status === 'UNSOLD') {
       setSoldOverlay({ verdict: 'UNSOLD', name: previous.currentPlayer?.name || current.currentPlayer?.name });
       setTimeout(() => setSoldOverlay(null), 4200);
-      if (loadedTabs.unsold) loadTabData('unsold', true);
+      if (loadedTabsRef.current.unsold) loadTabData('unsold', true);
     }
     previousAuctionRef.current = current;
-  }, [data?.auction, data?.teams, loadedTabs, loadTabData]);
+  }, [data?.auction?.status, data?.auction?.sessionId, loadTabData]);
+
+  const playerRoles = useMemo(
+    () => getPlayerRoles({
+      sport: config?.sport,
+      playerRoles: config?.playerRoles,
+    }),
+    [config?.sport, config?.playerRoles],
+  );
 
   if (!data && !config) return (
     <div className="min-h-screen flex items-center justify-center"
@@ -119,7 +132,6 @@ export default function PublicViewPage() {
   const teamsForTab = fullTeams || summaryTeams;
   const live = auctionState?.status === 'ACTIVE';
   const logoSrc = resolveUrl(tournament.logoUrl);
-  const playerRoles = getPlayerRoles(tournament);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-background)', color: 'var(--color-text-primary)' }}>
@@ -397,7 +409,7 @@ function TeamsView({ teams, roles, loading }) {
 }
 
 /* ═══ PLAYER LIST (Sold / Unsold) ═══ */
-function PlayerListView({ players, roles, loading, emptyMsg }) {
+const PlayerListView = memo(function PlayerListView({ players, roles, loading, emptyMsg }) {
   if (loading) return (
     <p className="text-center py-12 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Loading players...</p>
   );
@@ -443,4 +455,4 @@ function PlayerListView({ players, roles, loading, emptyMsg }) {
       })}
     </div>
   );
-}
+});
