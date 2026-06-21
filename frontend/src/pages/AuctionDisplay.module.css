@@ -656,9 +656,21 @@
   }
 }
 
+.shellSquadMode {
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+
+.squadMode .mainGrid {
+  min-height: 0;
+}
+
 @media (max-width: 900px) {
   .screen {
     overflow: auto;
+  }
+
+  .shellSquadMode {
+    grid-template-rows: auto auto auto auto;
   }
 
   .shell {

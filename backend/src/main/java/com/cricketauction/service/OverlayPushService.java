@@ -7,6 +7,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -63,7 +64,18 @@ public class OverlayPushService {
         List<TeamResponse> teams = includePlayers
                 ? teamService.getTeamsByTournament(tournamentId)
                 : teamService.getTeamSummariesByTournament(tournamentId);
-        Map<String, Object> payload = Map.of("auction", auction, "teams", teams);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("auction", auction);
+        payload.put("teams", teams);
+        payload.put("display", buildDisplayFlags(tournament));
         messagingTemplate.convertAndSend("/topic/overlay/" + tournamentId + "/snapshot", payload);
+    }
+
+    private Map<String, Object> buildDisplayFlags(Tournament tournament) {
+        Map<String, Object> display = new HashMap<>();
+        display.put("overlayShowSquadAnimation", Boolean.TRUE.equals(tournament.getOverlayShowSquadAnimation()));
+        display.put("overlayShowCinematicIntro", Boolean.TRUE.equals(tournament.getOverlayShowCinematicIntro()));
+        display.put("overlayCinematicIntroLive", tournament.getOverlayCinematicIntroLive());
+        return display;
     }
 }
