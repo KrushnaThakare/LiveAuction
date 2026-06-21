@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
+import { useAuth } from '../contexts/AuthContext';
 import { playerApi } from '../api/players';
 import { registrationApi } from '../api/registration';
+import { broadcastApi } from '../api/broadcast';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg, getAuctionDisplayName } from '../utils/formatters';
 import {
   buildRegistrationIndex,
@@ -11,7 +13,7 @@ import {
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import toast from 'react-hot-toast';
-import { Trophy, Search, MessageCircle, RefreshCw } from 'lucide-react';
+import { Trophy, Search, MessageCircle, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react';
 
 function statusMeta(status) {
   switch (status) {
@@ -30,11 +32,15 @@ function statusMeta(status) {
 
 export default function SoldPlayersPage() {
   const { activeTournament } = useTournament();
+  const { isOperator } = useAuth();
   const [players, setPlayers] = useState([]);
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [whatsappAutoEnabled, setWhatsappAutoEnabled] = useState(false);
+  const [whatsappConfigured, setWhatsappConfigured] = useState(false);
+  const [togglingWhatsApp, setTogglingWhatsApp] = useState(false);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(() => new Set());
   const tournamentId = activeTournament?.id;
@@ -78,8 +84,36 @@ export default function SoldPlayersPage() {
     setPlayers([]);
     setRegistrations([]);
     setSelected(new Set());
+    setWhatsappAutoEnabled(false);
+    setWhatsappConfigured(false);
     fetchSold({ blocking: true });
   }, [tournamentId, fetchSold]);
+
+  useEffect(() => {
+    if (!tournamentId || !isOperator) return;
+    broadcastApi.getSettings(tournamentId)
+      .then((r) => {
+        const data = r.data.data || {};
+        setWhatsappAutoEnabled(!!data.whatsappAutoEnabled);
+        setWhatsappConfigured(data.whatsappConfigured !== false);
+      })
+      .catch(() => {});
+  }, [tournamentId, isOperator]);
+
+  const toggleWhatsAppAuto = async () => {
+    if (!tournamentId || !isOperator) return;
+    const newVal = !whatsappAutoEnabled;
+    setTogglingWhatsApp(true);
+    try {
+      await broadcastApi.updateSettings(tournamentId, { whatsappAutoEnabled: newVal });
+      setWhatsappAutoEnabled(newVal);
+      toast.success(newVal ? 'Auto WhatsApp on sell enabled' : 'Auto WhatsApp on sell disabled');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Could not update WhatsApp setting');
+    } finally {
+      setTogglingWhatsApp(false);
+    }
+  };
 
   const hasPending = players.some((p) => p.whatsappNotifyStatus === 'PENDING');
   useEffect(() => {
@@ -197,10 +231,41 @@ export default function SoldPlayersPage() {
         )}
       </div>
 
+      {isOperator && (
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 mb-4 p-4 rounded-xl"
+          style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}
+        >
+          <div>
+            <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
+              Auto WhatsApp on sell
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+              Turn off during live auction to skip automatic messages and reduce backend load.
+              {whatsappConfigured === false && (
+                <span style={{ color: 'var(--color-warning)' }}> WhatsApp API is not configured on the server.</span>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={toggleWhatsAppAuto}
+            disabled={togglingWhatsApp}
+            className="flex-shrink-0"
+            aria-label="Toggle auto WhatsApp on sell"
+          >
+            {whatsappAutoEnabled
+              ? <ToggleRight size={36} style={{ color: 'var(--color-success)' }} />
+              : <ToggleLeft size={36} style={{ color: 'var(--color-text-secondary)' }} />}
+          </button>
+        </div>
+      )}
+
       <p className="text-xs mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-        Congratulations messages are sent <strong>automatically</strong> when a player is sold.
-        Enable this under Registration Settings → Auto WhatsApp on sell, and configure
-        <code className="mx-1">WHATSAPP_API_TOKEN</code> + <code>WHATSAPP_PHONE_NUMBER_ID</code> on the server.
+        {isOperator
+          ? 'Manual retry below still works when auto-send is off.'
+          : 'Congratulations messages can be sent automatically when a player is sold if an operator enables Auto WhatsApp.'}
+        {' '}Configure <code className="mx-1">WHATSAPP_API_TOKEN</code> + <code>WHATSAPP_PHONE_NUMBER_ID</code> on the server to send messages.
       </p>
 
       <div className="relative mb-6">

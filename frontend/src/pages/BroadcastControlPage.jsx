@@ -21,6 +21,8 @@ export default function BroadcastControlPage() {
     overlayShowBidPop: true,
     tokenEnabled: false,
     overlaySecretToken: '',
+    whatsappAutoEnabled: false,
+    whatsappConfigured: false,
   });
   const [bidRules, setBidRules] = useState([]);
 
@@ -98,6 +100,13 @@ export default function BroadcastControlPage() {
         <label><input type='checkbox' checked={settings.overlayShowBidPop !== false} onChange={e=>setSettings(s=>({...s,overlayShowBidPop:e.target.checked}))} /> Enable bid amount pop on overlays</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
           Subtle scale pulse on current bid across overlay displays when the amount changes.
+        </p>
+        <label><input type='checkbox' checked={!!settings.whatsappAutoEnabled} onChange={e=>setSettings(s=>({...s,whatsappAutoEnabled:e.target.checked}))} /> Auto WhatsApp on sell</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Sends a congratulations message when a player is sold. Turn off during live auction to reduce backend load.
+          {settings.whatsappConfigured === false && (
+            <span style={{ color: 'var(--color-warning)' }}> WhatsApp API is not configured on the server yet.</span>
+          )}
         </p>
         <label><input type='checkbox' checked={!!settings.tokenEnabled} onChange={e=>setSettings(s=>({...s,tokenEnabled:e.target.checked}))} /> Enable token</label>
         {settings.tokenEnabled && <input className='input' value={settings.overlaySecretToken||''} onChange={e=>setSettings(s=>({...s,overlaySecretToken:e.target.value}))} placeholder='secret token'/>}
