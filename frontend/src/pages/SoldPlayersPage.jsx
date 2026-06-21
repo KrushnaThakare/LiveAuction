@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { playerApi } from '../api/players';
 import { registrationApi } from '../api/registration';
@@ -29,6 +29,9 @@ export default function SoldPlayersPage() {
   const [sentIds, setSentIds] = useState(() => new Set());
   const [bulkQueue, setBulkQueue] = useState(null);
   const [bulkIndex, setBulkIndex] = useState(0);
+  const tournamentId = activeTournament?.id;
+  const hasLoadedRef = useRef(false);
+  const fetchInFlightRef = useRef(false);
 
   const registrationIndex = useMemo(
     () => buildRegistrationIndex(registrations),
@@ -36,23 +39,31 @@ export default function SoldPlayersPage() {
   );
 
   const fetchSold = useCallback(async () => {
-    if (!activeTournament) return;
-    setLoading(true);
+    if (!tournamentId) return;
+    if (fetchInFlightRef.current) return;
+    fetchInFlightRef.current = true;
+    const showBlockingLoader = !hasLoadedRef.current;
+    if (showBlockingLoader) setLoading(true);
     try {
       const [playersRes, regsRes] = await Promise.all([
-        playerApi.getAll(activeTournament.id, 'SOLD'),
-        registrationApi.getRegistrations(activeTournament.id).catch(() => ({ data: { data: [] } })),
+        playerApi.getAll(tournamentId, 'SOLD'),
+        registrationApi.getRegistrations(tournamentId).catch(() => ({ data: { data: [] } })),
       ]);
       setPlayers(playersRes.data.data || []);
       setRegistrations(regsRes.data.data || []);
-      setSentIds(loadWhatsAppSentIds(activeTournament.id));
-      setSelected(new Set());
+      setSentIds(loadWhatsAppSentIds(tournamentId));
+      if (!hasLoadedRef.current) setSelected(new Set());
+      hasLoadedRef.current = true;
     } finally {
-      setLoading(false);
+      fetchInFlightRef.current = false;
+      if (showBlockingLoader) setLoading(false);
     }
-  }, [activeTournament]);
+  }, [tournamentId]);
 
-  useEffect(() => { fetchSold(); }, [fetchSold]);
+  useEffect(() => {
+    hasLoadedRef.current = false;
+    fetchSold();
+  }, [fetchSold]);
 
   const contactsByPlayerId = useMemo(() => {
     const map = new Map();
