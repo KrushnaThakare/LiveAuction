@@ -5,6 +5,7 @@ import com.cricketauction.dto.BroadcastSettingsDto;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.service.OverlayPushService;
 import com.cricketauction.service.TournamentService;
+import com.cricketauction.service.WhatsAppNotifyService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,10 +14,14 @@ import org.springframework.web.bind.annotation.*;
 public class BroadcastController {
     private final TournamentService tournamentService;
     private final OverlayPushService overlayPushService;
+    private final WhatsAppNotifyService whatsAppNotifyService;
 
-    public BroadcastController(TournamentService tournamentService, OverlayPushService overlayPushService) {
+    public BroadcastController(TournamentService tournamentService,
+                               OverlayPushService overlayPushService,
+                               WhatsAppNotifyService whatsAppNotifyService) {
         this.tournamentService = tournamentService;
         this.overlayPushService = overlayPushService;
+        this.whatsAppNotifyService = whatsAppNotifyService;
     }
 
     @GetMapping("/settings")
@@ -42,6 +47,7 @@ public class BroadcastController {
         if (d.getOverlayCinematicIntroLive() != null) t.setOverlayCinematicIntroLive(d.getOverlayCinematicIntroLive());
         if (d.getOverlayShowPlayerTransition() != null) t.setOverlayShowPlayerTransition(d.getOverlayShowPlayerTransition());
         if (d.getOverlayShowBidPop() != null) t.setOverlayShowBidPop(d.getOverlayShowBidPop());
+        if (d.getWhatsappAutoEnabled() != null) t.setWhatsappAutoEnabled(d.getWhatsappAutoEnabled());
         if (Boolean.FALSE.equals(d.getTokenEnabled())) t.setOverlaySecretToken(null);
         if (d.getOverlaySecretToken() != null) t.setOverlaySecretToken(d.getOverlaySecretToken().isBlank() ? null : d.getOverlaySecretToken());
         tournamentService.saveTournament(t);
@@ -80,6 +86,8 @@ public class BroadcastController {
                 .overlayShowBidPop(t.getOverlayShowBidPop())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .overlaySecretToken(includeSecret ? t.getOverlaySecretToken() : null)
+                .whatsappAutoEnabled(t.getWhatsappAutoEnabled())
+                .whatsappConfigured(whatsAppNotifyService.isConfigured())
                 .build();
     }
 }

@@ -19,6 +19,8 @@ public class BroadcastSettingsDto {
     private Boolean overlayShowBidPop;
     private Boolean tokenEnabled;
     private String overlaySecretToken;
+    private Boolean whatsappAutoEnabled;
+    private Boolean whatsappConfigured;
     private String tournamentName;
     private String auctionDisplayName;
     private String logoUrl;
