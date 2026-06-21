@@ -19,6 +19,7 @@ export default function BroadcastControlPage() {
     overlayCinematicIntroLive: true,
     overlayShowPlayerTransition: true,
     overlayShowBidPop: true,
+    overlayShowSquadAnimation: false,
     tokenEnabled: false,
     overlaySecretToken: '',
   });
@@ -90,6 +91,10 @@ export default function BroadcastControlPage() {
         <label><input type='checkbox' checked={!!settings.overlayShowCinematicIntro} onChange={e=>setSettings(s=>({...s,overlayShowCinematicIntro:e.target.checked}))} /> Enable cinematic player intro (Audience Display only)</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
           Plays a premium reveal sequence on the Audience Display when the next player is picked. Does not affect the admin auction screen or other overlays.
+        </p>
+        <label><input type='checkbox' checked={!!settings.overlayShowSquadAnimation} onChange={e=>setSettings(s=>({...s,overlayShowSquadAnimation:e.target.checked}))} /> Audience Squad Animation (Audience Display only)</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          After the hammer, the sold player card flies into a live squad panel on the Audience Display. Off by default — existing display behaviour is unchanged.
         </p>
         <label><input type='checkbox' checked={settings.overlayShowPlayerTransition !== false} onChange={e=>setSettings(s=>({...s,overlayShowPlayerTransition:e.target.checked}))} /> Enable main overlay player transition</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>

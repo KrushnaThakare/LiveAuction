@@ -124,6 +124,11 @@ public class Tournament {
     @Builder.Default
     private Boolean overlayShowBidPop = true;
 
+    /** Audience Display: live squad build animation after hammer */
+    @Column(name = "overlay_show_squad_animation")
+    @Builder.Default
+    private Boolean overlayShowSquadAnimation = false;
+
     @Column(name = "overlay_secret_token", length = 120)
     private String overlaySecretToken;
 
