@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { UserRound } from 'lucide-react';
 import { resolveUrl } from '../../utils/resolveUrl';
 import {
-  computeSquadGridColumns,
+  computeFilledGridLayout,
   formatCompactPurse,
   formatPurse,
   squadProgress,
@@ -81,10 +81,10 @@ function ProgressRing({ filled, total, percent }) {
   );
 }
 
-function SquadProgressBar({ filled, total, remaining }) {
+function SquadProgressBar({ filled, total, remaining, compact }) {
   const blocks = Array.from({ length: total }, (_, index) => index < filled);
   return (
-    <div className={styles.progressBlockWrap}>
+    <div className={`${styles.progressBlockWrap} ${compact ? styles.progressBlockCompact : ''}`}>
       <div className={styles.progressBlockMeta}>
         <span>{filled} Filled</span>
         <span>{remaining} Remaining</span>
@@ -212,21 +212,33 @@ export default function SquadFormationCeremony({
   const visible = phase != null;
   const logoSrc = team?.logoUrl ? resolveUrl(team.logoUrl) : null;
   const { filled, total, remaining, percent } = squadProgress(filledPlayers.length, squadSize);
-  const gridColumns = computeSquadGridColumns(total);
+  const gridItems = filledPlayers.length + (remaining > 0 ? 1 : 0);
+  const { cols: gridColumns, rows: gridRows, density } = computeFilledGridLayout(gridItems);
+  const compactHeader = filled >= 5;
+  const densityClass = {
+    relaxed: styles.densityRelaxed,
+    cozy: styles.densityCozy,
+    compact: styles.densityCompact,
+    dense: styles.densityDense,
+  }[density];
 
   if (!team) return null;
 
   return (
     <div
-      className={`${styles.ceremony} ${visible ? styles.ceremonyVisible : ''} ${exiting ? styles.ceremonyExit : ''}`}
-      style={{ '--exit-ms': `${exitDurationMs}ms`, '--grid-cols': gridColumns }}
+      className={`${styles.ceremony} ${visible ? styles.ceremonyVisible : ''} ${exiting ? styles.ceremonyExit : ''} ${densityClass || ''}`}
+      style={{
+        '--exit-ms': `${exitDurationMs}ms`,
+        '--grid-cols': gridColumns,
+        '--grid-rows': gridRows,
+      }}
       aria-hidden={!visible}
     >
       <div className={styles.backdrop} />
       <div ref={sourceRef} className={styles.flyOrigin} aria-hidden />
 
       <div className={styles.ceremonyBody}>
-        <header className={styles.heroHeader}>
+        <header className={`${styles.heroHeader} ${compactHeader ? styles.heroHeaderCompact : ''}`}>
           <p className={styles.ceremonyKicker}>Squad Formation</p>
           <div className={styles.heroLogoWrap}>
             <div className={styles.heroGlow} />
@@ -275,7 +287,7 @@ export default function SquadFormationCeremony({
         </header>
 
         <section className={styles.squadPanel}>
-          <SquadProgressBar filled={filled} total={total} remaining={remaining} />
+          <SquadProgressBar filled={filled} total={total} remaining={remaining} compact={compactHeader} />
 
           <div className={styles.filledGrid}>
             {filledPlayers.map((player) => (

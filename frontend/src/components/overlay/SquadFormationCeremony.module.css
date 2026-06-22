@@ -4,11 +4,14 @@
   z-index: 55;
   display: flex;
   flex-direction: column;
-  padding: clamp(18px, 2.5vw, 36px);
+  height: 100vh;
+  height: 100dvh;
+  padding: clamp(10px, 1.5vh, 24px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.45s ease;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .ceremonyVisible {
@@ -36,15 +39,56 @@
   z-index: 2;
   flex: 1;
   min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(14px, 2vh, 22px);
+  gap: clamp(8px, 1.2vh, 16px);
+  overflow: hidden;
 }
 
 .heroHeader {
   text-align: center;
   width: min(100%, 980px);
+  flex-shrink: 0;
+}
+
+.heroHeaderCompact .ceremonyKicker {
+  margin-bottom: 6px;
+  font-size: clamp(0.62rem, 1vw, 0.8rem);
+}
+
+.heroHeaderCompact .heroLogoWrap {
+  width: clamp(64px, 9vw, 96px);
+  height: clamp(64px, 9vw, 96px);
+  margin-bottom: 8px;
+}
+
+.heroHeaderCompact .heroTeamName {
+  font-size: clamp(1.3rem, 3.2vw, 2.2rem);
+}
+
+.heroHeaderCompact .signingLine {
+  margin-top: 6px;
+  gap: 6px 12px;
+}
+
+.heroHeaderCompact .signingLine strong {
+  font-size: clamp(1rem, 2vw, 1.4rem);
+}
+
+.heroHeaderCompact .summaryRow {
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.heroHeaderCompact .progressRing {
+  width: clamp(80px, 9vw, 100px);
+  height: clamp(80px, 9vw, 100px);
+}
+
+.heroHeaderCompact .summaryStatWide {
+  display: none;
 }
 
 .ceremonyKicker {
@@ -242,8 +286,8 @@
   flex: 1;
   min-height: 0;
   width: min(100%, 1180px);
-  padding: clamp(14px, 2vw, 22px);
-  border-radius: 28px;
+  padding: clamp(10px, 1.4vw, 18px);
+  border-radius: 22px;
   background: linear-gradient(155deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow:
@@ -252,7 +296,18 @@
   backdrop-filter: blur(18px) saturate(1.15);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: clamp(8px, 1vh, 12px);
+  overflow: hidden;
+}
+
+.progressBlockCompact .blockFilled,
+.progressBlockCompact .blockEmpty {
+  width: clamp(10px, 1.2vw, 16px);
+  height: clamp(6px, 0.7vw, 9px);
+}
+
+.progressBlockCompact .progressFraction {
+  font-size: clamp(0.72rem, 1.1vw, 0.88rem);
 }
 
 .progressBlockWrap {
@@ -311,23 +366,52 @@
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(var(--grid-cols, 5), minmax(0, 1fr));
-  gap: clamp(10px, 1.2vw, 16px);
-  align-content: start;
-  overflow: auto;
-  padding-bottom: 4px;
+  grid-template-rows: repeat(var(--grid-rows, 1), minmax(0, 1fr));
+  gap: clamp(6px, 0.9vw, 12px);
+  align-content: stretch;
+  overflow: hidden;
+}
+
+.filledCard,
+.nextSlot {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .filledCard {
-  border-radius: 18px;
-  padding: clamp(8px, 1vw, 12px);
+  border-radius: 14px;
+  padding: clamp(4px, 0.6vw, 8px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: clamp(3px, 0.5vw, 6px);
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
   border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(10px);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.densityRelaxed .filledCard {
+  border-radius: 18px;
+  padding: clamp(8px, 1vw, 12px);
+  gap: 8px;
+}
+
+.densityDense .filledCard,
+.densityDense .nextSlot {
+  border-radius: 10px;
+  padding: clamp(3px, 0.45vw, 5px);
+  gap: 3px;
+}
+
+.densityDense .filledName {
+  font-size: clamp(0.62rem, 0.95vw, 0.78rem);
+}
+
+.densityDense .filledRole {
+  font-size: clamp(0.52rem, 0.75vw, 0.65rem);
 }
 
 .filledCard:hover {
@@ -352,8 +436,10 @@
 }
 
 .filledPhoto {
-  aspect-ratio: 0.82;
-  border-radius: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  border-radius: 10px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.28);
 }
@@ -362,6 +448,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: top center;
 }
 
 .filledPhotoFallback {
@@ -375,12 +462,13 @@
 .filledMeta {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .filledName {
-  font-size: clamp(0.82rem, 1.3vw, 1.05rem);
+  font-size: clamp(0.68rem, 1.1vw, 0.92rem);
   font-weight: 900;
   color: #fff;
   white-space: nowrap;
@@ -397,27 +485,28 @@
 }
 
 .nextSlot {
-  border-radius: 18px;
-  padding: clamp(8px, 1vw, 12px);
-  min-height: 100%;
+  border-radius: 14px;
+  padding: clamp(4px, 0.6vw, 8px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 6px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px dashed rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.38);
-  font-size: clamp(0.68rem, 1vw, 0.82rem);
+  font-size: clamp(0.58rem, 0.85vw, 0.72rem);
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .nextSlotSilhouette {
-  width: 42%;
-  aspect-ratio: 0.78;
-  border-radius: 12px;
+  width: 38%;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 70%;
+  border-radius: 10px;
   border: 1.5px solid rgba(255, 255, 255, 0.12);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
   position: relative;

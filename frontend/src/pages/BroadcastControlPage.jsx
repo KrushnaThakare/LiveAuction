@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { broadcastApi } from '../api/broadcast';
 import { bidRuleApi } from '../api/bidRules';
 import toast from 'react-hot-toast';
+import SquadSizeInput from '../components/common/SquadSizeInput';
+import { clampSquadSize } from '../utils/squadFormation';
 
 export default function BroadcastControlPage() {
   const { activeTournament } = useTournament();
@@ -27,16 +29,31 @@ export default function BroadcastControlPage() {
     whatsappConfigured: false,
   });
   const [bidRules, setBidRules] = useState([]);
+  const squadSizeInputRef = useRef(null);
 
   useEffect(() => {
     if (!tid) return;
-    broadcastApi.getSettings(tid).then(r => setSettings(s => ({ ...s, ...r.data.data, overlaySecretToken: r.data.data.overlaySecretToken || '' })));
+    broadcastApi.getSettings(tid).then((r) => {
+      const data = r.data.data || {};
+      setSettings((s) => ({
+        ...s,
+        ...data,
+        maxSquadSize: clampSquadSize(data.maxSquadSize),
+        overlaySecretToken: data.overlaySecretToken || '',
+      }));
+    });
     bidRuleApi.getRules(tid).then(r => setBidRules(r.data.data || []));
   }, [tid]);
 
   const save = async () => {
     if (!tid) return;
-    await broadcastApi.updateSettings(tid, settings);
+    const committedSquadSize = squadSizeInputRef.current?.commit?.() ?? clampSquadSize(settings.maxSquadSize);
+    const payload = {
+      ...settings,
+      maxSquadSize: clampSquadSize(committedSquadSize),
+    };
+    await broadcastApi.updateSettings(tid, payload);
+    setSettings(payload);
     await bidRuleApi.updateRules(tid, bidRules);
     try {
       const channel = new BroadcastChannel('auction-bid-rules');
@@ -109,17 +126,14 @@ export default function BroadcastControlPage() {
         </p>
         <label className='block'>
           <span className='text-sm'>Maximum Squad Size</span>
-          <input
-            className='input mt-1'
-            type='number'
-            min='5'
-            max='30'
-            value={String(settings.maxSquadSize ?? 15)}
-            onChange={e=>setSettings(s=>({...s,maxSquadSize: Math.max(5, Math.min(30, Number(e.target.value || 15)))}))}
+          <SquadSizeInput
+            ref={squadSizeInputRef}
+            value={settings.maxSquadSize}
+            onChange={(maxSquadSize) => setSettings((s) => ({ ...s, maxSquadSize }))}
           />
         </label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
-          Drives the Audience Display squad board slot count (e.g. 15 players = 9/15 progress with 6 remaining).
+          Any whole number from 5 to 30 (e.g. 11, 12, 13, 15). Type the full number, then Save.
         </p>
         <label><input type='checkbox' checked={!!settings.whatsappAutoEnabled} onChange={e=>setSettings(s=>({...s,whatsappAutoEnabled:e.target.checked}))} /> Auto WhatsApp on sell</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>

@@ -71,7 +71,7 @@ public class OverlayController {
                 .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())
                 .overlayShowBidPop(t.getOverlayShowBidPop())
                 .overlayShowSquadFormation(t.getOverlayShowSquadFormation())
-                .maxSquadSize(t.getMaxSquadSize())
+                .maxSquadSize(squadSizeOrDefault(t.getMaxSquadSize()))
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .tournamentName(t.getName())
                 .auctionDisplayName(t.getAuctionDisplayName())
@@ -89,6 +89,11 @@ public class OverlayController {
         if (secret != null && !secret.isBlank() && (token == null || !secret.equals(token))) {
             throw new AuctionException("Invalid overlay token");
         }
+    }
+
+    private static int squadSizeOrDefault(Integer value) {
+        if (value == null) return 15;
+        return Math.max(5, Math.min(30, value));
     }
 }
 

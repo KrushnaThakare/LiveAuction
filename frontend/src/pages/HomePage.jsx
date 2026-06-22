@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi } from '../api/tournaments';
 import Modal from '../components/common/Modal';
@@ -10,6 +10,8 @@ import { Trophy, Plus, Users, ShieldCheck, CheckCircle, XCircle, Edit, Trash2, U
 import { resolveUrl } from '../utils/resolveUrl';
 import { useAuth } from '../contexts/AuthContext';
 import { DEFAULT_PLAYER_ROLES, FOOTBALL_PLAYER_ROLES, roleConfigToLines, roleLinesToConfig } from '../utils/formatters';
+import SquadSizeInput from '../components/common/SquadSizeInput';
+import { clampSquadSize } from '../utils/squadFormation';
 
 export default function HomePage() {
   const { tournaments, loading, fetchTournaments, selectTournament, activeTournament } = useTournament();
@@ -21,6 +23,7 @@ export default function HomePage() {
   const [editLogoFile, setEditLogoFile]         = useState(null);
   const [editLogoPreview, setEditLogoPreview]   = useState(null);
   const [editSaving, setEditSaving]             = useState(false);
+  const editSquadSizeRef = useRef(null);
 
   const openEdit = (e, t) => {
     e.stopPropagation();
@@ -42,13 +45,14 @@ export default function HomePage() {
     if (!editForm.name.trim()) { toast.error('Name is required'); return; }
     setEditSaving(true);
     try {
+      const maxSquadSize = editSquadSizeRef.current?.commit?.() ?? clampSquadSize(editForm.maxSquadSize);
       await tournamentApi.update(editingTournament.id, {
         name: editForm.name,
         auctionDisplayName: editForm.auctionDisplayName,
         sport: editForm.sport,
         playerRoles: roleLinesToConfig(editForm.roleLines),
         description: editForm.description,
-        maxSquadSize: Number(editForm.maxSquadSize) || 15,
+        maxSquadSize: clampSquadSize(maxSquadSize),
       });
       if (editLogoFile) {
         await tournamentApi.uploadLogo(editingTournament.id, editLogoFile);
@@ -292,9 +296,12 @@ export default function HomePage() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Maximum Squad Size</label>
-            <input className="input" type="number" min="5" max="30" value={editForm.maxSquadSize}
-              onChange={e => setEditForm(f => ({ ...f, maxSquadSize: Math.max(5, Math.min(30, Number(e.target.value || 15))) }))} />
-            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Used by the Audience Display squad formation board.</p>
+            <SquadSizeInput
+              ref={editSquadSizeRef}
+              value={editForm.maxSquadSize}
+              onChange={(maxSquadSize) => setEditForm((f) => ({ ...f, maxSquadSize }))}
+            />
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Allowed range: 5–30 (e.g. 11, 12, 13, 15).</p>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Description</label>
