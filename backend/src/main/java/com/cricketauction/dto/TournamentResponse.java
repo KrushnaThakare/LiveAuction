@@ -25,4 +25,5 @@ public class TournamentResponse {
     private Boolean registrationEnabled;
     private String registrationMessage;
     private String registrationRedirectLink;
+    private Integer maxSquadSize;
 }

@@ -1,6 +1,33 @@
 import { getRoleShortLabel } from './formatters';
 
-export const DEFAULT_SQUAD_SLOTS = 13;
+export const DEFAULT_SQUAD_SIZE = 15;
+export const MIN_SQUAD_SIZE = 5;
+export const MAX_SQUAD_SIZE = 30;
+
+export function clampSquadSize(value, fallback = DEFAULT_SQUAD_SIZE) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(MIN_SQUAD_SIZE, Math.min(MAX_SQUAD_SIZE, Math.round(parsed)));
+}
+
+export function resolveSquadSize(config, fallback = DEFAULT_SQUAD_SIZE) {
+  return clampSquadSize(config?.maxSquadSize, fallback);
+}
+
+export function computeSquadGridColumns(squadSize) {
+  const size = clampSquadSize(squadSize);
+  if (size <= 10) return 5;
+  if (size <= 12) return 4;
+  return 5;
+}
+
+export function squadProgress(filledCount, squadSize) {
+  const total = clampSquadSize(squadSize);
+  const filled = Math.max(0, Math.min(total, Number(filledCount) || 0));
+  const remaining = Math.max(0, total - filled);
+  const percent = total > 0 ? Math.round((filled / total) * 100) : 0;
+  return { filled, total, remaining, percent };
+}
 
 export function firstName(name) {
   if (!name) return 'Player';
@@ -25,25 +52,14 @@ export function squadPlayersFromTeam(team) {
   return list.filter((p) => p && (p.status === 'SOLD' || p.retained));
 }
 
-export function buildTeamSlots(team, squadSize, playerRoles, pendingAdd = null) {
-  const roster = squadPlayersFromTeam(team).map((p) => toSlotPlayer(p, playerRoles));
-  if (pendingAdd && String(pendingAdd.teamId) === String(team.id)) {
-    const already = roster.some((p) => p && String(p.id) === String(pendingAdd.player.id));
-    if (!already) roster.push(pendingAdd.player);
-  }
-  const slots = Array.from({ length: squadSize }, (_, index) => roster[index] || null);
-  return slots;
-}
-
-export function resolveSquadSize(teams, fallback = DEFAULT_SQUAD_SLOTS) {
-  if (!Array.isArray(teams) || !teams.length) return fallback;
-  const maxRoster = teams.reduce((max, team) => {
-    const count = Math.max(Number(team.playerCount || 0), squadPlayersFromTeam(team).length);
-    return Math.max(max, count);
-  }, 0);
-  return Math.max(fallback, maxRoster);
-}
-
 export function formatPurse(value) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
+}
+
+export function formatCompactPurse(value) {
+  const amount = Number(value) || 0;
+  if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(1).replace(/\.0$/, '')}Cr`;
+  if (amount >= 100000) return `₹${(amount / 100000).toFixed(1).replace(/\.0$/, '')}L`;
+  if (amount >= 1000) return `₹${(amount / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+  return formatPurse(amount);
 }

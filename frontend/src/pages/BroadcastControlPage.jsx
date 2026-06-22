@@ -20,6 +20,7 @@ export default function BroadcastControlPage() {
     overlayShowPlayerTransition: true,
     overlayShowBidPop: true,
     overlayShowSquadFormation: false,
+    maxSquadSize: 15,
     tokenEnabled: false,
     overlaySecretToken: '',
     whatsappAutoEnabled: false,
@@ -105,6 +106,20 @@ export default function BroadcastControlPage() {
         <label><input type='checkbox' checked={!!settings.overlayShowSquadFormation} onChange={e=>setSettings(s=>({...s,overlayShowSquadFormation:e.target.checked}))} /> Audience Squad Formation Animation</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
           Full-screen squad signing ceremony on the Audience Display after each SOLD gavel. Does not affect the admin auction screen or other overlays.
+        </p>
+        <label className='block'>
+          <span className='text-sm'>Maximum Squad Size</span>
+          <input
+            className='input mt-1'
+            type='number'
+            min='5'
+            max='30'
+            value={String(settings.maxSquadSize ?? 15)}
+            onChange={e=>setSettings(s=>({...s,maxSquadSize: Math.max(5, Math.min(30, Number(e.target.value || 15)))}))}
+          />
+        </label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Drives the Audience Display squad board slot count (e.g. 15 players = 9/15 progress with 6 remaining).
         </p>
         <label><input type='checkbox' checked={!!settings.whatsappAutoEnabled} onChange={e=>setSettings(s=>({...s,whatsappAutoEnabled:e.target.checked}))} /> Auto WhatsApp on sell</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>

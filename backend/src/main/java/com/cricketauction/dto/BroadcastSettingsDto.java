@@ -18,6 +18,7 @@ public class BroadcastSettingsDto {
     private Boolean overlayShowPlayerTransition;
     private Boolean overlayShowBidPop;
     private Boolean overlayShowSquadFormation;
+    private Integer maxSquadSize;
     private Boolean tokenEnabled;
     private String overlaySecretToken;
     private Boolean whatsappAutoEnabled;

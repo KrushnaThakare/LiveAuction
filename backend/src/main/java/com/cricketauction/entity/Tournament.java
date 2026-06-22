@@ -129,6 +129,11 @@ public class Tournament {
     @Builder.Default
     private Boolean overlayShowSquadFormation = false;
 
+    /** Maximum players per team squad (drives ceremony slot UI) */
+    @Column(name = "max_squad_size")
+    @Builder.Default
+    private Integer maxSquadSize = 15;
+
     @Column(name = "overlay_secret_token", length = 120)
     private String overlaySecretToken;
 
