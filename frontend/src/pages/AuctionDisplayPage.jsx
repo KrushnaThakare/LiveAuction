@@ -76,7 +76,8 @@ export default function AuctionDisplayPage() {
     phase: ceremonyPhase,
     teamSlots,
     flyRequest,
-    highlightTeamId,
+    activeTeamId,
+    saleSummary,
     newPlayerKey,
     sourceRef,
     registerSlot,
@@ -91,8 +92,8 @@ export default function AuctionDisplayPage() {
     beginCeremony(soldOverlay);
   }, [beginCeremony, ceremonyEnabled, soldOverlay]);
 
-  const showResultLayer = isResult && !soldOverlay && !ceremonyActive
-    && (!ceremonyEnabled || status === 'UNSOLD');
+  const showResultLayer = isResult && !soldOverlay && !ceremonyActive;
+  const ceremonyTeam = teams.find((t) => t.id === activeTeamId);
   const cinematicEnabled = config?.overlayShowCinematicIntro === true && auction?.cinematicIntroLive !== false;
   const bidPopEnabled = config?.overlayShowBidPop !== false;
   const bidPopToken = useOverlayBidPop(auction?.currentBid, auction?.sessionId, bidPopEnabled && status === 'ACTIVE');
@@ -238,12 +239,12 @@ export default function AuctionDisplayPage() {
         />
       )}
 
-      {ceremonyEnabled && ceremonyActive && (
+      {ceremonyEnabled && ceremonyActive && ceremonyTeam && (
         <SquadFormationCeremony
-          teams={teams}
-          teamSlots={teamSlots}
+          team={ceremonyTeam}
+          slots={teamSlots[ceremonyTeam.id] || []}
+          saleSummary={saleSummary}
           phase={ceremonyPhase}
-          highlightTeamId={highlightTeamId}
           newPlayerKey={newPlayerKey}
           flyRequest={flyRequest}
           flyDurationMs={flyDurationMs}
