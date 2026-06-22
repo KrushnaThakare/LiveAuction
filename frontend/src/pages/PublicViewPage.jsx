@@ -7,6 +7,7 @@ import { playerIdLabel } from '../utils/playerSearch';
 import { resolveUrl } from '../utils/resolveUrl';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
+import { useAuctionVerdictOverlay } from '../hooks/useAuctionVerdictOverlay';
 import SequentialImage from '../components/common/SequentialImage';
 import GavelOverlay from '../components/common/GavelOverlay';
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
@@ -30,8 +31,7 @@ export default function PublicViewPage() {
   const [unsold, setUnsold]           = useState([]);
   const [loadedTabs, setLoadedTabs]   = useState({});
   const [tabLoading, setTabLoading]   = useState(false);
-  const [soldOverlay, setSoldOverlay] = useState(null); // { name, team, teamLogo, amount }
-  const previousAuctionRef = useRef(null);
+  const soldOverlay = useAuctionVerdictOverlay(data?.auction, data?.teams);
   const loadedTabsRef = useRef({});
 
   const loadTabData = useCallback(async (targetTab, force = false) => {
@@ -64,28 +64,14 @@ export default function PublicViewPage() {
   };
 
   useEffect(() => {
-    const current = data?.auction;
-    const previous = previousAuctionRef.current;
-    if (!current) return;
-    if (previous?.status === 'ACTIVE' && current.status === 'SOLD') {
-      const winnerTeam = (data?.teams || []).find(t => t.id === current.highestBidderTeamId);
-      setSoldOverlay({
-        verdict: 'SOLD',
-        name: previous.currentPlayer?.name || current.currentPlayer?.name,
-        team: current.highestBidderTeamName,
-        teamLogo: resolveUrl(winnerTeam?.logoUrl),
-        amount: current.currentBid,
-      });
-      setTimeout(() => setSoldOverlay(null), 5200);
-      if (loadedTabsRef.current.teams) loadTabData('teams', true);
-      if (loadedTabsRef.current.sold) loadTabData('sold', true);
-    }
-    if (previous?.status === 'ACTIVE' && current.status === 'UNSOLD') {
-      setSoldOverlay({ verdict: 'UNSOLD', name: previous.currentPlayer?.name || current.currentPlayer?.name });
-      setTimeout(() => setSoldOverlay(null), 4200);
-      if (loadedTabsRef.current.unsold) loadTabData('unsold', true);
-    }
-    previousAuctionRef.current = current;
+    if (data?.auction?.status !== 'SOLD') return;
+    if (loadedTabsRef.current.teams) loadTabData('teams', true);
+    if (loadedTabsRef.current.sold) loadTabData('sold', true);
+  }, [data?.auction?.status, data?.auction?.sessionId, loadTabData]);
+
+  useEffect(() => {
+    if (data?.auction?.status !== 'UNSOLD') return;
+    if (loadedTabsRef.current.unsold) loadTabData('unsold', true);
   }, [data?.auction?.status, data?.auction?.sessionId, loadTabData]);
 
   const playerRoles = useMemo(
@@ -194,7 +180,18 @@ export default function PublicViewPage() {
       </div>
 
       {/* Gavel overlay — same for SOLD and UNSOLD */}
-      {soldOverlay && <GavelOverlay {...soldOverlay} duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000} />}
+      {soldOverlay && (
+        <GavelOverlay
+          key={soldOverlay.sessionKey}
+          verdict={soldOverlay.verdict}
+          name={soldOverlay.name}
+          team={soldOverlay.team}
+          teamLogo={soldOverlay.teamLogo}
+          amount={soldOverlay.amount}
+          squadPick={soldOverlay.squadPick}
+          duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
+        />
+      )}
     </div>
   );
 }

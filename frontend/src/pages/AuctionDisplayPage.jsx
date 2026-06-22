@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
@@ -14,6 +13,7 @@ import OverlayFullscreenButton from '../components/common/OverlayFullscreenButto
 import GavelOverlay from '../components/common/GavelOverlay';
 import CinematicPlayerIntro from '../components/overlay/CinematicPlayerIntro';
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
+import { useAuctionVerdictOverlay } from '../hooks/useAuctionVerdictOverlay';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -61,8 +61,7 @@ export default function AuctionDisplayPage() {
   const isResult = status === 'SOLD' || status === 'UNSOLD';
   const isSold = status === 'SOLD';
   const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
-  const [soldOverlay, setSoldOverlay] = useState(null);
-  const previousAuctionRef = useRef(null);
+  const soldOverlay = useAuctionVerdictOverlay(auction, teams);
   const cinematicEnabled = config?.overlayShowCinematicIntro === true && auction?.cinematicIntroLive !== false;
   const bidPopEnabled = config?.overlayShowBidPop !== false;
   const bidPopToken = useOverlayBidPop(auction?.currentBid, auction?.sessionId, bidPopEnabled && status === 'ACTIVE');
@@ -77,45 +76,6 @@ export default function AuctionDisplayPage() {
     config?.overlayShowPlayerStatsIntro !== false && sessionReady,
     config?.overlayPlayerStatsIntroMs || 5500
   );
-
-  useEffect(() => {
-    const current = auction;
-    const previous = previousAuctionRef.current;
-    if (!current) return;
-    if (previous?.status === 'ACTIVE' && current.status === 'SOLD') {
-      const winningTeam = teams.find(t => t.id === current.highestBidderTeamId || t.name === current.highestBidderTeamName);
-      setSoldOverlay({
-        verdict: 'SOLD',
-        name: previous.currentPlayer?.name || current.currentPlayer?.name,
-        team: current.highestBidderTeamName,
-        teamLogo: winningTeam?.logoUrl ? resolveUrl(winningTeam.logoUrl) : null,
-        amount: current.currentBid,
-        squadPick: formatSquadPickLabel(winningTeam?.playerCount),
-      });
-      setTimeout(() => setSoldOverlay(null), 5600);
-    }
-    if (previous?.status === 'ACTIVE' && current.status === 'UNSOLD') {
-      setSoldOverlay({
-        verdict: 'UNSOLD',
-        name: previous.currentPlayer?.name || current.currentPlayer?.name,
-      });
-      setTimeout(() => setSoldOverlay(null), 4200);
-    }
-    previousAuctionRef.current = current;
-  }, [auction, teams]);
-
-  useEffect(() => {
-    if (!soldOverlay || soldOverlay.verdict !== 'SOLD' || soldOverlay.teamLogo) return;
-    const winningTeam = teams.find(
-      t => t.name === soldOverlay.team || t.id === auction?.highestBidderTeamId
-    );
-    if (!winningTeam?.logoUrl) return;
-    setSoldOverlay(current => current ? {
-      ...current,
-      teamLogo: resolveUrl(winningTeam.logoUrl),
-      squadPick: current.squadPick || formatSquadPickLabel(winningTeam.playerCount),
-    } : current);
-  }, [teams, soldOverlay, auction?.highestBidderTeamId]);
 
   return (
     <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''} ${cinematicPlaying ? styles.cinematicMode : ''}`}>
@@ -202,7 +162,7 @@ export default function AuctionDisplayPage() {
         </footer>
       </div>
 
-      {isResult && (
+      {isResult && !soldOverlay && (
         <section className={styles.resultLayer}>
           <div className={`${styles.resultBursts} ${status === 'UNSOLD' ? styles.unsoldBursts : ''}`} />
           <div className={styles.resultCard}>
@@ -235,7 +195,13 @@ export default function AuctionDisplayPage() {
 
       {soldOverlay && (
         <GavelOverlay
-          {...soldOverlay}
+          key={soldOverlay.sessionKey}
+          verdict={soldOverlay.verdict}
+          name={soldOverlay.name}
+          team={soldOverlay.team}
+          teamLogo={soldOverlay.teamLogo}
+          amount={soldOverlay.amount}
+          squadPick={soldOverlay.squadPick}
           duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
         />
       )}
