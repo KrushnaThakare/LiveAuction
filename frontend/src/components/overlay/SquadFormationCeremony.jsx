@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { UserRound } from 'lucide-react';
 import { resolveUrl } from '../../utils/resolveUrl';
 import { formatPurse } from '../../utils/squadFormation';
+import { formatCurrency } from '../../utils/formatters';
 import styles from './SquadFormationCeremony.module.css';
 
 function easeOutCubic(t) {
@@ -34,9 +35,15 @@ function AnimatedNumber({ value = 0, duration = 700, format = (v) => String(Math
     return () => {
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
-  }, [value, duration]);
+  }, [value, duration, format]);
 
   return <>{format(display)}</>;
+}
+
+function resolveImageSrc(imageUrl) {
+  if (!imageUrl) return null;
+  if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) return imageUrl;
+  return resolveUrl(imageUrl);
 }
 
 const SquadSlot = memo(function SquadSlot({
@@ -62,11 +69,7 @@ const SquadSlot = memo(function SquadSlot({
     );
   }
 
-  const imageSrc = player.imageUrl
-    ? (player.imageUrl.startsWith('http') || player.imageUrl.startsWith('/')
-      ? player.imageUrl
-      : resolveUrl(player.imageUrl))
-    : null;
+  const imageSrc = resolveImageSrc(player.imageUrl);
 
   return (
     <div
@@ -77,7 +80,7 @@ const SquadSlot = memo(function SquadSlot({
         {imageSrc ? (
           <img src={imageSrc} alt="" loading="lazy" />
         ) : (
-          <span className={styles.slotPhotoFallback}><UserRound size={16} /></span>
+          <span className={styles.slotPhotoFallback}><UserRound size={28} /></span>
         )}
       </div>
       <div className={styles.slotMeta}>
@@ -87,61 +90,6 @@ const SquadSlot = memo(function SquadSlot({
     </div>
   );
 });
-
-const SquadTeamCard = memo(function SquadTeamCard({
-  team,
-  slots,
-  highlighted,
-  newPlayerKey,
-  registerSlot,
-}) {
-  const logoSrc = team.logoUrl ? resolveUrl(team.logoUrl) : null;
-  const filledCount = slots.filter(Boolean).length;
-
-  return (
-    <article className={`${styles.teamCard} ${highlighted ? styles.teamCardWin : ''}`}>
-      <header className={styles.teamHeader}>
-        <div className={styles.teamLogoWrap}>
-          {logoSrc ? (
-            <img src={logoSrc} alt="" className={styles.teamLogo} />
-          ) : (
-            <span className={styles.teamLogoFallback}>{team.name?.[0] || 'T'}</span>
-          )}
-        </div>
-        <div className={styles.teamInfo}>
-          <h3 className={styles.teamName}>{team.name}</h3>
-          <div className={styles.teamStatRow}>
-            <span>Players</span>
-            <AnimatedNumber value={filledCount} duration={550} />
-          </div>
-          <div className={styles.teamStatRow}>
-            <span>Budget</span>
-            <AnimatedNumber value={team.remainingBudget} duration={700} format={formatPurse} />
-          </div>
-        </div>
-      </header>
-
-      <div className={styles.slotGrid}>
-        {slots.map((player, index) => (
-          <SquadSlot
-            key={`${team.id}-${index}`}
-            player={player}
-            slotIndex={index}
-            teamId={team.id}
-            isNew={newPlayerKey === `${team.id}:${player?.id}`}
-            registerSlot={registerSlot}
-          />
-        ))}
-      </div>
-    </article>
-  );
-}, (prev, next) => (
-  prev.team.id === next.team.id
-  && prev.team.remainingBudget === next.team.remainingBudget
-  && prev.highlighted === next.highlighted
-  && prev.newPlayerKey === next.newPlayerKey
-  && prev.slots === next.slots
-));
 
 function SquadFlyCard({ player, fromRect, toRect, durationMs, onComplete }) {
   const cardRef = useRef(null);
@@ -177,11 +125,7 @@ function SquadFlyCard({ player, fromRect, toRect, durationMs, onComplete }) {
 
   if (!player || !fromRect || !toRect) return null;
 
-  const imageSrc = player.imageUrl
-    ? (player.imageUrl.startsWith('http') || player.imageUrl.startsWith('/')
-      ? player.imageUrl
-      : resolveUrl(player.imageUrl))
-    : null;
+  const imageSrc = resolveImageSrc(player.imageUrl);
 
   return (
     <div className={styles.flyLayer} aria-hidden>
@@ -193,7 +137,7 @@ function SquadFlyCard({ player, fromRect, toRect, durationMs, onComplete }) {
         }}
       >
         <div className={styles.flyPhoto}>
-          {imageSrc ? <img src={imageSrc} alt="" /> : <UserRound size={56} />}
+          {imageSrc ? <img src={imageSrc} alt="" /> : <UserRound size={72} />}
         </div>
         <div className={styles.flyMeta}>
           <span>{player.name}</span>
@@ -205,10 +149,10 @@ function SquadFlyCard({ player, fromRect, toRect, durationMs, onComplete }) {
 }
 
 export default function SquadFormationCeremony({
-  teams,
-  teamSlots,
+  team,
+  slots,
+  saleSummary,
   phase,
-  highlightTeamId,
   newPlayerKey,
   flyRequest,
   flyDurationMs,
@@ -219,6 +163,10 @@ export default function SquadFormationCeremony({
 }) {
   const exiting = phase === 'exit';
   const visible = phase != null;
+  const logoSrc = team?.logoUrl ? resolveUrl(team.logoUrl) : null;
+  const filledCount = slots.filter(Boolean).length;
+
+  if (!team) return null;
 
   return (
     <div
@@ -229,22 +177,53 @@ export default function SquadFormationCeremony({
       <div className={styles.backdrop} />
       <div ref={sourceRef} className={styles.flyOrigin} aria-hidden />
 
-      <header className={styles.ceremonyHeader}>
-        <p className={styles.ceremonyKicker}>Squad Formation</p>
-        <h2 className={styles.ceremonyTitle}>Official Signing</h2>
-      </header>
+      <div className={styles.ceremonyBody}>
+        <header className={styles.heroHeader}>
+          <p className={styles.ceremonyKicker}>Squad Formation</p>
+          <div className={styles.heroLogoWrap}>
+            <div className={styles.heroGlow} />
+            {logoSrc ? (
+              <img src={logoSrc} alt="" className={styles.heroLogo} />
+            ) : (
+              <span className={styles.heroLogoFallback}>{team.name?.[0] || 'T'}</span>
+            )}
+          </div>
+          <h2 className={styles.heroTeamName}>{team.name}</h2>
+          {saleSummary?.name && (
+            <p className={styles.signingLine}>
+              <span>New Signing</span>
+              <strong>{saleSummary.name}</strong>
+              {saleSummary.amount != null && (
+                <em>{formatCurrency(saleSummary.amount)}</em>
+              )}
+            </p>
+          )}
+          <div className={styles.heroStats}>
+            <div className={styles.heroStat}>
+              <span>Players</span>
+              <AnimatedNumber value={filledCount} duration={550} />
+            </div>
+            <div className={styles.heroStat}>
+              <span>Remaining Budget</span>
+              <AnimatedNumber value={team.remainingBudget} duration={700} format={formatPurse} />
+            </div>
+          </div>
+        </header>
 
-      <div className={styles.teamGrid}>
-        {teams.map((team) => (
-          <SquadTeamCard
-            key={team.id}
-            team={team}
-            slots={teamSlots[team.id] || []}
-            highlighted={highlightTeamId === team.id}
-            newPlayerKey={newPlayerKey}
-            registerSlot={registerSlot}
-          />
-        ))}
+        <section className={styles.squadPanel}>
+          <div className={styles.slotGrid}>
+            {slots.map((player, index) => (
+              <SquadSlot
+                key={`${team.id}-${index}`}
+                player={player}
+                slotIndex={index}
+                teamId={team.id}
+                isNew={newPlayerKey === `${team.id}:${player?.id}`}
+                registerSlot={registerSlot}
+              />
+            ))}
+          </div>
+        </section>
       </div>
 
       {flyRequest && (

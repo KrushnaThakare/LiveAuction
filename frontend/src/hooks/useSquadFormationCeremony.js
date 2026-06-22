@@ -25,6 +25,8 @@ export function useSquadFormationCeremony(enabled, teams, playerRoles) {
   const [flyRequest, setFlyRequest] = useState(null);
   const [highlightTeamId, setHighlightTeamId] = useState(null);
   const [newPlayerKey, setNewPlayerKey] = useState(null);
+  const [activeTeamId, setActiveTeamId] = useState(null);
+  const [saleSummary, setSaleSummary] = useState(null);
   const slotRefs = useRef({});
   const sourceRef = useRef(null);
   const timersRef = useRef([]);
@@ -96,6 +98,8 @@ export function useSquadFormationCeremony(enabled, teams, playerRoles) {
     const timer = window.setTimeout(() => {
       setPhase(null);
       setFlyRequest(null);
+      setActiveTeamId(null);
+      setSaleSummary(null);
     }, EXIT_MS);
     timersRef.current.push(timer);
   }, []);
@@ -136,6 +140,12 @@ export function useSquadFormationCeremony(enabled, teams, playerRoles) {
   const beginCeremony = useCallback((sale) => {
     if (!enabled || !sale?.teamId || !sale?.playerId) return;
     clearTimers();
+    setActiveTeamId(sale.teamId);
+    setSaleSummary({
+      name: sale.name,
+      amount: sale.amount,
+      team: sale.team,
+    });
     setPhase('enter');
     const enterTimer = window.setTimeout(() => {
       setPhase('grid');
@@ -171,6 +181,8 @@ export function useSquadFormationCeremony(enabled, teams, playerRoles) {
     flyRequest,
     highlightTeamId,
     newPlayerKey,
+    activeTeamId,
+    saleSummary,
     sourceRef,
     registerSlot,
     beginCeremony,
