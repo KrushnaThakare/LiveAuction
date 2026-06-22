@@ -22,6 +22,26 @@ export function computeSquadGridColumns(squadSize) {
   return 5;
 }
 
+/** Grid layout for filled player cards — keeps full squad visible on one screen */
+export function computeFilledGridLayout(itemCount) {
+  const items = Math.max(1, itemCount);
+  const maxRows = 4;
+  let cols = items <= 4 ? Math.min(4, items) : 5;
+  let rows = Math.ceil(items / cols);
+
+  if (rows > maxRows) {
+    cols = Math.min(8, Math.max(5, Math.ceil(items / maxRows)));
+    rows = Math.ceil(items / cols);
+  }
+
+  let density = 'relaxed';
+  if (items > 4) density = 'cozy';
+  if (items > 8) density = 'compact';
+  if (items > 12) density = 'dense';
+
+  return { cols, rows, density };
+}
+
 export function squadProgress(filledCount, squadSize) {
   const total = clampSquadSize(squadSize);
   const filled = Math.max(0, Math.min(total, Number(filledCount) || 0));
