@@ -3,6 +3,8 @@ import { useTournament } from '../contexts/TournamentContext';
 import { broadcastApi } from '../api/broadcast';
 import { bidRuleApi } from '../api/bidRules';
 import toast from 'react-hot-toast';
+import SquadSizeInput from '../components/common/SquadSizeInput';
+import { clampSquadSize } from '../utils/squadFormation';
 
 export default function BroadcastControlPage() {
   const { activeTournament } = useTournament();
@@ -30,13 +32,26 @@ export default function BroadcastControlPage() {
 
   useEffect(() => {
     if (!tid) return;
-    broadcastApi.getSettings(tid).then(r => setSettings(s => ({ ...s, ...r.data.data, overlaySecretToken: r.data.data.overlaySecretToken || '' })));
+    broadcastApi.getSettings(tid).then((r) => {
+      const data = r.data.data || {};
+      setSettings((s) => ({
+        ...s,
+        ...data,
+        maxSquadSize: clampSquadSize(data.maxSquadSize),
+        overlaySecretToken: data.overlaySecretToken || '',
+      }));
+    });
     bidRuleApi.getRules(tid).then(r => setBidRules(r.data.data || []));
   }, [tid]);
 
   const save = async () => {
     if (!tid) return;
-    await broadcastApi.updateSettings(tid, settings);
+    const payload = {
+      ...settings,
+      maxSquadSize: clampSquadSize(settings.maxSquadSize),
+    };
+    await broadcastApi.updateSettings(tid, payload);
+    setSettings(payload);
     await bidRuleApi.updateRules(tid, bidRules);
     try {
       const channel = new BroadcastChannel('auction-bid-rules');
@@ -109,13 +124,9 @@ export default function BroadcastControlPage() {
         </p>
         <label className='block'>
           <span className='text-sm'>Maximum Squad Size</span>
-          <input
-            className='input mt-1'
-            type='number'
-            min='5'
-            max='30'
-            value={String(settings.maxSquadSize ?? 15)}
-            onChange={e=>setSettings(s=>({...s,maxSquadSize: Math.max(5, Math.min(30, Number(e.target.value || 15)))}))}
+          <SquadSizeInput
+            value={settings.maxSquadSize}
+            onChange={(maxSquadSize) => setSettings((s) => ({ ...s, maxSquadSize }))}
           />
         </label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>

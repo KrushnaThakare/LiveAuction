@@ -93,7 +93,7 @@ public class TournamentService {
         }
         t.setDescription(request.getDescription());
         if (request.getLogoUrl() != null) t.setLogoUrl(request.getLogoUrl());
-        if (request.getMaxSquadSize() != null) t.setMaxSquadSize(clampSquadSize(request.getMaxSquadSize()));
+        if (request.getMaxSquadSize() != null) t.setMaxSquadSize(squadSizeOrDefault(request.getMaxSquadSize()));
         return mapToResponse(tournamentRepository.save(t));
     }
 
@@ -147,11 +147,11 @@ public class TournamentService {
                 .registrationEnabled(t.getRegistrationEnabled())
                 .registrationMessage(t.getRegistrationMessage())
                 .registrationRedirectLink(t.getRegistrationRedirectLink())
-                .maxSquadSize(t.getMaxSquadSize())
+                .maxSquadSize(squadSizeOrDefault(t.getMaxSquadSize()))
                 .build();
     }
 
-    private static int clampSquadSize(Integer value) {
+    private static int squadSizeOrDefault(Integer value) {
         if (value == null) return 15;
         return Math.max(5, Math.min(30, value));
     }

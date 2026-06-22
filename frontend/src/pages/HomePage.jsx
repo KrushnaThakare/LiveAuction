@@ -10,6 +10,8 @@ import { Trophy, Plus, Users, ShieldCheck, CheckCircle, XCircle, Edit, Trash2, U
 import { resolveUrl } from '../utils/resolveUrl';
 import { useAuth } from '../contexts/AuthContext';
 import { DEFAULT_PLAYER_ROLES, FOOTBALL_PLAYER_ROLES, roleConfigToLines, roleLinesToConfig } from '../utils/formatters';
+import SquadSizeInput from '../components/common/SquadSizeInput';
+import { clampSquadSize } from '../utils/squadFormation';
 
 export default function HomePage() {
   const { tournaments, loading, fetchTournaments, selectTournament, activeTournament } = useTournament();
@@ -48,7 +50,7 @@ export default function HomePage() {
         sport: editForm.sport,
         playerRoles: roleLinesToConfig(editForm.roleLines),
         description: editForm.description,
-        maxSquadSize: Number(editForm.maxSquadSize) || 15,
+        maxSquadSize: clampSquadSize(editForm.maxSquadSize),
       });
       if (editLogoFile) {
         await tournamentApi.uploadLogo(editingTournament.id, editLogoFile);
@@ -292,8 +294,10 @@ export default function HomePage() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Maximum Squad Size</label>
-            <input className="input" type="number" min="5" max="30" value={editForm.maxSquadSize}
-              onChange={e => setEditForm(f => ({ ...f, maxSquadSize: Math.max(5, Math.min(30, Number(e.target.value || 15))) }))} />
+            <SquadSizeInput
+              value={editForm.maxSquadSize}
+              onChange={(maxSquadSize) => setEditForm((f) => ({ ...f, maxSquadSize }))}
+            />
             <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Used by the Audience Display squad formation board.</p>
           </div>
           <div>

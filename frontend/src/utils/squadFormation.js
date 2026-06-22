@@ -5,8 +5,9 @@ export const MIN_SQUAD_SIZE = 5;
 export const MAX_SQUAD_SIZE = 30;
 
 export function clampSquadSize(value, fallback = DEFAULT_SQUAD_SIZE) {
+  if (value == null || value === '') return fallback;
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return Math.max(MIN_SQUAD_SIZE, Math.min(MAX_SQUAD_SIZE, Math.round(parsed)));
 }
 

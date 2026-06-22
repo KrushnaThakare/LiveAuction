@@ -48,7 +48,7 @@ public class BroadcastController {
         if (d.getOverlayShowPlayerTransition() != null) t.setOverlayShowPlayerTransition(d.getOverlayShowPlayerTransition());
         if (d.getOverlayShowBidPop() != null) t.setOverlayShowBidPop(d.getOverlayShowBidPop());
         if (d.getOverlayShowSquadFormation() != null) t.setOverlayShowSquadFormation(d.getOverlayShowSquadFormation());
-        if (d.getMaxSquadSize() != null) t.setMaxSquadSize(clampSquadSize(d.getMaxSquadSize()));
+        if (d.getMaxSquadSize() != null) t.setMaxSquadSize(squadSizeOrDefault(d.getMaxSquadSize()));
         if (d.getWhatsappAutoEnabled() != null) t.setWhatsappAutoEnabled(d.getWhatsappAutoEnabled());
         if (Boolean.FALSE.equals(d.getTokenEnabled())) t.setOverlaySecretToken(null);
         if (d.getOverlaySecretToken() != null) t.setOverlaySecretToken(d.getOverlaySecretToken().isBlank() ? null : d.getOverlaySecretToken());
@@ -87,7 +87,7 @@ public class BroadcastController {
                 .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())
                 .overlayShowBidPop(t.getOverlayShowBidPop())
                 .overlayShowSquadFormation(t.getOverlayShowSquadFormation())
-                .maxSquadSize(t.getMaxSquadSize())
+                .maxSquadSize(squadSizeOrDefault(t.getMaxSquadSize()))
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .overlaySecretToken(includeSecret ? t.getOverlaySecretToken() : null)
                 .whatsappAutoEnabled(t.getWhatsappAutoEnabled())
@@ -95,7 +95,7 @@ public class BroadcastController {
                 .build();
     }
 
-    private static int clampSquadSize(Integer value) {
+    private static int squadSizeOrDefault(Integer value) {
         if (value == null) return 15;
         return Math.max(5, Math.min(30, value));
     }
