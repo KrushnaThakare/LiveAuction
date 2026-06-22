@@ -13,7 +13,6 @@ import { formatCurrency, formatRole, getRoleColor, getRoleBg, getRoleIcon, getPl
 import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
 import { matchesPlayerIdOrName, playerIdLabel } from '../utils/playerSearch';
-import GavelOverlay from '../components/common/GavelOverlay';
 import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
@@ -112,7 +111,6 @@ export default function AuctionPage() {
   const [showKeyHelp, setShowKeyHelp]           = useState(false);
   const [cinematicIntroSetting, setCinematicIntroSetting] = useState(false);
   const [cinematicIntroLive, setCinematicIntroLive] = useState(true);
-  const [soldOverlay, setSoldOverlay]           = useState(null); // { verdict, name, team, teamLogo, amount }
   const containerRef = useRef(null);
   const bidUpdateSeq = useRef(0);
   const callingBidInFlightRef = useRef(false);
@@ -386,7 +384,6 @@ export default function AuctionPage() {
       setProposedBid(null);
       // Find winning team from local state BEFORE refreshing
       const winningTeamId = res.data.data.highestBidderTeamId;
-      const winningTeam   = teams.find(t => t.id === winningTeamId);
       setTeams(current => current.map(team => team.id === winningTeamId
         ? {
             ...team,
@@ -394,14 +391,10 @@ export default function AuctionPage() {
             playerCount: Number(team.playerCount || 0) + 1,
           }
         : team));
-      setSoldOverlay({
-        verdict:  'SOLD',
-        name:     prev?.currentPlayer?.name,
-        team:     res.data.data.highestBidderTeamName,
-        teamLogo: resolveUrl(winningTeam?.logoUrl) || null,
-        amount:   res.data.data.currentBid,
-      });
-      setTimeout(() => setSoldOverlay(null), 5000);
+      toast.success(
+        `SOLD — ${prev?.currentPlayer?.name || 'Player'} → ${res.data.data.highestBidderTeamName} (${formatCurrency(res.data.data.currentBid)})`,
+        { duration: 2500 }
+      );
       if (voiceEnabled) announcePlayerSold(prev?.currentPlayer?.name, res.data.data.highestBidderTeamName, res.data.data.currentBid);
       teamApi.getSummary(activeTournament.id)
         .then(tRes => setTeams(tRes.data.data || []))
@@ -427,8 +420,7 @@ export default function AuctionPage() {
         setAvailablePlayers(list => list.filter(p => p.id !== unsoldPlayer.id));
       }
       if (voiceEnabled && prev?.currentPlayer?.name) announcePlayerUnsold(prev.currentPlayer.name);
-      setSoldOverlay({ verdict: 'UNSOLD', name: prev?.currentPlayer?.name });
-      setTimeout(() => setSoldOverlay(null), 4000);
+      toast(`UNSOLD — ${prev?.currentPlayer?.name || 'Player'}`, { icon: '⛔', duration: 2000 });
     } finally {
       setActionLoading(false);
     }
@@ -463,7 +455,6 @@ export default function AuctionPage() {
       const res = await auctionApi.undo(activeTournament.id);
       setAuctionState(res.data.data);
       publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
-      setSoldOverlay(null);
       toast.success('Decision undone — player returned to Available');
       teamApi.getSummary(activeTournament.id)
         .then(tRes => setTeams(tRes.data.data || []))
@@ -765,7 +756,6 @@ export default function AuctionPage() {
         <TeamsSidebar teams={teams} auctionState={auctionState} />
       </div>
 
-      {soldOverlay && <GavelOverlay {...soldOverlay} duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000} />}
     </div>
   );
 }
