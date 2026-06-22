@@ -17,6 +17,7 @@ import SquadFormationCeremony from '../components/overlay/SquadFormationCeremony
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import { useAuctionVerdictOverlay } from '../hooks/useAuctionVerdictOverlay';
 import { useSquadFormationCeremony } from '../hooks/useSquadFormationCeremony';
+import { resolveSquadSize } from '../utils/squadFormation';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -56,6 +57,7 @@ export default function AuctionDisplayPage() {
   const [includePlayers, setIncludePlayers] = useState(false);
   const { data, config, connected } = useOverlayRealtime(tid, token, { includePlayers });
   const ceremonyEnabled = config?.overlayShowSquadFormation === true;
+  const squadSize = resolveSquadSize(config);
 
   if (ceremonyEnabled && !includePlayers) {
     setIncludePlayers(true);
@@ -74,18 +76,18 @@ export default function AuctionDisplayPage() {
   const {
     active: ceremonyActive,
     phase: ceremonyPhase,
-    teamSlots,
+    teamRoster,
     flyRequest,
     activeTeamId,
     saleSummary,
     newPlayerKey,
     sourceRef,
-    registerSlot,
+    registerNextSlot,
     beginCeremony,
     completeFly,
     flyDurationMs,
     exitDurationMs,
-  } = useSquadFormationCeremony(ceremonyEnabled, teams, config?.playerRoles);
+  } = useSquadFormationCeremony(ceremonyEnabled, teams, config?.playerRoles, squadSize);
 
   const handleGavelComplete = useCallback(() => {
     if (!ceremonyEnabled || soldOverlay?.verdict !== 'SOLD') return;
@@ -242,14 +244,15 @@ export default function AuctionDisplayPage() {
       {ceremonyEnabled && ceremonyActive && ceremonyTeam && (
         <SquadFormationCeremony
           team={ceremonyTeam}
-          slots={teamSlots[ceremonyTeam.id] || []}
+          filledPlayers={teamRoster[ceremonyTeam.id] || []}
+          squadSize={squadSize}
           saleSummary={saleSummary}
           phase={ceremonyPhase}
           newPlayerKey={newPlayerKey}
           flyRequest={flyRequest}
           flyDurationMs={flyDurationMs}
           exitDurationMs={exitDurationMs}
-          registerSlot={registerSlot}
+          registerNextSlot={registerNextSlot}
           sourceRef={sourceRef}
           onFlyComplete={completeFly}
         />

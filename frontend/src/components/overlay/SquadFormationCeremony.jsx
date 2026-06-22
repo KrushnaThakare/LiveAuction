@@ -1,7 +1,12 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { UserRound } from 'lucide-react';
 import { resolveUrl } from '../../utils/resolveUrl';
-import { formatPurse } from '../../utils/squadFormation';
+import {
+  computeSquadGridColumns,
+  formatCompactPurse,
+  formatPurse,
+  squadProgress,
+} from '../../utils/squadFormation';
 import { formatCurrency } from '../../utils/formatters';
 import styles from './SquadFormationCeremony.module.css';
 
@@ -46,50 +51,91 @@ function resolveImageSrc(imageUrl) {
   return resolveUrl(imageUrl);
 }
 
-const SquadSlot = memo(function SquadSlot({
-  player,
-  slotIndex,
-  teamId,
-  isNew,
-  registerSlot,
-}) {
-  const slotRef = useRef(null);
-
-  useEffect(() => {
-    if (!registerSlot) return undefined;
-    registerSlot(teamId, slotIndex, slotRef.current);
-    return () => registerSlot(teamId, slotIndex, null);
-  }, [registerSlot, teamId, slotIndex]);
-
-  if (!player) {
-    return (
-      <div ref={slotRef} className={styles.emptySlot} aria-hidden>
-        <div className={styles.emptyJersey} />
-      </div>
-    );
-  }
-
-  const imageSrc = resolveImageSrc(player.imageUrl);
+function ProgressRing({ filled, total, percent }) {
+  const radius = 54;
+  const stroke = 8;
+  const normalized = radius - stroke / 2;
+  const circumference = 2 * Math.PI * normalized;
+  const offset = circumference - (percent / 100) * circumference;
 
   return (
-    <div
-      ref={slotRef}
-      className={`${styles.playerSlot} ${isNew ? styles.playerSlotNew : ''}`}
-    >
-      <div className={styles.slotPhoto}>
-        {imageSrc ? (
-          <img src={imageSrc} alt="" loading="lazy" />
-        ) : (
-          <span className={styles.slotPhotoFallback}><UserRound size={28} /></span>
-        )}
-      </div>
-      <div className={styles.slotMeta}>
-        <span className={styles.slotName}>{player.name}</span>
-        {player.role ? <span className={styles.slotRole}>{player.role}</span> : null}
+    <div className={styles.progressRing} aria-hidden>
+      <svg viewBox="0 0 120 120">
+        <circle className={styles.ringTrack} cx="60" cy="60" r={normalized} />
+        <circle
+          className={styles.ringValue}
+          cx="60"
+          cy="60"
+          r={normalized}
+          style={{
+            strokeDasharray: circumference,
+            strokeDashoffset: offset,
+          }}
+        />
+      </svg>
+      <div className={styles.ringLabel}>
+        <strong>{percent}%</strong>
+        <span>{filled}/{total}</span>
       </div>
     </div>
   );
+}
+
+function SquadProgressBar({ filled, total, remaining }) {
+  const blocks = Array.from({ length: total }, (_, index) => index < filled);
+  return (
+    <div className={styles.progressBlockWrap}>
+      <div className={styles.progressBlockMeta}>
+        <span>{filled} Filled</span>
+        <span>{remaining} Remaining</span>
+      </div>
+      <div className={styles.progressBlocks} aria-hidden>
+        {blocks.map((on, index) => (
+          <span key={index} className={on ? styles.blockFilled : styles.blockEmpty} />
+        ))}
+      </div>
+      <div className={styles.progressFraction}>{filled} / {total}</div>
+    </div>
+  );
+}
+
+const FilledPlayerCard = memo(function FilledPlayerCard({ player, isNew }) {
+  const imageSrc = resolveImageSrc(player.imageUrl);
+  return (
+    <article className={`${styles.filledCard} ${isNew ? styles.filledCardNew : ''}`}>
+      <div className={styles.filledPhoto}>
+        {imageSrc ? (
+          <img src={imageSrc} alt="" loading="lazy" />
+        ) : (
+          <span className={styles.filledPhotoFallback}><UserRound size={36} /></span>
+        )}
+      </div>
+      <div className={styles.filledMeta}>
+        <span className={styles.filledName}>{player.name}</span>
+        {player.role ? <span className={styles.filledRole}>{player.role}</span> : null}
+      </div>
+    </article>
+  );
 });
+
+function NextSigningSlot({ teamId, registerNextSlot, show }) {
+  const slotRef = useRef(null);
+
+  useEffect(() => {
+    if (!registerNextSlot || !show) return undefined;
+    registerNextSlot(teamId, slotRef.current);
+    return () => registerNextSlot(teamId, null);
+  }, [registerNextSlot, teamId, show]);
+
+  if (!show) return null;
+
+  return (
+    <div ref={slotRef} className={styles.nextSlot} aria-label="Next squad slot">
+      <div className={styles.nextSlotSilhouette} />
+      <span>Add Player</span>
+    </div>
+  );
+}
 
 function SquadFlyCard({ player, fromRect, toRect, durationMs, onComplete }) {
   const cardRef = useRef(null);
@@ -150,28 +196,30 @@ function SquadFlyCard({ player, fromRect, toRect, durationMs, onComplete }) {
 
 export default function SquadFormationCeremony({
   team,
-  slots,
+  filledPlayers,
+  squadSize,
   saleSummary,
   phase,
   newPlayerKey,
   flyRequest,
   flyDurationMs,
   exitDurationMs,
-  registerSlot,
+  registerNextSlot,
   sourceRef,
   onFlyComplete,
 }) {
   const exiting = phase === 'exit';
   const visible = phase != null;
   const logoSrc = team?.logoUrl ? resolveUrl(team.logoUrl) : null;
-  const filledCount = slots.filter(Boolean).length;
+  const { filled, total, remaining, percent } = squadProgress(filledPlayers.length, squadSize);
+  const gridColumns = computeSquadGridColumns(total);
 
   if (!team) return null;
 
   return (
     <div
       className={`${styles.ceremony} ${visible ? styles.ceremonyVisible : ''} ${exiting ? styles.ceremonyExit : ''}`}
-      style={{ '--exit-ms': `${exitDurationMs}ms` }}
+      style={{ '--exit-ms': `${exitDurationMs}ms`, '--grid-cols': gridColumns }}
       aria-hidden={!visible}
     >
       <div className={styles.backdrop} />
@@ -198,30 +246,50 @@ export default function SquadFormationCeremony({
               )}
             </p>
           )}
-          <div className={styles.heroStats}>
-            <div className={styles.heroStat}>
-              <span>Players</span>
-              <AnimatedNumber value={filledCount} duration={550} />
-            </div>
-            <div className={styles.heroStat}>
-              <span>Remaining Budget</span>
-              <AnimatedNumber value={team.remainingBudget} duration={700} format={formatPurse} />
+
+          <div className={styles.summaryRow}>
+            <ProgressRing filled={filled} total={total} percent={percent} />
+            <div className={styles.summaryStats}>
+              <div className={styles.summaryStat}>
+                <span>Players</span>
+                <strong>{filled} / {total}</strong>
+              </div>
+              <div className={styles.summaryStat}>
+                <span>Remaining</span>
+                <strong>{remaining} Players</strong>
+              </div>
+              <div className={styles.summaryStat}>
+                <span>Budget Left</span>
+                <strong>
+                  <AnimatedNumber value={team.remainingBudget} duration={700} format={formatCompactPurse} />
+                </strong>
+              </div>
+              <div className={styles.summaryStatWide}>
+                <span>Full Purse</span>
+                <strong>
+                  <AnimatedNumber value={team.remainingBudget} duration={700} format={formatPurse} />
+                </strong>
+              </div>
             </div>
           </div>
         </header>
 
         <section className={styles.squadPanel}>
-          <div className={styles.slotGrid}>
-            {slots.map((player, index) => (
-              <SquadSlot
-                key={`${team.id}-${index}`}
+          <SquadProgressBar filled={filled} total={total} remaining={remaining} />
+
+          <div className={styles.filledGrid}>
+            {filledPlayers.map((player) => (
+              <FilledPlayerCard
+                key={player.id}
                 player={player}
-                slotIndex={index}
-                teamId={team.id}
-                isNew={newPlayerKey === `${team.id}:${player?.id}`}
-                registerSlot={registerSlot}
+                isNew={newPlayerKey === `${team.id}:${player.id}`}
               />
             ))}
+            <NextSigningSlot
+              teamId={team.id}
+              registerNextSlot={registerNextSlot}
+              show={remaining > 0}
+            />
           </div>
         </section>
       </div>

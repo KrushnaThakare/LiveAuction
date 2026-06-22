@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  resolveSquadSize,
+  clampSquadSize,
   squadPlayersFromTeam,
   toSlotPlayer,
 } from '../utils/squadFormation';
@@ -9,6 +9,7 @@ const FLY_MS = 820;
 const HOLD_MS = 3500;
 const ENTER_MS = 400;
 const EXIT_MS = 600;
+const NEW_PLAYER_HIGHLIGHT_MS = 2000;
 
 function hydrateRoster(teams, playerRoles) {
   const roster = {};
@@ -18,20 +19,18 @@ function hydrateRoster(teams, playerRoles) {
   return roster;
 }
 
-export function useSquadFormationCeremony(enabled, teams, playerRoles) {
+export function useSquadFormationCeremony(enabled, teams, playerRoles, configuredSquadSize) {
+  const squadSize = useMemo(() => clampSquadSize(configuredSquadSize), [configuredSquadSize]);
   const [roster, setRoster] = useState({});
   const hydratedRef = useRef(false);
   const [phase, setPhase] = useState(null);
   const [flyRequest, setFlyRequest] = useState(null);
-  const [highlightTeamId, setHighlightTeamId] = useState(null);
   const [newPlayerKey, setNewPlayerKey] = useState(null);
   const [activeTeamId, setActiveTeamId] = useState(null);
   const [saleSummary, setSaleSummary] = useState(null);
   const slotRefs = useRef({});
   const sourceRef = useRef(null);
   const timersRef = useRef([]);
-
-  const squadSize = useMemo(() => resolveSquadSize(teams), [teams]);
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach(clearTimeout);
@@ -75,8 +74,8 @@ export function useSquadFormationCeremony(enabled, teams, playerRoles) {
     });
   }, [enabled, teams, playerRoles]);
 
-  const registerSlot = useCallback((teamId, slotIndex, node) => {
-    const key = `${teamId}:${slotIndex}`;
+  const registerNextSlot = useCallback((teamId, node) => {
+    const key = `${teamId}:next`;
     if (node) slotRefs.current[key] = node;
     else delete slotRefs.current[key];
   }, []);
@@ -87,10 +86,8 @@ export function useSquadFormationCeremony(enabled, teams, playerRoles) {
       if (list.some((entry) => entry && String(entry.id) === String(player.id))) return current;
       return { ...current, [teamId]: [...list, player] };
     });
-    setHighlightTeamId(teamId);
     setNewPlayerKey(`${teamId}:${player.id}`);
-    window.setTimeout(() => setHighlightTeamId(null), 900);
-    window.setTimeout(() => setNewPlayerKey(null), 2200);
+    window.setTimeout(() => setNewPlayerKey(null), NEW_PLAYER_HIGHLIGHT_MS);
   }, []);
 
   const finishCeremony = useCallback(() => {
@@ -106,9 +103,7 @@ export function useSquadFormationCeremony(enabled, teams, playerRoles) {
 
   const startFly = useCallback((sale) => {
     const teamId = sale.teamId;
-    const rosterList = roster[teamId] || [];
-    const slotIndex = Math.min(rosterList.length, squadSize - 1);
-    const targetNode = slotRefs.current[`${teamId}:${slotIndex}`];
+    const targetNode = slotRefs.current[`${teamId}:next`];
     const sourceRect = sourceRef.current?.getBoundingClientRect();
     const targetRect = targetNode?.getBoundingClientRect();
     const player = {
@@ -130,12 +125,11 @@ export function useSquadFormationCeremony(enabled, teams, playerRoles) {
     setFlyRequest({
       player: toSlotPlayer(player, playerRoles),
       teamId,
-      slotIndex,
       fromRect: sourceRect,
       toRect: targetRect,
     });
     setPhase('flying');
-  }, [appendSoldPlayer, finishCeremony, playerRoles, roster, squadSize]);
+  }, [appendSoldPlayer, finishCeremony, playerRoles]);
 
   const beginCeremony = useCallback((sale) => {
     if (!enabled || !sale?.teamId || !sale?.playerId) return;
@@ -164,27 +158,25 @@ export function useSquadFormationCeremony(enabled, teams, playerRoles) {
     timersRef.current.push(timer);
   }, [appendSoldPlayer, finishCeremony, flyRequest]);
 
-  const teamSlots = useMemo(() => {
+  const teamRoster = useMemo(() => {
     const map = {};
     for (const team of teams || []) {
-      const players = roster[team.id] || [];
-      map[team.id] = Array.from({ length: squadSize }, (_, index) => players[index] || null);
+      map[team.id] = roster[team.id] || [];
     }
     return map;
-  }, [teams, squadSize, roster]);
+  }, [teams, roster]);
 
   return {
     active: phase != null,
     phase,
     squadSize,
-    teamSlots,
+    teamRoster,
     flyRequest,
-    highlightTeamId,
     newPlayerKey,
     activeTeamId,
     saleSummary,
     sourceRef,
-    registerSlot,
+    registerNextSlot,
     beginCeremony,
     completeFly,
     flyDurationMs: FLY_MS,

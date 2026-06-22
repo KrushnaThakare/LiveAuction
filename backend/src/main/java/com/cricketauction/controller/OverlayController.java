@@ -71,6 +71,7 @@ public class OverlayController {
                 .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())
                 .overlayShowBidPop(t.getOverlayShowBidPop())
                 .overlayShowSquadFormation(t.getOverlayShowSquadFormation())
+                .maxSquadSize(t.getMaxSquadSize())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .tournamentName(t.getName())
                 .auctionDisplayName(t.getAuctionDisplayName())

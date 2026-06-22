@@ -14,4 +14,5 @@ public class TournamentRequest {
     private List<PlayerRoleDto> playerRoles;
     private String description;
     private String logoUrl;
+    private Integer maxSquadSize;
 }

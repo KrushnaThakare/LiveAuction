@@ -25,7 +25,7 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 90% 70% at 50% 15%, rgba(37, 99, 235, 0.22), transparent 58%),
+    radial-gradient(ellipse 90% 70% at 50% 12%, rgba(37, 99, 235, 0.22), transparent 58%),
     radial-gradient(ellipse 80% 55% at 50% 100%, rgba(255, 199, 44, 0.14), transparent 52%),
     linear-gradient(165deg, #040a16 0%, #0a1428 42%, #050b18 100%);
   backdrop-filter: blur(12px);
@@ -39,12 +39,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(14px, 2vh, 24px);
+  gap: clamp(14px, 2vh, 22px);
 }
 
 .heroHeader {
   text-align: center;
-  width: min(100%, 920px);
+  width: min(100%, 980px);
 }
 
 .ceremonyKicker {
@@ -140,25 +140,90 @@
   font-size: clamp(1rem, 2vw, 1.4rem);
 }
 
-.heroStats {
+.summaryRow {
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: clamp(20px, 4vw, 48px);
-  margin-top: 16px;
+  gap: clamp(18px, 3vw, 36px);
+  margin-top: 18px;
+  flex-wrap: wrap;
 }
 
-.heroStat {
+.progressRing {
+  position: relative;
+  width: clamp(110px, 12vw, 140px);
+  height: clamp(110px, 12vw, 140px);
+}
+
+.progressRing svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ringTrack {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 8;
+}
+
+.ringValue {
+  fill: none;
+  stroke: #ffc72c;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  filter: drop-shadow(0 0 8px rgba(255, 199, 44, 0.45));
+}
+
+.ringLabel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.ringLabel strong {
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-weight: 900;
+  color: #fff;
+}
+
+.ringLabel span {
+  font-size: clamp(0.72rem, 1.1vw, 0.9rem);
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.62);
+  letter-spacing: 0.08em;
+}
+
+.summaryStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 10px;
+  min-width: min(100%, 360px);
+}
+
+.summaryStat,
+.summaryStatWide {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 120px;
-  padding: 10px 16px;
+  padding: 10px 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: left;
 }
 
-.heroStat span:first-child {
+.summaryStatWide {
+  grid-column: 1 / -1;
+}
+
+.summaryStat span:first-child,
+.summaryStatWide span:first-child {
   font-size: clamp(0.62rem, 0.9vw, 0.75rem);
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -166,7 +231,8 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
-.heroStat span:last-child {
+.summaryStat strong,
+.summaryStatWide strong {
   font-size: clamp(1rem, 1.8vw, 1.35rem);
   font-weight: 900;
   color: #00d26a;
@@ -184,87 +250,121 @@
     0 28px 70px rgba(0, 0, 0, 0.38),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(18px) saturate(1.15);
-}
-
-.slotGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(96px, 10vw, 140px), 1fr));
-  gap: clamp(8px, 1vw, 14px);
-  align-content: start;
-}
-
-.emptySlot {
-  aspect-ratio: 0.82;
-  border-radius: 16px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
-  border: 1px dashed rgba(255, 255, 255, 0.16);
-  display: grid;
-  place-items: center;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-.emptyJersey {
-  width: 44%;
-  height: 54%;
-  border-radius: 10px 10px 14px 14px;
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
-  position: relative;
-}
-
-.emptyJersey::before {
-  content: '';
-  position: absolute;
-  top: 18%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40%;
-  height: 24%;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.14);
-}
-
-.playerSlot {
-  aspect-ratio: 0.82;
-  border-radius: 16px;
-  padding: clamp(6px, 0.8vw, 10px);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.32);
+  gap: 16px;
+}
+
+.progressBlockWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progressBlockMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: clamp(0.72rem, 1.1vw, 0.9rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.progressBlockMeta span:last-child {
+  color: rgba(255, 199, 44, 0.9);
+}
+
+.progressBlocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.blockFilled,
+.blockEmpty {
+  width: clamp(18px, 2.2vw, 28px);
+  height: clamp(10px, 1.2vw, 14px);
+  border-radius: 4px;
+}
+
+.blockFilled {
+  background: linear-gradient(90deg, #00d26a, #10b981);
+  box-shadow: 0 0 12px rgba(0, 210, 106, 0.35);
+}
+
+.blockEmpty {
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  transform: scale(1);
-  transition: transform 0.35s ease, box-shadow 0.35s ease;
 }
 
-.playerSlotNew {
-  animation: slotLand 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-  box-shadow:
-    0 0 0 2px rgba(255, 199, 44, 0.55),
-    0 0 32px rgba(255, 199, 44, 0.4);
+.progressFraction {
+  font-size: clamp(0.85rem, 1.3vw, 1rem);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.06em;
 }
 
-@keyframes slotLand {
-  0% { transform: scale(0); opacity: 0.2; }
-  55% { transform: scale(1.1); }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.slotPhoto {
+.filledGrid {
   flex: 1;
   min-height: 0;
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.08);
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols, 5), minmax(0, 1fr));
+  gap: clamp(10px, 1.2vw, 16px);
+  align-content: start;
+  overflow: auto;
+  padding-bottom: 4px;
 }
 
-.slotPhoto img {
+.filledCard {
+  border-radius: 18px;
+  padding: clamp(8px, 1vw, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.filledCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.34), 0 0 24px rgba(59, 130, 246, 0.12);
+}
+
+.filledCardNew {
+  animation: signingPulse 2s ease-out both;
+  border-color: rgba(255, 199, 44, 0.75);
+  box-shadow:
+    0 0 0 2px rgba(255, 199, 44, 0.45),
+    0 0 36px rgba(255, 199, 44, 0.35);
+}
+
+@keyframes signingPulse {
+  0% { transform: scale(0.92); }
+  18% { transform: scale(1.04); }
+  40% { transform: scale(1); }
+  70% { box-shadow: 0 0 0 2px rgba(255, 199, 44, 0.55), 0 0 40px rgba(255, 199, 44, 0.42); }
+  100% { transform: scale(1); }
+}
+
+.filledPhoto {
+  aspect-ratio: 0.82;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.filledPhoto img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.slotPhotoFallback {
+.filledPhotoFallback {
   width: 100%;
   height: 100%;
   display: grid;
@@ -272,15 +372,15 @@
   color: rgba(255, 255, 255, 0.45);
 }
 
-.slotMeta {
+.filledMeta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 
-.slotName {
-  font-size: clamp(0.72rem, 1.1vw, 0.95rem);
+.filledName {
+  font-size: clamp(0.82rem, 1.3vw, 1.05rem);
   font-weight: 900;
   color: #fff;
   white-space: nowrap;
@@ -288,18 +388,57 @@
   text-overflow: ellipsis;
 }
 
-.slotRole {
-  font-size: clamp(0.58rem, 0.85vw, 0.72rem);
+.filledRole {
+  font-size: clamp(0.62rem, 0.95vw, 0.78rem);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #ffc72c;
+}
+
+.nextSlot {
+  border-radius: 18px;
+  padding: clamp(8px, 1vw, 12px);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.38);
+  font-size: clamp(0.68rem, 1vw, 0.82rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.nextSlotSilhouette {
+  width: 42%;
+  aspect-ratio: 0.78;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
+  position: relative;
+}
+
+.nextSlotSilhouette::before {
+  content: '';
+  position: absolute;
+  top: 16%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36%;
+  height: 22%;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
 }
 
 .flyOrigin {
   position: fixed;
   left: 50%;
-  top: 38%;
+  top: 34%;
   width: clamp(220px, 26vw, 340px);
   height: clamp(280px, 32vw, 420px);
   transform: translate(-50%, -50%);

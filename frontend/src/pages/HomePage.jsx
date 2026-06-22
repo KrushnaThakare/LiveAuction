@@ -17,7 +17,7 @@ export default function HomePage() {
 
   const [showCreateModal, setShowCreateModal]   = useState(false);
   const [editingTournament, setEditingTournament] = useState(null);
-  const [editForm, setEditForm]                 = useState({ name: '', auctionDisplayName: '', sport: 'CRICKET', roleLines: '', description: '' });
+  const [editForm, setEditForm]                 = useState({ name: '', auctionDisplayName: '', sport: 'CRICKET', roleLines: '', description: '', maxSquadSize: 15 });
   const [editLogoFile, setEditLogoFile]         = useState(null);
   const [editLogoPreview, setEditLogoPreview]   = useState(null);
   const [editSaving, setEditSaving]             = useState(false);
@@ -31,6 +31,7 @@ export default function HomePage() {
       sport: t.sport || 'CRICKET',
       roleLines: roleConfigToLines(t.playerRoles || DEFAULT_PLAYER_ROLES),
       description: t.description || '',
+      maxSquadSize: t.maxSquadSize ?? 15,
     });
     setEditLogoFile(null);
     setEditLogoPreview(resolveUrl(t.logoUrl));
@@ -47,6 +48,7 @@ export default function HomePage() {
         sport: editForm.sport,
         playerRoles: roleLinesToConfig(editForm.roleLines),
         description: editForm.description,
+        maxSquadSize: Number(editForm.maxSquadSize) || 15,
       });
       if (editLogoFile) {
         await tournamentApi.uploadLogo(editingTournament.id, editLogoFile);
@@ -287,6 +289,12 @@ export default function HomePage() {
             <textarea className="input font-mono text-xs" rows={4} value={editForm.roleLines}
               onChange={e => setEditForm(f => ({ ...f, roleLines: e.target.value, sport: 'CUSTOM' }))} />
             <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>One per line: KEY|Label|Short Label|Color</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Maximum Squad Size</label>
+            <input className="input" type="number" min="5" max="30" value={editForm.maxSquadSize}
+              onChange={e => setEditForm(f => ({ ...f, maxSquadSize: Math.max(5, Math.min(30, Number(e.target.value || 15))) }))} />
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Used by the Audience Display squad formation board.</p>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Description</label>
