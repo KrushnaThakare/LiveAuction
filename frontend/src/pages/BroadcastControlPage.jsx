@@ -19,6 +19,7 @@ export default function BroadcastControlPage() {
     overlayCinematicIntroLive: true,
     overlayShowPlayerTransition: true,
     overlayShowBidPop: true,
+    overlayShowSquadFormation: false,
     tokenEnabled: false,
     overlaySecretToken: '',
     whatsappAutoEnabled: false,
@@ -100,6 +101,10 @@ export default function BroadcastControlPage() {
         <label><input type='checkbox' checked={settings.overlayShowBidPop !== false} onChange={e=>setSettings(s=>({...s,overlayShowBidPop:e.target.checked}))} /> Enable bid amount pop on overlays</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
           Subtle scale pulse on current bid across overlay displays when the amount changes.
+        </p>
+        <label><input type='checkbox' checked={!!settings.overlayShowSquadFormation} onChange={e=>setSettings(s=>({...s,overlayShowSquadFormation:e.target.checked}))} /> Audience Squad Formation Animation</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Full-screen squad signing ceremony on the Audience Display after each SOLD gavel. Does not affect the admin auction screen or other overlays.
         </p>
         <label><input type='checkbox' checked={!!settings.whatsappAutoEnabled} onChange={e=>setSettings(s=>({...s,whatsappAutoEnabled:e.target.checked}))} /> Auto WhatsApp on sell</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>

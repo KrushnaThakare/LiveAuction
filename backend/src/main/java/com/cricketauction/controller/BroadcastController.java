@@ -47,6 +47,7 @@ public class BroadcastController {
         if (d.getOverlayCinematicIntroLive() != null) t.setOverlayCinematicIntroLive(d.getOverlayCinematicIntroLive());
         if (d.getOverlayShowPlayerTransition() != null) t.setOverlayShowPlayerTransition(d.getOverlayShowPlayerTransition());
         if (d.getOverlayShowBidPop() != null) t.setOverlayShowBidPop(d.getOverlayShowBidPop());
+        if (d.getOverlayShowSquadFormation() != null) t.setOverlayShowSquadFormation(d.getOverlayShowSquadFormation());
         if (d.getWhatsappAutoEnabled() != null) t.setWhatsappAutoEnabled(d.getWhatsappAutoEnabled());
         if (Boolean.FALSE.equals(d.getTokenEnabled())) t.setOverlaySecretToken(null);
         if (d.getOverlaySecretToken() != null) t.setOverlaySecretToken(d.getOverlaySecretToken().isBlank() ? null : d.getOverlaySecretToken());
@@ -84,6 +85,7 @@ public class BroadcastController {
                 .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
                 .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())
                 .overlayShowBidPop(t.getOverlayShowBidPop())
+                .overlayShowSquadFormation(t.getOverlayShowSquadFormation())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .overlaySecretToken(includeSecret ? t.getOverlaySecretToken() : null)
                 .whatsappAutoEnabled(t.getWhatsappAutoEnabled())

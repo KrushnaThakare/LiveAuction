@@ -20,8 +20,9 @@ import { formatCurrency } from '../../utils/formatters';
  *   amount    final bid amount (SOLD only)
  *   squadPick squad position label e.g. "10th Player" (SOLD only)
  *   duration  total display time in ms (default 5500)
+ *   onComplete optional callback when overlay finishes
  */
-export default function GavelOverlay({ verdict, name, team, teamLogo, amount, squadPick, duration = 5500 }) {
+export default function GavelOverlay({ verdict, name, team, teamLogo, amount, squadPick, duration = 5500, onComplete }) {
   const isSold = verdict === 'SOLD';
 
   // Colour scheme
@@ -49,9 +50,10 @@ export default function GavelOverlay({ verdict, name, team, teamLogo, amount, sq
     const t4 = setTimeout(() => setDetails(true), 1200);
     // near end: start fade
     const t5 = setTimeout(() => setExiting(true), duration - 600);
+    const t6 = setTimeout(() => onComplete?.(), duration);
 
-    return () => [t1, t2, t3, t4, t5].forEach(clearTimeout);
-  }, [duration]);
+    return () => [t1, t2, t3, t4, t5, t6].forEach(clearTimeout);
+  }, [duration, onComplete]);
 
   return (
     <div

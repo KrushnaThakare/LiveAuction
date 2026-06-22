@@ -17,6 +17,7 @@ public class BroadcastSettingsDto {
     private Boolean overlayCinematicIntroLive;
     private Boolean overlayShowPlayerTransition;
     private Boolean overlayShowBidPop;
+    private Boolean overlayShowSquadFormation;
     private Boolean tokenEnabled;
     private String overlaySecretToken;
     private Boolean whatsappAutoEnabled;
