@@ -88,7 +88,7 @@ export default function AuctionDisplayPage() {
         verdict: 'SOLD',
         name: previous.currentPlayer?.name || current.currentPlayer?.name,
         team: current.highestBidderTeamName,
-        teamLogo: resolveUrl(winningTeam?.logoUrl),
+        teamLogo: winningTeam?.logoUrl ? resolveUrl(winningTeam.logoUrl) : null,
         amount: current.currentBid,
         squadPick: formatSquadPickLabel(winningTeam?.playerCount),
       });
@@ -103,6 +103,19 @@ export default function AuctionDisplayPage() {
     }
     previousAuctionRef.current = current;
   }, [auction, teams]);
+
+  useEffect(() => {
+    if (!soldOverlay || soldOverlay.verdict !== 'SOLD' || soldOverlay.teamLogo) return;
+    const winningTeam = teams.find(
+      t => t.name === soldOverlay.team || t.id === auction?.highestBidderTeamId
+    );
+    if (!winningTeam?.logoUrl) return;
+    setSoldOverlay(current => current ? {
+      ...current,
+      teamLogo: resolveUrl(winningTeam.logoUrl),
+      squadPick: current.squadPick || formatSquadPickLabel(winningTeam.playerCount),
+    } : current);
+  }, [teams, soldOverlay, auction?.highestBidderTeamId]);
 
   return (
     <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''} ${cinematicPlaying ? styles.cinematicMode : ''}`}>

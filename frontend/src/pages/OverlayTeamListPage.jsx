@@ -15,6 +15,14 @@ export default function OverlayTeamListPage() {
   const { data, config } = useOverlayRealtime(tid, token, { includePlayers: true });
   const teams = data?.teams || [];
 
+  if (!data && !config) {
+    return (
+      <div className={`${styles.stage} ${styles.squadStage}`}>
+        <div className={styles.boardTitle}>Connecting squad overlay…</div>
+      </div>
+    );
+  }
+
   if (config && config.overlayShowTeamList === false) return null;
 
   return (

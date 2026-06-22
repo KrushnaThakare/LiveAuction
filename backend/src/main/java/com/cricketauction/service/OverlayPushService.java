@@ -50,6 +50,12 @@ public class OverlayPushService {
     }
 
     @Async("overlayPushExecutor")
+    public void pushSquadSnapshot(Long tournamentId) {
+        AuctionStateResponse auction = auctionService.getAuctionState(tournamentId);
+        pushSnapshotPayload(tournamentId, auction, true);
+    }
+
+    @Async("overlayPushExecutor")
     public void pushBroadcastDisabled(Long tournamentId) {
         messagingTemplate.convertAndSend("/topic/overlay/" + tournamentId + "/snapshot",
                 Map.of("broadcastDisabled", true));
