@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { resolveUrl } from '../utils/resolveUrl';
+import { driveImg } from '../utils/driveImage';
 import { formatSquadPickLabel } from '../utils/formatters';
 
 const SOLD_DURATION_MS = 5600;
@@ -37,14 +38,21 @@ export function useAuctionVerdictOverlay(auction, teams) {
             );
             gavelShownForSessionRef.current = sessionKey;
             if (gavelTimerRef.current) clearTimeout(gavelTimerRef.current);
+            const frozenPlayer = previous.currentPlayer;
             setSoldOverlay({
               sessionKey,
               verdict: 'SOLD',
               name: frozenName,
               team: current.highestBidderTeamName,
+              teamId: current.highestBidderTeamId ?? winningTeam?.id ?? null,
               teamLogo: winningTeam?.logoUrl ? resolveUrl(winningTeam.logoUrl) : null,
               amount: current.currentBid,
               squadPick: formatSquadPickLabel(winningTeam?.playerCount),
+              playerId: frozenPlayer?.id ?? null,
+              playerImageUrl: frozenPlayer?.imageUrl
+                ? (driveImg(frozenPlayer.imageUrl) || resolveUrl(frozenPlayer.imageUrl))
+                : null,
+              playerRole: frozenPlayer?.role ?? null,
             });
             gavelTimerRef.current = setTimeout(() => {
               setSoldOverlay(null);

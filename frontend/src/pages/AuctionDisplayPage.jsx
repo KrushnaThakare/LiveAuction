@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
@@ -12,8 +13,10 @@ import { getAuctionDisplayName, getRoleShortLabel, formatSquadPickLabel } from '
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import GavelOverlay from '../components/common/GavelOverlay';
 import CinematicPlayerIntro from '../components/overlay/CinematicPlayerIntro';
+import SquadFormationCeremony from '../components/overlay/SquadFormationCeremony';
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import { useAuctionVerdictOverlay } from '../hooks/useAuctionVerdictOverlay';
+import { useSquadFormationCeremony } from '../hooks/useSquadFormationCeremony';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -50,7 +53,13 @@ export default function AuctionDisplayPage() {
   const tid = params.get('tournamentId');
   const token = params.get('token');
   const sponsor = params.get('sponsor') || 'Premium Auction Arena';
-  const { data, config, connected } = useOverlayRealtime(tid, token);
+  const [includePlayers, setIncludePlayers] = useState(false);
+  const { data, config, connected } = useOverlayRealtime(tid, token, { includePlayers });
+  const ceremonyEnabled = config?.overlayShowSquadFormation === true;
+
+  if (ceremonyEnabled && !includePlayers) {
+    setIncludePlayers(true);
+  }
   const title = params.get('title') || getAuctionDisplayName(config, 'Auction Live');
   const auction = data?.auction;
   const player = auction?.currentPlayer;
@@ -62,6 +71,28 @@ export default function AuctionDisplayPage() {
   const isSold = status === 'SOLD';
   const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
   const soldOverlay = useAuctionVerdictOverlay(auction, teams);
+  const {
+    active: ceremonyActive,
+    phase: ceremonyPhase,
+    teamSlots,
+    flyRequest,
+    highlightTeamId,
+    newPlayerKey,
+    sourceRef,
+    registerSlot,
+    beginCeremony,
+    completeFly,
+    flyDurationMs,
+    exitDurationMs,
+  } = useSquadFormationCeremony(ceremonyEnabled, teams, config?.playerRoles);
+
+  const handleGavelComplete = useCallback(() => {
+    if (!ceremonyEnabled || soldOverlay?.verdict !== 'SOLD') return;
+    beginCeremony(soldOverlay);
+  }, [beginCeremony, ceremonyEnabled, soldOverlay]);
+
+  const showResultLayer = isResult && !soldOverlay && !ceremonyActive
+    && (!ceremonyEnabled || status === 'UNSOLD');
   const cinematicEnabled = config?.overlayShowCinematicIntro === true && auction?.cinematicIntroLive !== false;
   const bidPopEnabled = config?.overlayShowBidPop !== false;
   const bidPopToken = useOverlayBidPop(auction?.currentBid, auction?.sessionId, bidPopEnabled && status === 'ACTIVE');
@@ -162,7 +193,7 @@ export default function AuctionDisplayPage() {
         </footer>
       </div>
 
-      {isResult && !soldOverlay && (
+      {showResultLayer && (
         <section className={styles.resultLayer}>
           <div className={`${styles.resultBursts} ${status === 'UNSOLD' ? styles.unsoldBursts : ''}`} />
           <div className={styles.resultCard}>
@@ -203,6 +234,23 @@ export default function AuctionDisplayPage() {
           amount={soldOverlay.amount}
           squadPick={soldOverlay.squadPick}
           duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
+          onComplete={ceremonyEnabled && soldOverlay.verdict === 'SOLD' ? handleGavelComplete : undefined}
+        />
+      )}
+
+      {ceremonyEnabled && ceremonyActive && (
+        <SquadFormationCeremony
+          teams={teams}
+          teamSlots={teamSlots}
+          phase={ceremonyPhase}
+          highlightTeamId={highlightTeamId}
+          newPlayerKey={newPlayerKey}
+          flyRequest={flyRequest}
+          flyDurationMs={flyDurationMs}
+          exitDurationMs={exitDurationMs}
+          registerSlot={registerSlot}
+          sourceRef={sourceRef}
+          onFlyComplete={completeFly}
         />
       )}
 

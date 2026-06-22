@@ -124,6 +124,11 @@ public class Tournament {
     @Builder.Default
     private Boolean overlayShowBidPop = true;
 
+    /** Audience Display: squad formation ceremony after SOLD gavel */
+    @Column(name = "overlay_show_squad_formation")
+    @Builder.Default
+    private Boolean overlayShowSquadFormation = false;
+
     @Column(name = "overlay_secret_token", length = 120)
     private String overlaySecretToken;
 
