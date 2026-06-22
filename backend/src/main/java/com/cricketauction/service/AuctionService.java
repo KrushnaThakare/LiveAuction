@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @Transactional
@@ -63,26 +62,24 @@ public class AuctionService {
         Tournament tournament = tournamentService.findById(tournamentId);
         ensureNoActiveSession(tournamentId);
 
-        List<Player> available = playerRepository.findByTournamentIdAndStatus(
-                tournamentId, Player.PlayerStatus.AVAILABLE);
+        Optional<Long> randomId = playerRepository.findRandomIdByTournamentIdAndStatus(
+                tournamentId, Player.PlayerStatus.AVAILABLE.name());
 
-        if (available.isEmpty()) {
-            // fall back to unsold players for re-auction round
-            available = playerRepository.findByTournamentIdAndStatus(
+        if (randomId.isEmpty()) {
+            long unsoldCount = playerRepository.countByTournamentIdAndStatus(
                     tournamentId, Player.PlayerStatus.UNSOLD);
-            if (available.isEmpty()) {
+            if (unsoldCount == 0) {
                 throw new AuctionException("No available or unsold players left for this tournament");
             }
-            // reset unsold → available so the auction can proceed
-            for (Player p : available) {
-                p.setStatus(Player.PlayerStatus.AVAILABLE);
-                p.setCurrentBid(0.0);
+            playerRepository.resetUnsoldToAvailable(tournamentId);
+            randomId = playerRepository.findRandomIdByTournamentIdAndStatus(
+                    tournamentId, Player.PlayerStatus.AVAILABLE.name());
+            if (randomId.isEmpty()) {
+                throw new AuctionException("No available or unsold players left for this tournament");
             }
-            playerRepository.saveAll(available);
         }
 
-        int idx = ThreadLocalRandom.current().nextInt(available.size());
-        Player player = available.get(idx);
+        Player player = playerService.findById(randomId.get());
         validatePlayerForAuction(player, tournamentId);
 
         return createAndSaveSession(tournament, player);
@@ -330,6 +327,7 @@ public class AuctionService {
                         .bidRevision(0L)
                         .currentBid(0.0)
                         .cinematicIntroLive(cinematicIntroLive(tournament))
+                        .whatsappAutoEnabled(tournament.getWhatsappAutoEnabled())
                         .build();
         });
     }
@@ -419,6 +417,7 @@ public class AuctionService {
                 .undoable(undoable)
                 .undoSessionId(undoable ? session.getId() : null)
                 .cinematicIntroLive(cinematicIntroLive(session.getTournament()))
+                .whatsappAutoEnabled(session.getTournament().getWhatsappAutoEnabled())
                 .build();
     }
 

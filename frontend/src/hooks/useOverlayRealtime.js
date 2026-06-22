@@ -77,6 +77,7 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
     let stopped = false;
     let reconnectTimer;
     let snapshotTimer;
+    let squadRefreshTimer;
 
     const logUpdate = (source, auction, status = 'accept') => {
       if (!debugRef.current) return;
@@ -160,6 +161,17 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
         }
       }, 3000);
 
+      if (includePlayers) {
+        squadRefreshTimer = setInterval(async () => {
+          try {
+            const snapshotRes = await overlayApi.getSnapshot(tournamentId, token, { includePlayers: true });
+            if (!stopped) mergeSnapshot(snapshotRes.data.data, 'squad-refresh');
+          } catch {
+            // Squad refresh is best-effort; websocket lightweight pushes still drive live state.
+          }
+        }, 45000);
+      }
+
       if (stopped) return;
       ws = new WebSocket(`${WS_BASE}/ws-overlay-native`);
 
@@ -225,6 +237,7 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       connectedRef.current = false;
       clearTimeout(reconnectTimer);
       clearInterval(snapshotTimer);
+      clearInterval(squadRefreshTimer);
       if (ws && ws.readyState <= 1) {
         try {
           ws.send(buildFrame('DISCONNECT', { receipt: 'close' }));
