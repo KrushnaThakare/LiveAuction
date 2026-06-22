@@ -69,6 +69,14 @@ export default function OverlayMainPage() {
 
   if (config && config.overlayEnabled === false) return null;
 
+  if (!data && !config) {
+    return (
+      <div className={styles.stage}>
+        <div className={styles.boardTitle}>Connecting main overlay…</div>
+      </div>
+    );
+  }
+
   const showVerdict = isSold || isUnsold;
   const verdictStampKey = showVerdict ? `${auction?.sessionId || 'session'}-${status}` : 'idle';
 

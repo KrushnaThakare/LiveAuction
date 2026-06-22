@@ -39,15 +39,23 @@ function parseStompFrames(raw) {
 }
 
 function mergeTeams(currentTeams = [], incomingTeams = []) {
-  if (!Array.isArray(incomingTeams)) return currentTeams;
-  const currentById = new Map(currentTeams.map(team => [String(team.id), team]));
+  if (!Array.isArray(incomingTeams) || incomingTeams.length === 0) {
+    return currentTeams;
+  }
+  const currentById = new Map((currentTeams || []).map(team => [String(team.id), team]));
   return incomingTeams.map(team => {
     const existing = currentById.get(String(team.id));
     if (!existing) return team;
+    const incomingPlayers = Array.isArray(team.players) ? team.players : null;
     return {
       ...existing,
       ...team,
-      players: Array.isArray(team.players) ? team.players : existing.players,
+      logoUrl: team.logoUrl || existing.logoUrl,
+      name: team.name || existing.name,
+      budget: team.budget ?? existing.budget,
+      remainingBudget: team.remainingBudget ?? existing.remainingBudget,
+      playerCount: team.playerCount ?? existing.playerCount,
+      players: incomingPlayers?.length ? incomingPlayers : existing.players,
     };
   });
 }
@@ -78,6 +86,7 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
     let reconnectTimer;
     let snapshotTimer;
     let squadRefreshTimer;
+    let summaryRefreshTimer;
 
     const logUpdate = (source, auction, status = 'accept') => {
       if (!debugRef.current) return;
@@ -97,7 +106,12 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
         const currentAuction = current?.auction;
         if (isOlderAuctionUpdate(currentAuction, incomingAuction)) {
           logUpdate(source, incomingAuction, 'reject-stale');
-          return snapshot ? { ...snapshot, auction: currentAuction, teams: mergeTeams(current?.teams, snapshot.teams) } : current;
+          return {
+            ...(current || {}),
+            ...snapshot,
+            auction: currentAuction,
+            teams: mergeTeams(current?.teams, snapshot.teams),
+          };
         }
         if (
           fresh &&
@@ -108,10 +122,12 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
           Number(incomingAuction?.currentBid) !== Number(fresh.auction?.currentBid)
         ) {
           logUpdate(source, incomingAuction, 'reject-fresh-local');
+          const mergedTeams = mergeTeams(current?.teams, snapshot.teams);
           return {
+            ...(current || {}),
             ...snapshot,
             auction: fresh.auction,
-            teams: mergeTeams(current?.teams, snapshot.teams),
+            teams: mergedTeams.length ? mergedTeams : (current?.teams || []),
           };
         }
         if (fresh && Number(incomingAuction?.currentBid) === Number(fresh.auction?.currentBid)) {
@@ -119,9 +135,12 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
         }
         logUpdate(source, incomingAuction);
         if (!snapshot) return current;
+        const mergedTeams = mergeTeams(current?.teams, snapshot.teams);
         return {
+          ...current,
           ...snapshot,
-          teams: mergeTeams(current?.teams, snapshot.teams),
+          auction: incomingAuction ?? current?.auction,
+          teams: mergedTeams.length ? mergedTeams : (current?.teams || []),
         };
       });
     };
@@ -161,6 +180,15 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
         }
       }, 3000);
 
+      summaryRefreshTimer = setInterval(async () => {
+        try {
+          const snapshotRes = await overlayApi.getSnapshot(tournamentId, token, { includePlayers: false });
+          if (!stopped) mergeSnapshot(snapshotRes.data.data, 'summary-refresh');
+        } catch {
+          // Best-effort heal for budgets/logos when websocket merges miss fields.
+        }
+      }, 12000);
+
       if (includePlayers) {
         squadRefreshTimer = setInterval(async () => {
           try {
@@ -169,7 +197,7 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
           } catch {
             // Squad refresh is best-effort; websocket lightweight pushes still drive live state.
           }
-        }, 45000);
+        }, 20000);
       }
 
       if (stopped) return;
@@ -201,6 +229,8 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
                 connectedRef.current = false;
                 stopped = true;
                 clearInterval(snapshotTimer);
+                clearInterval(summaryRefreshTimer);
+                clearInterval(squadRefreshTimer);
                 clearTimeout(reconnectTimer);
                 try {
                   ws.close();
@@ -237,6 +267,7 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       connectedRef.current = false;
       clearTimeout(reconnectTimer);
       clearInterval(snapshotTimer);
+      clearInterval(summaryRefreshTimer);
       clearInterval(squadRefreshTimer);
       if (ws && ws.readyState <= 1) {
         try {
@@ -254,13 +285,18 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
 
     const applyAuctionUpdate = (payload) => {
       if (String(payload?.tournamentId) !== String(tournamentId) || !payload?.auction) return;
-      freshLocalAuctionRef.current = {
-        auction: payload.auction,
-        until: Date.now() + 3000,
-      };
+      if (payload.auction.status === 'ACTIVE') {
+        freshLocalAuctionRef.current = {
+          auction: payload.auction,
+          until: Date.now() + 3000,
+        };
+      } else {
+        freshLocalAuctionRef.current = null;
+      }
       setData(current => ({
         ...(current || {}),
         auction: payload.auction,
+        teams: mergeTeams(current?.teams, payload.teams),
       }));
       if (debugRef.current) {
         console.debug('[overlay-sync]', 'accept', payload.type || 'local-broadcast', {

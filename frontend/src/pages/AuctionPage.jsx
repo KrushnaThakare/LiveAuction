@@ -66,7 +66,7 @@ function buildClosedAuctionState(active, status) {
   };
 }
 
-function publishOverlayAuctionUpdate(tournamentId, auction) {
+function publishOverlayAuctionUpdate(tournamentId, auction, teams) {
   if (!tournamentId || !auction) return;
   const payload = {
     type: 'auction-state-updated',
@@ -74,6 +74,9 @@ function publishOverlayAuctionUpdate(tournamentId, auction) {
     auction,
     sentAt: Date.now(),
   };
+  if (Array.isArray(teams) && teams.length > 0) {
+    payload.teams = teams;
+  }
   try {
     const channel = new BroadcastChannel('auction-overlay-state');
     channel.postMessage(payload);
@@ -287,7 +290,7 @@ export default function AuctionPage() {
     try {
       const res = await auctionApi.startAuction(activeTournament.id, player.id);
       setAuctionState(res.data.data);
-      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
       setProposedBid(null);
       setBidKey(k => k + 1);
       setAvailablePlayers(p => p.filter(pl => pl.id !== player.id));
@@ -354,7 +357,7 @@ export default function AuctionPage() {
       currentPlayer: state.currentPlayer ? { ...state.currentPlayer, currentBid: optimisticBid } : state.currentPlayer,
     }) : state);
     if (optimisticAuction) {
-      publishOverlayAuctionUpdate(activeTournament.id, optimisticAuction);
+      publishOverlayAuctionUpdate(activeTournament.id, optimisticAuction, teams);
     }
     setProposedBid(null);
     setBidFlash(true);
@@ -367,7 +370,7 @@ export default function AuctionPage() {
       const res = await request;
       pendingCallingBidAuctionRef.current = null;
       setAuctionState(res.data.data);
-      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
       setBidKey(k => k + 1);
       if (voiceEnabled && team) announceBid(team.name, res.data.data.currentBid);
     } catch (error) {
@@ -404,7 +407,7 @@ export default function AuctionPage() {
         ) {
           pendingCallingBidAuctionRef.current = null;
           setAuctionState(res.data.data);
-          publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
+          publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
         }
         amountToSend = pendingCallingBidRef.current;
       }
@@ -417,7 +420,7 @@ export default function AuctionPage() {
     } finally {
       callingBidInFlightRef.current = false;
     }
-  }, [activeTournament, auctionState, logBidSync]);
+  }, [activeTournament, auctionState, logBidSync, teams]);
 
   const scheduleCallingBidSync = useCallback(() => {
     if (callingBidTimerRef.current) clearTimeout(callingBidTimerRef.current);
@@ -453,17 +456,18 @@ export default function AuctionPage() {
       const winningTeamId = prev.highestBidderTeamId;
       const soldAmount = prev.currentBid ?? 0;
       const soldState = buildClosedAuctionState(prev, 'SOLD');
-
-      setAuctionState(soldState);
-      publishOverlayAuctionUpdate(activeTournament.id, soldState);
-      setProposedBid(null);
-      setTeams(current => current.map(team => team.id === winningTeamId
+      const updatedTeams = teams.map(team => team.id === winningTeamId
         ? {
             ...team,
             remainingBudget: Math.max(0, Number(team.remainingBudget || 0) - Number(soldAmount)),
             playerCount: Number(team.playerCount || 0) + 1,
           }
-        : team));
+        : team);
+
+      setAuctionState(soldState);
+      setTeams(updatedTeams);
+      publishOverlayAuctionUpdate(activeTournament.id, soldState, updatedTeams);
+      setProposedBid(null);
       toast.success(
         `SOLD — ${prev?.currentPlayer?.name || 'Player'} → ${prev.highestBidderTeamName} (${formatCurrency(soldAmount)})`,
         { duration: 2000 }
@@ -473,10 +477,15 @@ export default function AuctionPage() {
 
       const res = await auctionApi.sellPlayer(activeTournament.id);
       setAuctionState(res.data.data);
-      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
       teamApi.getSummary(activeTournament.id)
-        .then(tRes => setTeams(tRes.data.data || []))
-        .catch(() => {});
+        .then(tRes => {
+          const freshTeams = tRes.data.data || [];
+          setTeams(freshTeams);
+          publishOverlayAuctionUpdate(activeTournament.id, res.data.data, freshTeams);
+        })
+        .catch(() => {
+          publishOverlayAuctionUpdate(activeTournament.id, res.data.data, updatedTeams);
+        });
     } catch {
       setAuctionState(prev);
       if (prev) publishOverlayAuctionUpdate(activeTournament.id, prev);
@@ -485,7 +494,7 @@ export default function AuctionPage() {
         .catch(() => {});
       setActionLoading(false);
     }
-  }, [activeTournament, actionLoading, auctionState, voiceEnabled, ensureAuctionWritesSettled]);
+  }, [activeTournament, actionLoading, auctionState, voiceEnabled, teams, ensureAuctionWritesSettled]);
 
   /* ── unsold ── */
   const handleUnsold = useCallback(async () => {
@@ -510,7 +519,7 @@ export default function AuctionPage() {
 
       const res = await auctionApi.markUnsold(activeTournament.id);
       setAuctionState(res.data.data);
-      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
     } catch {
       setAuctionState(prev);
       if (prev) publishOverlayAuctionUpdate(activeTournament.id, prev);
@@ -527,7 +536,7 @@ export default function AuctionPage() {
       const prev = auctionState;
       const res = await auctionApi.stopAuction(activeTournament.id);
       setAuctionState(res.data.data);
-      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
       if (prev?.currentPlayer) {
         const returnedPlayer = { ...prev.currentPlayer, status: 'AVAILABLE', currentBid: 0 };
         setAvailablePlayers(list => list.some(p => p.id === returnedPlayer.id) ? list : [returnedPlayer, ...list]);
@@ -546,7 +555,7 @@ export default function AuctionPage() {
     try {
       const res = await auctionApi.undo(activeTournament.id);
       setAuctionState(res.data.data);
-      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
       toast.success('Decision undone — player returned to Available');
       teamApi.getSummary(activeTournament.id)
         .then(tRes => setTeams(tRes.data.data || []))
@@ -594,7 +603,7 @@ export default function AuctionPage() {
       currentPlayer: state.currentPlayer ? { ...state.currentPlayer, currentBid: amount } : state.currentPlayer,
     }) : state);
     logBidSync('optimistic-paint', optimisticAuction, { seq });
-    publishOverlayAuctionUpdate(activeTournament.id, optimisticAuction);
+    publishOverlayAuctionUpdate(activeTournament.id, optimisticAuction, teams);
     setProposedBid(null);
     setBidKey(k => k + 1);
 
@@ -604,7 +613,7 @@ export default function AuctionPage() {
       return;
     }
     scheduleCallingBidSync();
-  }, [activeTournament, auctionState, bidRules, logBidSync, scheduleCallingBidSync]);
+  }, [activeTournament, auctionState, bidRules, logBidSync, scheduleCallingBidSync, teams]);
 
   /* ── bid step helpers ── */
   const stepUp = useCallback(() => {

@@ -84,6 +84,7 @@ public class AuctionController {
             @PathVariable Long tournamentId) {
         var r = auctionService.sellPlayer(tournamentId);
         overlayPushService.pushLightweightSnapshot(tournamentId, r);
+        overlayPushService.pushSquadSnapshot(tournamentId);
         if (r.getCurrentPlayer() != null && r.getCurrentPlayer().getId() != null
                 && Boolean.TRUE.equals(r.getWhatsappAutoEnabled())) {
             whatsAppNotifyService.notifyPlayerSoldAsync(tournamentId, r.getCurrentPlayer().getId());
@@ -115,6 +116,7 @@ public class AuctionController {
             @PathVariable Long tournamentId) {
         var r = auctionService.undoLastDecision(tournamentId);
         overlayPushService.pushLightweightSnapshot(tournamentId, r);
+        overlayPushService.pushSquadSnapshot(tournamentId);
         return ResponseEntity.ok(ApiResponse.success("Decision reversed", r));
     }
 
