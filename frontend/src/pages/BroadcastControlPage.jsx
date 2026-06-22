@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { broadcastApi } from '../api/broadcast';
 import { bidRuleApi } from '../api/bidRules';
@@ -29,6 +29,7 @@ export default function BroadcastControlPage() {
     whatsappConfigured: false,
   });
   const [bidRules, setBidRules] = useState([]);
+  const squadSizeInputRef = useRef(null);
 
   useEffect(() => {
     if (!tid) return;
@@ -46,9 +47,10 @@ export default function BroadcastControlPage() {
 
   const save = async () => {
     if (!tid) return;
+    const committedSquadSize = squadSizeInputRef.current?.commit?.() ?? clampSquadSize(settings.maxSquadSize);
     const payload = {
       ...settings,
-      maxSquadSize: clampSquadSize(settings.maxSquadSize),
+      maxSquadSize: clampSquadSize(committedSquadSize),
     };
     await broadcastApi.updateSettings(tid, payload);
     setSettings(payload);
@@ -125,12 +127,13 @@ export default function BroadcastControlPage() {
         <label className='block'>
           <span className='text-sm'>Maximum Squad Size</span>
           <SquadSizeInput
+            ref={squadSizeInputRef}
             value={settings.maxSquadSize}
             onChange={(maxSquadSize) => setSettings((s) => ({ ...s, maxSquadSize }))}
           />
         </label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
-          Drives the Audience Display squad board slot count (e.g. 15 players = 9/15 progress with 6 remaining).
+          Any whole number from 5 to 30 (e.g. 11, 12, 13, 15). Type the full number, then Save.
         </p>
         <label><input type='checkbox' checked={!!settings.whatsappAutoEnabled} onChange={e=>setSettings(s=>({...s,whatsappAutoEnabled:e.target.checked}))} /> Auto WhatsApp on sell</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi } from '../api/tournaments';
 import Modal from '../components/common/Modal';
@@ -23,6 +23,7 @@ export default function HomePage() {
   const [editLogoFile, setEditLogoFile]         = useState(null);
   const [editLogoPreview, setEditLogoPreview]   = useState(null);
   const [editSaving, setEditSaving]             = useState(false);
+  const editSquadSizeRef = useRef(null);
 
   const openEdit = (e, t) => {
     e.stopPropagation();
@@ -44,13 +45,14 @@ export default function HomePage() {
     if (!editForm.name.trim()) { toast.error('Name is required'); return; }
     setEditSaving(true);
     try {
+      const maxSquadSize = editSquadSizeRef.current?.commit?.() ?? clampSquadSize(editForm.maxSquadSize);
       await tournamentApi.update(editingTournament.id, {
         name: editForm.name,
         auctionDisplayName: editForm.auctionDisplayName,
         sport: editForm.sport,
         playerRoles: roleLinesToConfig(editForm.roleLines),
         description: editForm.description,
-        maxSquadSize: clampSquadSize(editForm.maxSquadSize),
+        maxSquadSize: clampSquadSize(maxSquadSize),
       });
       if (editLogoFile) {
         await tournamentApi.uploadLogo(editingTournament.id, editLogoFile);
@@ -295,10 +297,11 @@ export default function HomePage() {
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Maximum Squad Size</label>
             <SquadSizeInput
+              ref={editSquadSizeRef}
               value={editForm.maxSquadSize}
               onChange={(maxSquadSize) => setEditForm((f) => ({ ...f, maxSquadSize }))}
             />
-            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Used by the Audience Display squad formation board.</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Allowed range: 5–30 (e.g. 11, 12, 13, 15).</p>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Description</label>
