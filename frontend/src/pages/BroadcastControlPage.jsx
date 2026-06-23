@@ -75,6 +75,7 @@ export default function BroadcastControlPage() {
     ['Main', `${base}/overlay/main?tournamentId=${tid}${tokenQ}`],
     ['Team Budget', `${base}/overlay/team-budget?tournamentId=${tid}${tokenQ}`],
     ['Team Squad', `${base}/overlay/team-squad?tournamentId=${tid}${tokenQ}`],
+    ['Team Squad Board', `${base}/overlay/team-squad-board?tournamentId=${tid}${tokenQ}`],
     ['Audience Display', `${base}/auction-display?tournamentId=${tid}${tokenQ}`],
     ['Ticker', `${base}/overlay/ticker?tournamentId=${tid}${tokenQ}`],
     ['Sold Screen', `${base}/overlay/sold?tournamentId=${tid}${tokenQ}`],

@@ -21,6 +21,7 @@ import PublicViewPage from './pages/PublicViewPage';
 import OverlayMainPage from './pages/OverlayMainPage';
 import OverlayTeamBudgetPage from './pages/OverlayTeamBudgetPage';
 import OverlayTeamListPage from './pages/OverlayTeamListPage';
+import OverlayTeamSquadBoardPage from './pages/OverlayTeamSquadBoardPage';
 import OverlayTickerPage from './pages/OverlayTickerPage';
 import OverlaySoldPage from './pages/OverlaySoldPage';
 import OverlayUnsoldPage from './pages/OverlayUnsoldPage';
@@ -82,6 +83,7 @@ function AppRoutes() {
       <Route path="/overlay/team-budget" element={<OverlayTeamBudgetPage />} />
       <Route path="/overlay/team-list" element={<OverlayTeamListPage />} />
       <Route path="/overlay/team-squad" element={<OverlayTeamListPage />} />
+      <Route path="/overlay/team-squad-board" element={<OverlayTeamSquadBoardPage />} />
       <Route path="/overlay/ticker" element={<OverlayTickerPage />} />
       <Route path="/overlay/sold" element={<OverlaySoldPage />} />
       <Route path="/overlay/unsold" element={<OverlayUnsoldPage />} />
