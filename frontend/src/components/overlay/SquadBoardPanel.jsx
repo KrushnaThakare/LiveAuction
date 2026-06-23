@@ -4,6 +4,7 @@ import { resolveUrl } from '../../utils/resolveUrl';
 import { formatCurrency } from '../../utils/formatters';
 import {
   computeFilledGridLayout,
+  computeOverlayGridVars,
   formatCompactPurse,
   formatPurse,
   squadProgress,
@@ -100,7 +101,11 @@ export default function SquadBoardPanel({
   const logoSrc = team.logoUrl ? resolveUrl(team.logoUrl) : null;
   const { filled, total, remaining, percent } = squadProgress(filledPlayers.length, squadSize);
   const gridItems = filledPlayers.length + (showNextSlot && remaining > 0 ? 1 : 0);
-  const { cols: gridColumns, rows: gridRows, density } = computeFilledGridLayout(gridItems);
+  const isOverlay = variant === 'overlay';
+  const gridLayout = isOverlay
+    ? computeOverlayGridVars(gridItems)
+    : computeFilledGridLayout(gridItems);
+  const { cols: gridColumns, rows: gridRows, density } = gridLayout;
   const compactHeader = filled >= 5;
   const densityClass = {
     relaxed: styles.densityRelaxed,
@@ -109,10 +114,19 @@ export default function SquadBoardPanel({
     dense: styles.densityDense,
   }[density];
 
+  const boardStyle = {
+    '--grid-cols': gridColumns,
+    '--grid-rows': gridRows,
+    ...(isOverlay ? {
+      '--overlay-card-max-w': gridLayout.cardMaxWidth,
+      '--overlay-photo-max-h': gridLayout.photoMaxHeight,
+    } : {}),
+  };
+
   return (
     <div
-      className={`${styles.boardRoot} ${variant === 'overlay' ? styles.boardOverlay : ''} ${densityClass || ''} ${className}`}
-      style={{ '--grid-cols': gridColumns, '--grid-rows': gridRows }}
+      className={`${styles.boardRoot} ${isOverlay ? styles.boardOverlay : ''} ${densityClass || ''} ${className}`}
+      style={boardStyle}
     >
       <header className={`${styles.heroHeader} ${compactHeader ? styles.heroHeaderCompact : ''}`}>
         <p className={styles.ceremonyKicker}>{kicker}</p>
