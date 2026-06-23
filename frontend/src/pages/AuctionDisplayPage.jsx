@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
@@ -55,13 +55,15 @@ export default function AuctionDisplayPage() {
   const token = params.get('token');
   const sponsor = params.get('sponsor') || 'Premium Auction Arena';
   const [includePlayers, setIncludePlayers] = useState(false);
-  const { data, config, connected } = useOverlayRealtime(tid, token, { includePlayers });
+  const { data, config, connected, transport } = useOverlayRealtime(tid, token, { includePlayers });
   const ceremonyEnabled = config?.overlayShowSquadFormation === true;
   const squadSize = resolveSquadSize(config);
 
-  if (ceremonyEnabled && !includePlayers) {
-    setIncludePlayers(true);
-  }
+  useEffect(() => {
+    if (ceremonyEnabled) {
+      setIncludePlayers(true);
+    }
+  }, [ceremonyEnabled]);
   const title = params.get('title') || getAuctionDisplayName(config, 'Auction Live');
   const auction = data?.auction;
   const player = auction?.currentPlayer;
@@ -117,7 +119,9 @@ export default function AuctionDisplayPage() {
       <div className={`${styles.shell} ${cinematicPlaying ? styles.shellDuringCinematic : ''}`}>
         <header className={styles.topBar}>
           <div>
-            <div className={styles.brandKicker}>{connected ? 'Live Sync Connected' : 'Connecting Live Feed'}</div>
+            <div className={styles.brandKicker}>
+              {transport === 'websocket' || connected ? 'Live Sync Connected' : transport === 'polling' ? 'Polling Feed (check WebSocket)' : 'Connecting Live Feed'}
+            </div>
             <div className={styles.title}>{title}</div>
           </div>
           <div className={styles.sponsor}>{sponsor}</div>
