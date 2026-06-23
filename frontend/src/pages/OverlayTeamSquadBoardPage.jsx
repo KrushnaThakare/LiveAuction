@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
@@ -7,7 +7,9 @@ import OverlayFullscreenButton from '../components/common/OverlayFullscreenButto
 import {
   boardPlayersFromTeam,
   resolveSquadSize,
+  toSlotPlayer,
 } from '../utils/squadFormation';
+import { getRoleShortLabel } from '../utils/formatters';
 import styles from './OverlayTeamSquadBoard.module.css';
 
 const ROTATE_MS = 8000;
@@ -19,9 +21,62 @@ export default function OverlayTeamSquadBoardPage() {
   const { data, config } = useOverlayRealtime(tid, token, { includePlayers: true });
   const teams = data?.teams || [];
   const squadSize = resolveSquadSize(config);
+  const playerRoles = config?.playerRoles;
   const [teamIndex, setTeamIndex] = useState(0);
   const [visible, setVisible] = useState(true);
+  const [rosterByTeam, setRosterByTeam] = useState({});
   const timerRef = useRef(null);
+  const lastSoldKeyRef = useRef('');
+
+  useEffect(() => {
+    if (!teams.length) return;
+    setRosterByTeam((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const team of teams) {
+        const serverPlayers = boardPlayersFromTeam(team, playerRoles, true);
+        if (!serverPlayers.length) continue;
+        const byId = new Map((next[team.id] || []).map((player) => [String(player.id), player]));
+        let teamChanged = false;
+        for (const player of serverPlayers) {
+          const key = String(player.id);
+          if (!byId.has(key)) {
+            byId.set(key, player);
+            teamChanged = true;
+          }
+        }
+        if (teamChanged) {
+          next[team.id] = Array.from(byId.values());
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [teams, playerRoles]);
+
+  useEffect(() => {
+    const auction = data?.auction;
+    if (!auction || auction.status !== 'SOLD') return;
+    const player = auction.currentPlayer;
+    const teamId = auction.highestBidderTeamId;
+    if (!player?.id || !teamId) return;
+
+    const soldKey = `${auction.sessionId || 'session'}:${player.id}`;
+    if (lastSoldKeyRef.current === soldKey) return;
+    lastSoldKeyRef.current = soldKey;
+
+    const slotPlayer = {
+      ...toSlotPlayer(player, playerRoles),
+      soldPrice: auction.currentBid ?? player.currentBid ?? player.basePrice ?? 0,
+      role: getRoleShortLabel(player.role, playerRoles),
+    };
+
+    setRosterByTeam((current) => {
+      const list = current[teamId] || [];
+      if (list.some((entry) => String(entry.id) === String(player.id))) return current;
+      return { ...current, [teamId]: [...list, slotPlayer] };
+    });
+  }, [data?.auction, playerRoles]);
 
   const teamCount = teams.length;
   const safeIndex = teamCount ? ((teamIndex % teamCount) + teamCount) % teamCount : 0;
@@ -71,7 +126,18 @@ export default function OverlayTeamSquadBoardPage() {
     );
   }
 
-  const filledPlayers = boardPlayersFromTeam(team, config?.playerRoles, true);
+  const filledPlayers = useMemo(() => {
+    const local = rosterByTeam[team.id] || [];
+    const server = boardPlayersFromTeam(team, playerRoles, true);
+    if (!local.length) return server;
+    if (!server.length) return local;
+    const byId = new Map(local.map((player) => [String(player.id), player]));
+    for (const player of server) {
+      const key = String(player.id);
+      byId.set(key, byId.has(key) ? { ...byId.get(key), ...player } : player);
+    }
+    return Array.from(byId.values());
+  }, [rosterByTeam, team, playerRoles]);
 
   return (
     <div className={styles.stage}>
@@ -99,6 +165,7 @@ export default function OverlayTeamSquadBoardPage() {
           squadSize={squadSize}
           showPrices
           showNextSlot
+          variant="overlay"
           kicker="Team Squad Board"
         />
       </div>
