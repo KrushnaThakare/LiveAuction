@@ -80,7 +80,21 @@ export default function OverlayTeamSquadBoardPage() {
 
   const teamCount = teams.length;
   const safeIndex = teamCount ? ((teamIndex % teamCount) + teamCount) % teamCount : 0;
-  const team = teams[safeIndex];
+  const team = teams[safeIndex] ?? null;
+
+  const filledPlayers = useMemo(() => {
+    if (!team) return [];
+    const local = rosterByTeam[team.id] || [];
+    const server = boardPlayersFromTeam(team, playerRoles, true);
+    if (!local.length) return server;
+    if (!server.length) return local;
+    const byId = new Map(local.map((player) => [String(player.id), player]));
+    for (const player of server) {
+      const key = String(player.id);
+      byId.set(key, byId.has(key) ? { ...byId.get(key), ...player } : player);
+    }
+    return Array.from(byId.values());
+  }, [rosterByTeam, team, playerRoles]);
 
   const goTo = useCallback((nextIndex) => {
     if (!teamCount) return;
@@ -125,19 +139,6 @@ export default function OverlayTeamSquadBoardPage() {
       </div>
     );
   }
-
-  const filledPlayers = useMemo(() => {
-    const local = rosterByTeam[team.id] || [];
-    const server = boardPlayersFromTeam(team, playerRoles, true);
-    if (!local.length) return server;
-    if (!server.length) return local;
-    const byId = new Map(local.map((player) => [String(player.id), player]));
-    for (const player of server) {
-      const key = String(player.id);
-      byId.set(key, byId.has(key) ? { ...byId.get(key), ...player } : player);
-    }
-    return Array.from(byId.values());
-  }, [rosterByTeam, team, playerRoles]);
 
   return (
     <div className={styles.stage}>
