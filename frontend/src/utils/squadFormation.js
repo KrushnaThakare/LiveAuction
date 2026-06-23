@@ -69,8 +69,8 @@ export function toSlotPlayer(player, playerRoles) {
 }
 
 export function squadPlayersFromTeam(team) {
-  const list = Array.isArray(team?.players) ? team.players : [];
-  return list.filter((p) => p && (p.status === 'SOLD' || p.retained));
+  return (Array.isArray(team?.players) ? team.players : [])
+    .filter((player) => player && (player.name || player.id != null));
 }
 
 export function formatPurse(value) {

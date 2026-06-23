@@ -38,6 +38,20 @@ function parseStompFrames(raw) {
     });
 }
 
+function mergePlayerLists(existingPlayers, incomingPlayers) {
+  const existing = Array.isArray(existingPlayers) ? existingPlayers : [];
+  const incoming = Array.isArray(incomingPlayers) ? incomingPlayers : [];
+  if (!incoming.length) return existing;
+  if (!existing.length) return incoming;
+
+  const byId = new Map(existing.map((player) => [String(player.id), player]));
+  for (const player of incoming) {
+    const key = String(player.id);
+    byId.set(key, byId.has(key) ? { ...byId.get(key), ...player } : player);
+  }
+  return Array.from(byId.values());
+}
+
 function mergeTeams(currentTeams = [], incomingTeams = []) {
   if (!Array.isArray(incomingTeams) || incomingTeams.length === 0) {
     return currentTeams;
@@ -47,6 +61,12 @@ function mergeTeams(currentTeams = [], incomingTeams = []) {
     const existing = currentById.get(String(team.id));
     if (!existing) return team;
     const incomingPlayers = Array.isArray(team.players) ? team.players : null;
+    const mergedPlayers = mergePlayerLists(existing.players, incomingPlayers);
+    const playerCount = Math.max(
+      Number(team.playerCount) || 0,
+      Number(existing.playerCount) || 0,
+      mergedPlayers.length,
+    );
     return {
       ...existing,
       ...team,
@@ -54,8 +74,8 @@ function mergeTeams(currentTeams = [], incomingTeams = []) {
       name: team.name || existing.name,
       budget: team.budget ?? existing.budget,
       remainingBudget: team.remainingBudget ?? existing.remainingBudget,
-      playerCount: team.playerCount ?? existing.playerCount,
-      players: incomingPlayers?.length ? incomingPlayers : existing.players,
+      playerCount,
+      players: mergedPlayers.length ? mergedPlayers : existing.players,
     };
   });
 }

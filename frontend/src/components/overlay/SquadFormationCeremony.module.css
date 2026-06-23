@@ -484,6 +484,28 @@
   min-height: 0;
 }
 
+.boardOverlay {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.boardOverlay .squadPanel {
+  flex: 1;
+  min-height: clamp(200px, 44vh, 580px);
+}
+
+.boardOverlay .filledGrid {
+  grid-auto-rows: minmax(96px, auto);
+  align-content: start;
+}
+
+.boardOverlay .filledPhoto {
+  aspect-ratio: 3 / 4;
+  flex: 0 0 auto;
+  max-height: min(28vh, 220px);
+}
+
 .filledRole {
   font-size: clamp(0.62rem, 0.95vw, 0.78rem);
   font-weight: 800;

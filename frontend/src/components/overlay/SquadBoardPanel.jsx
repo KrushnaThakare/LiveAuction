@@ -92,6 +92,7 @@ export default function SquadBoardPanel({
   showNextSlot = true,
   kicker = 'Squad Formation',
   saleSummary = null,
+  variant = 'ceremony',
   className = '',
 }) {
   if (!team) return null;
@@ -110,7 +111,7 @@ export default function SquadBoardPanel({
 
   return (
     <div
-      className={`${styles.boardRoot} ${densityClass || ''} ${className}`}
+      className={`${styles.boardRoot} ${variant === 'overlay' ? styles.boardOverlay : ''} ${densityClass || ''} ${className}`}
       style={{ '--grid-cols': gridColumns, '--grid-rows': gridRows }}
     >
       <header className={`${styles.heroHeader} ${compactHeader ? styles.heroHeaderCompact : ''}`}>
