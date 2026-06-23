@@ -84,3 +84,10 @@ export function formatCompactPurse(value) {
   if (amount >= 1000) return `₹${(amount / 1000).toFixed(1).replace(/\.0$/, '')}K`;
   return formatPurse(amount);
 }
+
+export function boardPlayersFromTeam(team, playerRoles, includePrices = false) {
+  return squadPlayersFromTeam(team).map((player) => ({
+    ...toSlotPlayer(player, playerRoles),
+    soldPrice: includePrices ? (player.currentBid ?? player.basePrice ?? 0) : undefined,
+  }));
+}

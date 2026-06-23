@@ -1,4 +1,12 @@
 import { formatCurrency, formatRole } from './formatters';
+import {
+  boardPlayersFromTeam,
+  clampSquadSize,
+  computeFilledGridLayout,
+  formatCompactPurse,
+  formatPurse,
+  squadProgress,
+} from './squadFormation';
 
 const API_ORIGIN = (() => {
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
@@ -148,6 +156,130 @@ export function exportTeamRosters(teams, tournamentName = '') {
   win.document.write(html);
   win.document.close();
   win.onload = () => { win.focus(); win.print(); };
+}
+
+/**
+ * Premium squad-board PDF (print) — same visual style as Audience Display ceremony.
+ * Client-side only; runs once when the operator clicks export.
+ */
+export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 15, playerRoles = []) {
+  const squadSize = clampSquadSize(maxSquadSize);
+  const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, sans-serif; background: #050b18; color: #fff; }
+    .page { min-height: 100vh; padding: 28px 32px 36px; page-break-after: always;
+            background: linear-gradient(165deg, #040a16 0%, #0a1428 42%, #050b18 100%); }
+    .page:last-child { page-break-after: auto; }
+    .kicker { text-align: center; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.28em;
+              text-transform: uppercase; color: rgba(255,199,44,0.9); margin-bottom: 12px; }
+    .hero { text-align: center; margin-bottom: 18px; }
+    .logo { width: 96px; height: 96px; border-radius: 22px; object-fit: cover; margin: 0 auto 12px;
+            border: 3px solid rgba(255,255,255,0.22); display: block; }
+    .logo-fallback { width: 96px; height: 96px; border-radius: 22px; margin: 0 auto 12px; display: grid;
+                     place-items: center; font-size: 2.4rem; font-weight: 900; color: #ffc72c;
+                     background: rgba(255,255,255,0.08); border: 3px solid rgba(255,255,255,0.22); }
+    .team-name { font-size: 2.2rem; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
+    .tournament { margin-top: 6px; font-size: 0.85rem; color: rgba(255,255,255,0.55); }
+    .stats { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin: 16px 0 20px; }
+    .stat { min-width: 120px; padding: 10px 14px; border-radius: 14px; background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12); }
+    .stat span { display: block; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em;
+                  color: rgba(255,255,255,0.55); margin-bottom: 4px; }
+    .stat strong { font-size: 1rem; color: #00d26a; }
+    .panel { padding: 16px 18px; border-radius: 22px; background: linear-gradient(155deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03));
+             border: 1px solid rgba(255,255,255,0.14); }
+    .progress-meta { display: flex; justify-content: space-between; font-size: 0.72rem; font-weight: 800;
+                     text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.62); margin-bottom: 8px; }
+    .blocks { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+    .bf, .be { width: 18px; height: 10px; border-radius: 3px; }
+    .bf { background: linear-gradient(90deg, #00d26a, #10b981); }
+    .be { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); }
+    .fraction { font-size: 0.85rem; font-weight: 900; margin-bottom: 14px; }
+    .grid { display: grid; gap: 10px; }
+    .card { border-radius: 14px; padding: 8px; background: rgba(0,0,0,0.32);
+            border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; gap: 6px; }
+    .photo { width: 100%; aspect-ratio: 3/4; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.08); }
+    .photo img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+    .name { font-size: 0.82rem; font-weight: 900; }
+    .role { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #ffc72c; }
+    .price { font-size: 0.68rem; font-weight: 900; color: #00d26a; }
+    .open { border: 1px dashed rgba(255,255,255,0.14); color: rgba(255,255,255,0.35); display: grid;
+            place-items: center; font-size: 0.62rem; font-weight: 800; text-transform: uppercase; min-height: 120px; }
+    .toolbar { position: sticky; top: 0; background: #0f172a; color: white; padding: 12px 20px;
+               display: flex; gap: 12px; align-items: center; justify-content: space-between; z-index: 10; }
+    .toolbar button { background: #0f766e; color: white; border: none; border-radius: 8px;
+                      padding: 8px 14px; font-weight: 700; cursor: pointer; }
+    .footer { margin-top: 18px; text-align: center; font-size: 0.68rem; color: rgba(255,255,255,0.35); }
+    @media print {
+      .toolbar { display: none; }
+      body, .page { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  `;
+
+  const pages = teams.map((team) => {
+    const players = boardPlayersFromTeam(team, playerRoles, true);
+    const { filled, total, remaining } = squadProgress(players.length, squadSize);
+    const { cols, rows } = computeFilledGridLayout(players.length + (remaining > 0 ? 1 : 0));
+    const logoUrl = driveImgUrl(team.logoUrl);
+    const logoHtml = logoUrl
+      ? `<img class="logo" src="${logoUrl}" alt="" />`
+      : `<div class="logo-fallback">${escHtml((team.name || 'T')[0])}</div>`;
+
+    const blocks = Array.from({ length: total }, (_, i) =>
+      `<span class="${i < filled ? 'bf' : 'be'}"></span>`).join('');
+
+    const cards = players.map((p) => {
+      const img = driveImgUrl(p.imageUrl);
+      const photo = img
+        ? `<img src="${img}" alt="" />`
+        : `<div style="display:grid;place-items:center;height:100%;color:#999;">${escHtml((p.name || '?')[0])}</div>`;
+      return `<article class="card">
+        <div class="photo">${photo}</div>
+        <div class="name">${escHtml(p.name)}</div>
+        ${p.role ? `<div class="role">${escHtml(p.role)}</div>` : ''}
+        <div class="price">${formatCurrency(p.soldPrice || 0)}</div>
+      </article>`;
+    }).join('');
+
+    const openSlots = remaining > 0
+      ? Array.from({ length: Math.min(remaining, 1) }, () => '<div class="card open">Open Slot</div>').join('')
+      : '';
+
+    return `<section class="page">
+      <div class="kicker">Squad Board</div>
+      <div class="hero">
+        ${logoHtml}
+        <h1 class="team-name">${escHtml(team.name)}</h1>
+        <div class="tournament">${escHtml(tournamentName)}</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span>Players</span><strong>${filled} / ${total}</strong></div>
+        <div class="stat"><span>Remaining</span><strong>${remaining}</strong></div>
+        <div class="stat"><span>Budget Left</span><strong>${formatCompactPurse(team.remainingBudget)}</strong></div>
+        <div class="stat"><span>Full Purse</span><strong>${formatPurse(team.remainingBudget)}</strong></div>
+      </div>
+      <div class="panel">
+        <div class="progress-meta"><span>${filled} Filled</span><span>${remaining} Remaining</span></div>
+        <div class="blocks">${blocks}</div>
+        <div class="fraction">${filled} / ${total}</div>
+        <div class="grid" style="grid-template-columns:repeat(${cols}, minmax(0,1fr));grid-template-rows:repeat(${rows}, minmax(0,1fr));">
+          ${cards}${openSlots}
+        </div>
+      </div>
+      <div class="footer">Generated ${escHtml(new Date().toLocaleString())}</div>
+    </section>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Squad Board — ${escHtml(tournamentName)}</title><style>${css}</style></head><body>
+    <div class="toolbar"><span>Squad board export · one page per team</span>
+    <button onclick="window.print()">Print / Save as PDF</button></div>${pages}</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => win.focus();
 }
 
 function escHtml(str = '') {

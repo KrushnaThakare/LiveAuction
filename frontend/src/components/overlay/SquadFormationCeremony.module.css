@@ -476,12 +476,27 @@
   text-overflow: ellipsis;
 }
 
+.boardRoot {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.2vh, 16px);
+  min-height: 0;
+}
+
 .filledRole {
   font-size: clamp(0.62rem, 0.95vw, 0.78rem);
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #ffc72c;
+}
+
+.filledPrice {
+  font-size: clamp(0.58rem, 0.9vw, 0.75rem);
+  font-weight: 900;
+  color: #00d26a;
+  letter-spacing: 0.02em;
 }
 
 .nextSlot {
