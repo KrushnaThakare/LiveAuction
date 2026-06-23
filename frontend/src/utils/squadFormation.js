@@ -42,6 +42,26 @@ export function computeFilledGridLayout(itemCount) {
   return { cols, rows, density };
 }
 
+/** Overlay broadcast: size cards from actual filled count — avoid huge empty slots early in the draft */
+export function computeOverlayGridVars(itemCount) {
+  const layout = computeFilledGridLayout(itemCount);
+  const items = Math.max(1, itemCount);
+
+  if (items <= 2) {
+    return { ...layout, cardMaxWidth: '240px', photoMaxHeight: 'min(28vh, 220px)' };
+  }
+  if (items <= 4) {
+    return { ...layout, cardMaxWidth: '200px', photoMaxHeight: 'min(22vh, 175px)' };
+  }
+  if (items <= 8) {
+    return { ...layout, cardMaxWidth: '168px', photoMaxHeight: 'min(18vh, 150px)' };
+  }
+  if (items <= 12) {
+    return { ...layout, cardMaxWidth: '142px', photoMaxHeight: 'min(15vh, 128px)' };
+  }
+  return { ...layout, cardMaxWidth: '124px', photoMaxHeight: 'min(13vh, 112px)' };
+}
+
 export function squadProgress(filledCount, squadSize) {
   const total = clampSquadSize(squadSize);
   const filled = Math.max(0, Math.min(total, Number(filledCount) || 0));

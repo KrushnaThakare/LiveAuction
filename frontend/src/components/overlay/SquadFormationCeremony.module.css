@@ -488,22 +488,52 @@
   flex: 1;
   min-height: 0;
   height: 100%;
+  justify-content: center;
 }
 
 .boardOverlay .squadPanel {
-  flex: 1;
-  min-height: clamp(200px, 44vh, 580px);
+  flex: 0 1 auto;
+  min-height: 0;
+  width: 100%;
 }
 
 .boardOverlay .filledGrid {
-  grid-auto-rows: minmax(96px, auto);
-  align-content: start;
+  flex: 0 1 auto;
+  grid-template-rows: none;
+  grid-auto-rows: auto;
+  align-content: center;
+  justify-content: center;
+  justify-items: center;
+}
+
+.boardOverlay .filledCard,
+.boardOverlay .nextSlot {
+  height: auto;
+  max-height: none;
+  width: 100%;
+  max-width: var(--overlay-card-max-w, 200px);
 }
 
 .boardOverlay .filledPhoto {
   aspect-ratio: 3 / 4;
-  flex: 0 0 auto;
-  max-height: min(28vh, 220px);
+  flex: none;
+  width: 100%;
+  height: auto;
+  max-height: var(--overlay-photo-max-h, 175px);
+}
+
+.boardOverlay .nextSlot {
+  min-height: 0;
+  aspect-ratio: 3 / 4.8;
+  max-height: calc(var(--overlay-photo-max-h, 175px) + 3.5rem);
+}
+
+.boardOverlay .nextSlotSilhouette {
+  flex: none;
+  width: 42%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  max-height: var(--overlay-photo-max-h, 175px);
 }
 
 .filledRole {
