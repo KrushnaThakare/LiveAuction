@@ -1,36 +1,187 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
+import { useAuth } from '../contexts/AuthContext';
 import { playerApi } from '../api/players';
-import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
+import { registrationApi } from '../api/registration';
+import { broadcastApi } from '../api/broadcast';
+import { formatCurrency, formatRole, getRoleColor, getRoleBg, getAuctionDisplayName } from '../utils/formatters';
+import {
+  buildRegistrationIndex,
+  maskMobile,
+  resolvePlayerMobile,
+} from '../utils/whatsappMessaging';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
-import { Trophy, Search } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Trophy, Search, MessageCircle, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react';
+
+function statusMeta(status) {
+  switch (status) {
+    case 'SENT':
+      return { label: 'Sent', color: 'var(--color-success)', bg: 'rgba(16,185,129,0.12)' };
+    case 'FAILED':
+      return { label: 'Failed', color: 'var(--color-danger)', bg: 'rgba(239,68,68,0.12)' };
+    case 'SKIPPED':
+      return { label: 'Skipped', color: 'var(--color-warning)', bg: 'rgba(245,158,11,0.12)' };
+    case 'PENDING':
+      return { label: 'Sending…', color: 'var(--color-primary)', bg: 'rgba(59,130,246,0.12)' };
+    default:
+      return { label: '—', color: 'var(--color-text-secondary)', bg: 'transparent' };
+  }
+}
 
 export default function SoldPlayersPage() {
   const { activeTournament } = useTournament();
+  const { isOperator } = useAuth();
   const [players, setPlayers] = useState([]);
+  const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [whatsappAutoEnabled, setWhatsappAutoEnabled] = useState(false);
+  const [whatsappConfigured, setWhatsappConfigured] = useState(false);
+  const [togglingWhatsApp, setTogglingWhatsApp] = useState(false);
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(() => new Set());
+  const tournamentId = activeTournament?.id;
+  const hasLoadedRef = useRef(false);
+  const fetchInFlightRef = useRef(false);
 
-  const fetchSold = useCallback(async () => {
-    if (!activeTournament) return;
-    setLoading(true);
+  const registrationIndex = useMemo(
+    () => buildRegistrationIndex(registrations),
+    [registrations]
+  );
+
+  const fetchSold = useCallback(async ({ blocking = false } = {}) => {
+    if (!tournamentId) return;
+    if (fetchInFlightRef.current) return;
+    fetchInFlightRef.current = true;
+
+    const showBlockingLoader = blocking || !hasLoadedRef.current;
+    if (showBlockingLoader) setLoading(true);
+    else setRefreshing(true);
+
     try {
-      const res = await playerApi.getAll(activeTournament.id, 'SOLD');
-      setPlayers(res.data.data || []);
+      const [playersRes, regsRes] = await Promise.all([
+        playerApi.getAll(tournamentId, 'SOLD'),
+        registrationApi.getRegistrations(tournamentId).catch(() => ({ data: { data: [] } })),
+      ]);
+      setPlayers(playersRes.data.data || []);
+      setRegistrations(regsRes.data.data || []);
+      if (!hasLoadedRef.current) setSelected(new Set());
+      hasLoadedRef.current = true;
+    } catch {
+      // Keep the current list visible during background refresh failures.
     } finally {
-      setLoading(false);
+      fetchInFlightRef.current = false;
+      if (showBlockingLoader) setLoading(false);
+      else setRefreshing(false);
     }
-  }, [activeTournament]);
+  }, [tournamentId]);
 
-  useEffect(() => { fetchSold(); }, [fetchSold]);
+  useEffect(() => {
+    hasLoadedRef.current = false;
+    setPlayers([]);
+    setRegistrations([]);
+    setSelected(new Set());
+    setWhatsappAutoEnabled(false);
+    setWhatsappConfigured(false);
+    fetchSold({ blocking: true });
+  }, [tournamentId, fetchSold]);
+
+  useEffect(() => {
+    if (!tournamentId || !isOperator) return;
+    broadcastApi.getSettings(tournamentId)
+      .then((r) => {
+        const data = r.data.data || {};
+        setWhatsappAutoEnabled(!!data.whatsappAutoEnabled);
+        setWhatsappConfigured(data.whatsappConfigured !== false);
+      })
+      .catch(() => {});
+  }, [tournamentId, isOperator]);
+
+  const toggleWhatsAppAuto = async () => {
+    if (!tournamentId || !isOperator) return;
+    const newVal = !whatsappAutoEnabled;
+    setTogglingWhatsApp(true);
+    try {
+      await broadcastApi.updateSettings(tournamentId, { whatsappAutoEnabled: newVal });
+      setWhatsappAutoEnabled(newVal);
+      toast.success(newVal ? 'Auto WhatsApp on sell enabled' : 'Auto WhatsApp on sell disabled');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Could not update WhatsApp setting');
+    } finally {
+      setTogglingWhatsApp(false);
+    }
+  };
+
+  const hasPending = players.some((p) => p.whatsappNotifyStatus === 'PENDING');
+  useEffect(() => {
+    if (!hasPending || !tournamentId) return undefined;
+    const timer = setInterval(() => fetchSold({ blocking: false }), 5000);
+    return () => clearInterval(timer);
+  }, [hasPending, tournamentId, fetchSold]);
 
   const filtered = players.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.teamName || '').toLowerCase().includes(search.toLowerCase())
   );
 
+  const filteredIds = useMemo(() => new Set(filtered.map(p => p.id)), [filtered]);
+  const allFilteredSelected = filtered.length > 0 && filtered.every(p => selected.has(p.id));
   const totalSpend = players.reduce((s, p) => s + p.currentBid, 0);
+  const withMobileCount = players.filter(p => resolvePlayerMobile(p, registrationIndex)).length;
+  const failedCount = players.filter(p => p.whatsappNotifyStatus === 'FAILED').length;
+
+  const toggleSelect = (playerId) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
+      return next;
+    });
+  };
+
+  const toggleSelectAllFiltered = () => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (allFilteredSelected) filtered.forEach(p => next.delete(p.id));
+      else filtered.forEach(p => next.add(p.id));
+      return next;
+    });
+  };
+
+  const retryPlayers = async (playerIds) => {
+    if (!activeTournament || !playerIds.length) return;
+    setRetrying(true);
+    try {
+      await playerApi.retryWhatsAppBulk(activeTournament.id, playerIds);
+      await fetchSold({ blocking: false });
+      toast.success(`Retried WhatsApp for ${playerIds.length} player(s)`);
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'WhatsApp retry failed');
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  const retrySelected = () => {
+    const ids = [...selected].filter(id => filteredIds.has(id));
+    if (!ids.length) {
+      toast.error('Select at least one player');
+      return;
+    }
+    retryPlayers(ids);
+  };
+
+  const retryAllFailed = () => {
+    const ids = players.filter(p => p.whatsappNotifyStatus === 'FAILED').map(p => p.id);
+    if (!ids.length) {
+      toast.error('No failed WhatsApp messages to retry');
+      return;
+    }
+    retryPlayers(ids);
+  };
 
   if (!activeTournament) {
     return (
@@ -40,6 +191,8 @@ export default function SoldPlayersPage() {
     );
   }
 
+  const tournamentLabel = getAuctionDisplayName(activeTournament, activeTournament.name);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
@@ -48,12 +201,73 @@ export default function SoldPlayersPage() {
             Sold Players
           </h1>
           <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            {activeTournament.name} — {players.length} players sold • Total: {formatCurrency(totalSpend)}
+            {tournamentLabel} — {players.length} sold • {withMobileCount} with mobile • Total: {formatCurrency(totalSpend)}
+            {refreshing && ' • Updating…'}
           </p>
         </div>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => fetchSold({ blocking: false })}
+          disabled={loading || refreshing}
+        >
+          <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> Refresh
+        </button>
       </div>
 
-      {/* Search */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={!selected.size || retrying}
+          onClick={retrySelected}
+        >
+          <MessageCircle size={15} /> Retry WhatsApp ({selected.size})
+        </button>
+        {failedCount > 0 && (
+          <button type="button" className="btn-secondary" disabled={retrying} onClick={retryAllFailed}>
+            Retry all failed ({failedCount})
+          </button>
+        )}
+      </div>
+
+      {isOperator && (
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 mb-4 p-4 rounded-xl"
+          style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}
+        >
+          <div>
+            <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
+              Auto WhatsApp on sell
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+              Turn off during live auction to skip automatic messages and reduce backend load.
+              {whatsappConfigured === false && (
+                <span style={{ color: 'var(--color-warning)' }}> WhatsApp API is not configured on the server.</span>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={toggleWhatsAppAuto}
+            disabled={togglingWhatsApp}
+            className="flex-shrink-0"
+            aria-label="Toggle auto WhatsApp on sell"
+          >
+            {whatsappAutoEnabled
+              ? <ToggleRight size={36} style={{ color: 'var(--color-success)' }} />
+              : <ToggleLeft size={36} style={{ color: 'var(--color-text-secondary)' }} />}
+          </button>
+        </div>
+      )}
+
+      <p className="text-xs mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+        {isOperator
+          ? 'Manual retry below still works when auto-send is off.'
+          : 'Congratulations messages can be sent automatically when a player is sold if an operator enables Auto WhatsApp.'}
+        {' '}Configure <code className="mx-1">WHATSAPP_API_TOKEN</code> + <code>WHATSAPP_PHONE_NUMBER_ID</code> on the server to send messages.
+      </p>
+
       <div className="relative mb-6">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-secondary)' }} />
         <input className="input pl-9" placeholder="Search by player or team name..." value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -65,37 +279,55 @@ export default function SoldPlayersPage() {
         <EmptyState icon={Trophy} title="No sold players" description="Sold players will appear here after the auction." />
       ) : (
         <div className="space-y-2">
-          {/* Table Header */}
           <div
-            className="grid grid-cols-12 text-xs font-semibold uppercase tracking-wide px-4 py-2 rounded-lg"
+            className="grid grid-cols-12 text-xs font-semibold uppercase tracking-wide px-4 py-2 rounded-lg items-center gap-1"
             style={{ color: 'var(--color-text-secondary)', backgroundColor: 'var(--color-surface-2)' }}
           >
+            <div className="col-span-1">
+              <input
+                type="checkbox"
+                checked={allFilteredSelected}
+                onChange={toggleSelectAllFiltered}
+                aria-label="Select all visible"
+              />
+            </div>
             <div className="col-span-1">#</div>
-            <div className="col-span-4">Player</div>
-            <div className="col-span-2">Role</div>
-            <div className="col-span-2">Base</div>
-            <div className="col-span-2">Sold For</div>
-            <div className="col-span-1">Team</div>
+            <div className="col-span-3">Player</div>
+            <div className="col-span-1">Role</div>
+            <div className="col-span-2">Sold</div>
+            <div className="col-span-2">Team</div>
+            <div className="col-span-1">Mobile</div>
+            <div className="col-span-1">WhatsApp</div>
           </div>
 
           {filtered.map((player, idx) => {
             const roleColor = getRoleColor(player.role);
             const roleBg = getRoleBg(player.role);
+            const mobile = resolvePlayerMobile(player, registrationIndex);
+            const status = statusMeta(player.whatsappNotifyStatus);
+            const isChecked = selected.has(player.id);
+
             return (
               <div
                 key={player.id}
-                className="grid grid-cols-12 items-center px-4 py-3 rounded-xl transition-all duration-200"
+                className="grid grid-cols-12 items-center px-4 py-3 rounded-xl gap-1 transition-all duration-200"
                 style={{
                   backgroundColor: 'var(--color-surface)',
                   border: '1px solid var(--color-border)',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-sold)'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
               >
+                <div className="col-span-1">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleSelect(player.id)}
+                    aria-label={`Select ${player.name}`}
+                  />
+                </div>
                 <div className="col-span-1 text-sm font-bold" style={{ color: 'var(--color-text-secondary)' }}>
                   {idx + 1}
                 </div>
-                <div className="col-span-4 flex items-center gap-2">
+                <div className="col-span-3 flex items-center gap-2 min-w-0">
                   <div
                     className="w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center font-bold text-sm flex-shrink-0"
                     style={{ backgroundColor: roleBg, color: roleColor }}
@@ -106,25 +338,22 @@ export default function SoldPlayersPage() {
                       />
                     ) : player.name[0]}
                   </div>
-                  <span className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                  <span className="font-semibold text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>
                     {player.name}
                   </span>
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-1">
                   <span
-                    className="text-xs px-2 py-0.5 rounded-full font-medium"
+                    className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
                     style={{ backgroundColor: roleBg, color: roleColor }}
                   >
                     {formatRole(player.role)}
                   </span>
                 </div>
-                <div className="col-span-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                  {formatCurrency(player.basePrice)}
-                </div>
                 <div className="col-span-2 text-sm font-bold" style={{ color: 'var(--color-sold)' }}>
                   {formatCurrency(player.currentBid)}
                 </div>
-                <div className="col-span-1">
+                <div className="col-span-2 min-w-0">
                   <span
                     className="text-xs px-2 py-0.5 rounded-full truncate block text-center"
                     style={{
@@ -134,6 +363,18 @@ export default function SoldPlayersPage() {
                     }}
                   >
                     {player.teamName || '—'}
+                  </span>
+                </div>
+                <div className="col-span-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  {mobile ? maskMobile(mobile) : '—'}
+                </div>
+                <div className="col-span-1">
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                    style={{ backgroundColor: status.bg, color: status.color }}
+                    title={player.whatsappNotifyError || status.label}
+                  >
+                    {status.label}
                   </span>
                 </div>
               </div>

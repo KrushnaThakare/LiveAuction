@@ -19,9 +19,11 @@ import java.util.Locale;
 @Transactional
 public class AuditLogService {
     private final AuditLogRepository auditLogRepository;
+    private final AuditLogAsyncWriter auditLogAsyncWriter;
 
-    public AuditLogService(AuditLogRepository auditLogRepository) {
+    public AuditLogService(AuditLogRepository auditLogRepository, AuditLogAsyncWriter auditLogAsyncWriter) {
         this.auditLogRepository = auditLogRepository;
+        this.auditLogAsyncWriter = auditLogAsyncWriter;
     }
 
     public void record(String action, String entityType, Long entityId, String details) {
@@ -29,14 +31,7 @@ public class AuditLogService {
     }
 
     public void record(String action, String entityType, Long entityId, Long tournamentId, String details) {
-        auditLogRepository.save(AuditLog.builder()
-                .username(currentUsername())
-                .action(action)
-                .entityType(entityType)
-                .entityId(entityId)
-                .tournamentId(tournamentId)
-                .details(details)
-                .build());
+        auditLogAsyncWriter.write(currentUsername(), action, entityType, entityId, tournamentId, details);
     }
 
     @Transactional(readOnly = true)

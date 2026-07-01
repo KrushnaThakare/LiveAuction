@@ -5,6 +5,7 @@ import com.cricketauction.dto.PlayerRequest;
 import com.cricketauction.dto.PlayerResponse;
 import com.cricketauction.entity.Player;
 import com.cricketauction.service.PlayerService;
+import com.cricketauction.service.WhatsAppNotifyService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,15 +13,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tournaments/{tournamentId}/players")
 public class PlayerController {
 
     private final PlayerService playerService;
+    private final WhatsAppNotifyService whatsAppNotifyService;
 
-    public PlayerController(PlayerService playerService) {
+    public PlayerController(PlayerService playerService, WhatsAppNotifyService whatsAppNotifyService) {
         this.playerService = playerService;
+        this.whatsAppNotifyService = whatsAppNotifyService;
     }
 
     @PostMapping
@@ -89,5 +93,29 @@ public class PlayerController {
             @PathVariable Long playerId) {
         playerService.deletePlayer(playerId);
         return ResponseEntity.ok(ApiResponse.success("Player deleted", null));
+    }
+
+    /** Retry automatic WhatsApp congratulations for a sold player */
+    @PostMapping("/{playerId}/whatsapp/retry")
+    public ResponseEntity<ApiResponse<PlayerResponse>> retryWhatsApp(
+            @PathVariable Long tournamentId,
+            @PathVariable Long playerId) {
+        whatsAppNotifyService.sendSoldNotification(tournamentId, playerId);
+        return ResponseEntity.ok(ApiResponse.success(
+                "WhatsApp notification processed",
+                playerService.getPlayerById(playerId)));
+    }
+
+    /** Retry automatic WhatsApp for multiple sold players */
+    @PostMapping("/whatsapp/retry")
+    public ResponseEntity<ApiResponse<List<PlayerResponse>>> retryWhatsAppBulk(
+            @PathVariable Long tournamentId,
+            @RequestBody Map<String, List<Long>> body) {
+        List<Long> playerIds = body.getOrDefault("playerIds", List.of());
+        for (Long playerId : playerIds) {
+            whatsAppNotifyService.sendSoldNotification(tournamentId, playerId);
+        }
+        List<PlayerResponse> players = playerService.getPlayersByStatus(tournamentId, Player.PlayerStatus.SOLD);
+        return ResponseEntity.ok(ApiResponse.success("WhatsApp notifications processed", players));
     }
 }

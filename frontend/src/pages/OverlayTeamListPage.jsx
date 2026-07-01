@@ -12,8 +12,16 @@ export default function OverlayTeamListPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const { data, config } = useOverlayRealtime(tid, token, { includePlayers: true });
+  const { data, config } = useOverlayRealtime(tid, token, { includePlayers: true, studioOverlay: true });
   const teams = data?.teams || [];
+
+  if (!data && !config) {
+    return (
+      <div className={`${styles.stage} ${styles.squadStage}`}>
+        <div className={styles.boardTitle}>Connecting squad overlay…</div>
+      </div>
+    );
+  }
 
   if (config && config.overlayShowTeamList === false) return null;
 

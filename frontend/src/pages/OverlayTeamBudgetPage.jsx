@@ -11,8 +11,16 @@ export default function OverlayTeamBudgetPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const { data, config } = useOverlayRealtime(tid, token);
+  const { data, config, connected } = useOverlayRealtime(tid, token, { studioOverlay: true });
   const teams = data?.teams || [];
+
+  if (!data && !config) {
+    return (
+      <div className={styles.stage}>
+        <div className={styles.boardTitle}>Connecting overlay…</div>
+      </div>
+    );
+  }
 
   if (config && config.overlayShowTeamBudget === false) return null;
 

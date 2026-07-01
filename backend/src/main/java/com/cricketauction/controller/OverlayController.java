@@ -35,9 +35,10 @@ public class OverlayController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> snapshot(
             @PathVariable Long tournamentId,
             @RequestParam(value = "token", required = false) String token,
-            @RequestParam(value = "includePlayers", defaultValue = "false") boolean includePlayers) {
+            @RequestParam(value = "includePlayers", defaultValue = "false") boolean includePlayers,
+            @RequestParam(value = "studio", defaultValue = "false") boolean studio) {
         Tournament t = tournamentService.findById(tournamentId);
-        validateOverlayAccess(t, token);
+        validateOverlayAccess(t, token, studio);
         AuctionStateResponse auction = auctionService.getAuctionState(tournamentId);
         List<TeamResponse> teams = includePlayers
                 ? teamService.getTeamsByTournament(tournamentId)
@@ -52,7 +53,7 @@ public class OverlayController {
     public ResponseEntity<ApiResponse<BroadcastSettingsDto>> config(@PathVariable Long tournamentId, @RequestParam(value = "token", required = false) String token) {
         Tournament t = tournamentService.findById(tournamentId);
         if (Boolean.TRUE.equals(t.getOverlayEnabled())) {
-            validateOverlayAccess(t, token);
+            validateOverlayAccess(t, token, false);
         }
         return ResponseEntity.ok(ApiResponse.success(mapConfig(t)));
     }
@@ -64,8 +65,17 @@ public class OverlayController {
                 .overlayShowTeamBudget(t.getOverlayShowTeamBudget())
                 .overlayShowTeamList(t.getOverlayShowTeamList())
                 .overlayShowTicker(t.getOverlayShowTicker())
+                .publicViewShowTeams(t.getPublicViewShowTeams())
+                .publicViewShowSold(t.getPublicViewShowSold())
+                .publicViewShowUnsold(t.getPublicViewShowUnsold())
                 .overlayShowPlayerStatsIntro(t.getOverlayShowPlayerStatsIntro())
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
+                .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())
+                .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
+                .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())
+                .overlayShowBidPop(t.getOverlayShowBidPop())
+                .overlayShowSquadFormation(t.getOverlayShowSquadFormation())
+                .maxSquadSize(squadSizeOrDefault(t.getMaxSquadSize()))
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .tournamentName(t.getName())
                 .auctionDisplayName(t.getAuctionDisplayName())
@@ -75,14 +85,19 @@ public class OverlayController {
                 .build();
     }
 
-    private void validateOverlayAccess(Tournament t, String token) {
-        if (!Boolean.TRUE.equals(t.getOverlayEnabled())) {
+    private void validateOverlayAccess(Tournament t, String token, boolean studio) {
+        if (!studio && !Boolean.TRUE.equals(t.getOverlayEnabled())) {
             throw new AuctionException("Broadcast currently disabled by Admin");
         }
         String secret = t.getOverlaySecretToken();
         if (secret != null && !secret.isBlank() && (token == null || !secret.equals(token))) {
             throw new AuctionException("Invalid overlay token");
         }
+    }
+
+    private static int squadSizeOrDefault(Integer value) {
+        if (value == null) return 15;
+        return Math.max(5, Math.min(30, value));
     }
 }
 

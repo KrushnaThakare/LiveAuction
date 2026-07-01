@@ -8,6 +8,7 @@ import com.cricketauction.entity.Tournament;
 import com.cricketauction.service.FileStorageService;
 import com.cricketauction.service.RegistrationFormService;
 import com.cricketauction.service.TournamentService;
+import com.cricketauction.service.WhatsAppNotifyService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,13 +22,16 @@ public class RegistrationFormController {
     private final RegistrationFormService formService;
     private final TournamentService tournamentService;
     private final FileStorageService fileStorage;
+    private final WhatsAppNotifyService whatsAppNotifyService;
 
     public RegistrationFormController(RegistrationFormService formService,
                                       TournamentService tournamentService,
-                                      FileStorageService fileStorage) {
+                                      FileStorageService fileStorage,
+                                      WhatsAppNotifyService whatsAppNotifyService) {
         this.formService = formService;
         this.tournamentService = tournamentService;
         this.fileStorage = fileStorage;
+        this.whatsAppNotifyService = whatsAppNotifyService;
     }
 
     /** Get full form structure (sections + fields) */
@@ -40,7 +44,8 @@ public class RegistrationFormController {
     @GetMapping("/settings")
     public ResponseEntity<ApiResponse<TournamentSettingsResponse>> getSettings(@PathVariable Long tournamentId) {
         Tournament t = tournamentService.findById(tournamentId);
-        return ResponseEntity.ok(ApiResponse.success(TournamentSettingsResponse.from(t)));
+        return ResponseEntity.ok(ApiResponse.success(
+                TournamentSettingsResponse.from(t, whatsAppNotifyService.isConfigured())));
     }
 
     /** Update registration settings */
@@ -55,6 +60,8 @@ public class RegistrationFormController {
             t.setRegistrationMessage(settings.getRegistrationMessage());
         if (settings.getRegistrationRedirectLink() != null)
             t.setRegistrationRedirectLink(settings.getRegistrationRedirectLink());
+        if (settings.getWhatsappAutoEnabled() != null)
+            t.setWhatsappAutoEnabled(settings.getWhatsappAutoEnabled());
         tournamentService.saveTournament(t);
         return ResponseEntity.ok(ApiResponse.success("Settings updated", "ok"));
     }
@@ -134,14 +141,18 @@ public class RegistrationFormController {
             Boolean registrationEnabled,
             String registrationMessage,
             String registrationRedirectLink,
-            String bannerUrl
+            String bannerUrl,
+            Boolean whatsappAutoEnabled,
+            Boolean whatsappConfigured
     ) {
-        static TournamentSettingsResponse from(Tournament t) {
+        static TournamentSettingsResponse from(Tournament t, boolean whatsappConfigured) {
             return new TournamentSettingsResponse(
                     t.getRegistrationEnabled(),
                     t.getRegistrationMessage(),
                     t.getRegistrationRedirectLink(),
-                    t.getBannerUrl());
+                    t.getBannerUrl(),
+                    t.getWhatsappAutoEnabled(),
+                    whatsappConfigured);
         }
     }
 }

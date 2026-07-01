@@ -19,4 +19,8 @@ public class AuctionStateResponse {
     /** True if the last closed session can still be undone */
     private boolean undoable;
     private Long undoSessionId;
+    /** Runtime intro toggle — when false, Audience Display skips cinematic reveal */
+    private Boolean cinematicIntroLive;
+    /** Tournament auto-WhatsApp flag (avoids extra lookup on sell) */
+    private Boolean whatsappAutoEnabled;
 }

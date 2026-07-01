@@ -5,6 +5,7 @@ export const overlayApi = {
     params: {
       ...(token ? { token } : {}),
       ...(options.includePlayers ? { includePlayers: true } : {}),
+      ...(options.studio ? { studio: true } : {}),
     },
   }),
   getConfig: (tournamentId, token) => api.get(`/overlay/${tournamentId}/config`, { params: token ? { token } : {} }),

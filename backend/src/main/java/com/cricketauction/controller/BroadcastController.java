@@ -5,6 +5,7 @@ import com.cricketauction.dto.BroadcastSettingsDto;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.service.OverlayPushService;
 import com.cricketauction.service.TournamentService;
+import com.cricketauction.service.WhatsAppNotifyService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,10 +14,14 @@ import org.springframework.web.bind.annotation.*;
 public class BroadcastController {
     private final TournamentService tournamentService;
     private final OverlayPushService overlayPushService;
+    private final WhatsAppNotifyService whatsAppNotifyService;
 
-    public BroadcastController(TournamentService tournamentService, OverlayPushService overlayPushService) {
+    public BroadcastController(TournamentService tournamentService,
+                               OverlayPushService overlayPushService,
+                               WhatsAppNotifyService whatsAppNotifyService) {
         this.tournamentService = tournamentService;
         this.overlayPushService = overlayPushService;
+        this.whatsAppNotifyService = whatsAppNotifyService;
     }
 
     @GetMapping("/settings")
@@ -34,10 +39,20 @@ public class BroadcastController {
         if (d.getOverlayShowTeamBudget() != null) t.setOverlayShowTeamBudget(d.getOverlayShowTeamBudget());
         if (d.getOverlayShowTeamList() != null) t.setOverlayShowTeamList(d.getOverlayShowTeamList());
         if (d.getOverlayShowTicker() != null) t.setOverlayShowTicker(d.getOverlayShowTicker());
+        if (d.getPublicViewShowTeams() != null) t.setPublicViewShowTeams(d.getPublicViewShowTeams());
+        if (d.getPublicViewShowSold() != null) t.setPublicViewShowSold(d.getPublicViewShowSold());
+        if (d.getPublicViewShowUnsold() != null) t.setPublicViewShowUnsold(d.getPublicViewShowUnsold());
         if (d.getOverlayShowPlayerStatsIntro() != null) t.setOverlayShowPlayerStatsIntro(d.getOverlayShowPlayerStatsIntro());
         if (d.getOverlayPlayerStatsIntroMs() != null) {
             t.setOverlayPlayerStatsIntroMs(Math.max(1000, Math.min(15000, d.getOverlayPlayerStatsIntroMs())));
         }
+        if (d.getOverlayShowCinematicIntro() != null) t.setOverlayShowCinematicIntro(d.getOverlayShowCinematicIntro());
+        if (d.getOverlayCinematicIntroLive() != null) t.setOverlayCinematicIntroLive(d.getOverlayCinematicIntroLive());
+        if (d.getOverlayShowPlayerTransition() != null) t.setOverlayShowPlayerTransition(d.getOverlayShowPlayerTransition());
+        if (d.getOverlayShowBidPop() != null) t.setOverlayShowBidPop(d.getOverlayShowBidPop());
+        if (d.getOverlayShowSquadFormation() != null) t.setOverlayShowSquadFormation(d.getOverlayShowSquadFormation());
+        if (d.getMaxSquadSize() != null) t.setMaxSquadSize(squadSizeOrDefault(d.getMaxSquadSize()));
+        if (d.getWhatsappAutoEnabled() != null) t.setWhatsappAutoEnabled(d.getWhatsappAutoEnabled());
         if (Boolean.FALSE.equals(d.getTokenEnabled())) t.setOverlaySecretToken(null);
         if (d.getOverlaySecretToken() != null) t.setOverlaySecretToken(d.getOverlaySecretToken().isBlank() ? null : d.getOverlaySecretToken());
         tournamentService.saveTournament(t);
@@ -47,6 +62,20 @@ public class BroadcastController {
         return ResponseEntity.ok(ApiResponse.success("Broadcast settings updated", map(t, true)));
     }
 
+    /** Instant runtime toggle for cinematic intro during live auction */
+    @PatchMapping("/cinematic-intro-live")
+    public ResponseEntity<ApiResponse<BroadcastSettingsDto>> setCinematicIntroLive(
+            @PathVariable Long tournamentId,
+            @RequestBody BroadcastSettingsDto d) {
+        Tournament t = tournamentService.findById(tournamentId);
+        if (d.getOverlayCinematicIntroLive() != null) {
+            t.setOverlayCinematicIntroLive(d.getOverlayCinematicIntroLive());
+            tournamentService.saveTournament(t);
+            overlayPushService.pushLightweightSnapshot(tournamentId);
+        }
+        return ResponseEntity.ok(ApiResponse.success(map(t, false)));
+    }
+
     private BroadcastSettingsDto map(Tournament t, boolean includeSecret) {
         return BroadcastSettingsDto.builder()
                 .overlayEnabled(t.getOverlayEnabled())
@@ -54,10 +83,26 @@ public class BroadcastController {
                 .overlayShowTeamBudget(t.getOverlayShowTeamBudget())
                 .overlayShowTeamList(t.getOverlayShowTeamList())
                 .overlayShowTicker(t.getOverlayShowTicker())
+                .publicViewShowTeams(t.getPublicViewShowTeams())
+                .publicViewShowSold(t.getPublicViewShowSold())
+                .publicViewShowUnsold(t.getPublicViewShowUnsold())
                 .overlayShowPlayerStatsIntro(t.getOverlayShowPlayerStatsIntro())
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
+                .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())
+                .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
+                .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())
+                .overlayShowBidPop(t.getOverlayShowBidPop())
+                .overlayShowSquadFormation(t.getOverlayShowSquadFormation())
+                .maxSquadSize(squadSizeOrDefault(t.getMaxSquadSize()))
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .overlaySecretToken(includeSecret ? t.getOverlaySecretToken() : null)
+                .whatsappAutoEnabled(t.getWhatsappAutoEnabled())
+                .whatsappConfigured(whatsAppNotifyService.isConfigured())
                 .build();
+    }
+
+    private static int squadSizeOrDefault(Integer value) {
+        if (value == null) return 15;
+        return Math.max(5, Math.min(30, value));
     }
 }

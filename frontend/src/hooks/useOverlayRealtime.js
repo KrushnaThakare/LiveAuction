@@ -6,6 +6,11 @@ import { overlayApi } from '../api/overlay';
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
 const WS_BASE = API_BASE.replace(/^http/i, 'ws');
 
+const POLL_MS_DISCONNECTED = 1500;
+const SUMMARY_REFRESH_MS = 12000;
+const SQUAD_REFRESH_MS = 20000;
+const WS_STALE_MS = 15000;
+
 function getBidRevision(auction) {
   const revision = Number(auction?.bidRevision);
   return Number.isFinite(revision) ? revision : null;
@@ -20,38 +25,70 @@ function isOlderAuctionUpdate(currentAuction, incomingAuction) {
 }
 
 function mergeTeams(currentTeams = [], incomingTeams = []) {
-  if (!Array.isArray(incomingTeams)) return currentTeams;
-  const currentById = new Map(currentTeams.map(team => [String(team.id), team]));
+  if (!Array.isArray(incomingTeams) || incomingTeams.length === 0) {
+    return currentTeams;
+  }
+  const currentById = new Map((currentTeams || []).map(team => [String(team.id), team]));
   return incomingTeams.map(team => {
     const existing = currentById.get(String(team.id));
     if (!existing) return team;
+    const incomingPlayers = Array.isArray(team.players) ? team.players : null;
+    const mergedPlayers = mergePlayerLists(existing.players, incomingPlayers);
+    const playerCount = Math.max(
+      Number(team.playerCount) || 0,
+      Number(existing.playerCount) || 0,
+      mergedPlayers.length,
+    );
     return {
       ...existing,
       ...team,
-      players: Array.isArray(team.players) ? team.players : existing.players,
+      logoUrl: team.logoUrl || existing.logoUrl,
+      name: team.name || existing.name,
+      budget: team.budget ?? existing.budget,
+      remainingBudget: team.remainingBudget ?? existing.remainingBudget,
+      playerCount,
+      players: mergedPlayers.length ? mergedPlayers : existing.players,
     };
   });
 }
 
 export function useOverlayRealtime(tournamentId, token, options = {}) {
   const includePlayers = Boolean(options.includePlayers);
+  const studioOverlay = Boolean(options.studioOverlay);
   const applyOverlayClass = options.applyOverlayClass !== false;
   const [data, setData] = useState(null);
   const [config, setConfig] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [transport, setTransport] = useState('connecting');
   const [error, setError] = useState(null);
   const freshLocalAuctionRef = useRef(null);
   const connectedRef = useRef(false);
   const debugRef = useRef(false);
+  const stoppedRef = useRef(false);
+  const wsRef = useRef(null);
+  const snapshotInFlightRef = useRef(false);
+  const lastWsMessageAtRef = useRef(0);
+  const timersRef = useRef({
+    poll: null,
+    summary: null,
+    squad: null,
+    reconnect: null,
+    staleCheck: null,
+  });
 
   useEffect(() => {
-    if (!applyOverlayClass) return undefined;
+    if (!applyOverlayClass) {
+      document.documentElement.classList.remove('overlay-html');
+      return undefined;
+    }
     document.documentElement.classList.add('overlay-html');
     return () => document.documentElement.classList.remove('overlay-html');
   }, [applyOverlayClass]);
 
   useEffect(() => {
-    if (!tournamentId) return;
+    if (!tournamentId) return undefined;
+
+    stoppedRef.current = false;
     debugRef.current = new URLSearchParams(window.location.search).get('debugOverlay') === '1';
 
     let client;
@@ -63,14 +100,28 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
     let everConnected = false;
 
     const logUpdate = (source, auction, status = 'accept') => {
-      if (!debugRef.current) return;
-      console.debug('[overlay-sync]', status, source, {
-        sessionId: auction?.sessionId,
-        bidRevision: auction?.bidRevision,
-        currentBid: auction?.currentBid,
-        status: auction?.status,
-        at: new Date().toISOString(),
-      });
+      const line = `[overlay-sync] ${status} ${source}`;
+      if (debugRef.current) {
+        console.log(line, {
+          sessionId: auction?.sessionId,
+          bidRevision: auction?.bidRevision,
+          currentBid: auction?.currentBid,
+          status: auction?.status,
+          at: new Date().toISOString(),
+        });
+      }
+    };
+
+    const logTransport = (mode, detail = '') => {
+      if (debugRef.current) {
+        console.log(`[overlay-sync] transport=${mode}${detail ? ` ${detail}` : ''}`);
+      }
+    };
+
+    const setTransportMode = (mode) => {
+      setTransport(mode);
+      connectedRef.current = mode === 'websocket';
+      setConnected(mode === 'websocket');
     };
 
     const mergeSnapshot = (snapshot, source = 'snapshot') => {
@@ -80,7 +131,12 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
         const currentAuction = current?.auction;
         if (isOlderAuctionUpdate(currentAuction, incomingAuction)) {
           logUpdate(source, incomingAuction, 'reject-stale');
-          return snapshot ? { ...snapshot, auction: currentAuction, teams: mergeTeams(current?.teams, snapshot.teams) } : current;
+          return {
+            ...(current || {}),
+            ...snapshot,
+            auction: currentAuction,
+            teams: mergeTeams(current?.teams, snapshot.teams),
+          };
         }
         if (
           fresh &&
@@ -91,10 +147,12 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
           Number(incomingAuction?.currentBid) !== Number(fresh.auction?.currentBid)
         ) {
           logUpdate(source, incomingAuction, 'reject-fresh-local');
+          const mergedTeams = mergeTeams(current?.teams, snapshot.teams);
           return {
+            ...(current || {}),
             ...snapshot,
             auction: fresh.auction,
-            teams: mergeTeams(current?.teams, snapshot.teams),
+            teams: mergedTeams.length ? mergedTeams : (current?.teams || []),
           };
         }
         if (fresh && Number(incomingAuction?.currentBid) === Number(fresh.auction?.currentBid)) {
@@ -102,9 +160,12 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
         }
         logUpdate(source, incomingAuction);
         if (!snapshot) return current;
+        const mergedTeams = mergeTeams(current?.teams, snapshot.teams);
         return {
+          ...current,
           ...snapshot,
-          teams: mergeTeams(current?.teams, snapshot.teams),
+          auction: incomingAuction ?? current?.auction,
+          teams: mergedTeams.length ? mergedTeams : (current?.teams || []),
         };
       });
     };
@@ -144,7 +205,6 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       if (!stopped) {
         mergeSnapshot(snapshotRes.data.data, 'initial-snapshot');
       }
-      return true;
     };
 
     const startClient = () => {
@@ -194,25 +254,54 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
         return;
       }
 
-      clearInterval(snapshotTimer);
-      snapshotTimer = setInterval(async () => {
-        if (connectedRef.current) return;
-        try {
-          const snapshotRes = await overlayApi.getSnapshot(tournamentId, token, { includePlayers });
-          if (!stopped) mergeSnapshot(snapshotRes.data.data, 'poll-snapshot');
-        } catch (e) {
-          if (!stopped) setError(e);
+      timersRef.current.staleCheck = setInterval(() => {
+        if (stoppedRef.current || !connectedRef.current) return;
+        if (lastWsMessageAtRef.current && Date.now() - lastWsMessageAtRef.current > WS_STALE_MS) {
+          logTransport('polling', '(websocket stale — no messages)');
+          setTransportMode('polling');
         }
-      }, 3000);
+      }, 5000);
+    };
+
+    const connectWebSocket = () => {
+      if (stoppedRef.current) return;
+      closeWebSocket();
+
+      const wsUrl = `${WS_BASE}/ws-overlay-native`;
+      logTransport('connecting', wsUrl);
+      setTransportMode('connecting');
 
       if (stopped) return;
       startClient();
     };
 
-    connect();
+    const bootstrap = async () => {
+      setTransportMode('connecting');
+      try {
+        const configRes = await overlayApi.getConfig(tournamentId, token);
+        if (stoppedRef.current) return;
+        setConfig(configRes.data.data);
+        if (!studioOverlay && configRes.data.data?.overlayEnabled === false) {
+          setTransportMode('offline');
+          return;
+        }
+        await fetchSnapshot('initial-snapshot', includePlayers);
+        if (stoppedRef.current) return;
+        startPolling();
+        connectWebSocket();
+      } catch (e) {
+        if (!stoppedRef.current) {
+          setError(e);
+          setTransportMode('polling');
+          startPolling();
+        }
+      }
+    };
+
+    bootstrap();
 
     return () => {
-      stopped = true;
+      stoppedRef.current = true;
       connectedRef.current = false;
       clearInterval(snapshotTimer);
       if (client) {
@@ -221,28 +310,32 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
         } catch { /* already closing */ }
       }
     };
-  }, [tournamentId, token, includePlayers]);
+  }, [tournamentId, token, includePlayers, studioOverlay]);
 
   useEffect(() => {
-    if (!tournamentId) return;
+    if (!tournamentId) return undefined;
 
     const applyAuctionUpdate = (payload) => {
       if (String(payload?.tournamentId) !== String(tournamentId) || !payload?.auction) return;
-      freshLocalAuctionRef.current = {
-        auction: payload.auction,
-        until: Date.now() + 3000,
-      };
+      if (payload.auction.status === 'ACTIVE') {
+        freshLocalAuctionRef.current = {
+          auction: payload.auction,
+          until: Date.now() + 3000,
+        };
+      } else {
+        freshLocalAuctionRef.current = null;
+      }
       setData(current => ({
         ...(current || {}),
         auction: payload.auction,
+        teams: mergeTeams(current?.teams, payload.teams),
       }));
       if (debugRef.current) {
-        console.debug('[overlay-sync]', 'accept', payload.type || 'local-broadcast', {
+        console.log('[overlay-sync] accept local-broadcast', {
           sessionId: payload.auction?.sessionId,
           bidRevision: payload.auction?.bidRevision,
           currentBid: payload.auction?.currentBid,
           status: payload.auction?.status,
-          at: new Date().toISOString(),
         });
       }
     };
@@ -269,5 +362,5 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
     };
   }, [tournamentId]);
 
-  return { data, config, connected, error };
+  return { data, config, connected, transport, error };
 }

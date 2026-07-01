@@ -24,6 +24,10 @@ export const playerApi = {
     api.post(`/tournaments/${tournamentId}/players/cricheroes/clean-invalid`),
   delete: (tournamentId, playerId) =>
     api.delete(`/tournaments/${tournamentId}/players/${playerId}`),
+  retryWhatsApp: (tournamentId, playerId) =>
+    api.post(`/tournaments/${tournamentId}/players/${playerId}/whatsapp/retry`),
+  retryWhatsAppBulk: (tournamentId, playerIds) =>
+    api.post(`/tournaments/${tournamentId}/players/whatsapp/retry`, { playerIds }),
   downloadImages: (tournamentId) =>
     api.post(`/tournaments/${tournamentId}/players/download-images`),
 };

@@ -1,0 +1,657 @@
+.ceremony {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  padding: clamp(10px, 1.5vh, 24px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.ceremonyVisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ceremonyExit {
+  opacity: 0;
+  transition: opacity var(--exit-ms, 600ms) ease-out;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 12%, rgba(37, 99, 235, 0.22), transparent 58%),
+    radial-gradient(ellipse 80% 55% at 50% 100%, rgba(255, 199, 44, 0.14), transparent 52%),
+    linear-gradient(165deg, #040a16 0%, #0a1428 42%, #050b18 100%);
+  backdrop-filter: blur(12px);
+}
+
+.ceremonyBody {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(8px, 1.2vh, 16px);
+  overflow: hidden;
+}
+
+.heroHeader {
+  text-align: center;
+  width: min(100%, 980px);
+  flex-shrink: 0;
+}
+
+.heroHeaderCompact .ceremonyKicker {
+  margin-bottom: 6px;
+  font-size: clamp(0.62rem, 1vw, 0.8rem);
+}
+
+.heroHeaderCompact .heroLogoWrap {
+  width: clamp(64px, 9vw, 96px);
+  height: clamp(64px, 9vw, 96px);
+  margin-bottom: 8px;
+}
+
+.heroHeaderCompact .heroTeamName {
+  font-size: clamp(1.3rem, 3.2vw, 2.2rem);
+}
+
+.heroHeaderCompact .signingLine {
+  margin-top: 6px;
+  gap: 6px 12px;
+}
+
+.heroHeaderCompact .signingLine strong {
+  font-size: clamp(1rem, 2vw, 1.4rem);
+}
+
+.heroHeaderCompact .summaryRow {
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.heroHeaderCompact .progressRing {
+  width: clamp(80px, 9vw, 100px);
+  height: clamp(80px, 9vw, 100px);
+}
+
+.heroHeaderCompact .summaryStatWide {
+  display: none;
+}
+
+.ceremonyKicker {
+  margin: 0 0 10px;
+  font-size: clamp(0.72rem, 1.2vw, 0.95rem);
+  font-weight: 800;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(255, 199, 44, 0.9);
+}
+
+.heroLogoWrap {
+  position: relative;
+  width: clamp(120px, 16vw, 200px);
+  height: clamp(120px, 16vw, 200px);
+  margin: 0 auto 14px;
+}
+
+.heroGlow {
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 199, 44, 0.35) 0%, rgba(37, 99, 235, 0.12) 45%, transparent 72%);
+  animation: heroPulse 2.8s ease-in-out infinite;
+}
+
+@keyframes heroPulse {
+  0%, 100% { transform: scale(0.95); opacity: 0.75; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+.heroLogo,
+.heroLogoFallback {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: 28px;
+  object-fit: cover;
+  border: 3px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    0 0 40px rgba(255, 199, 44, 0.2);
+}
+
+.heroLogoFallback {
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffc72c;
+  font-weight: 900;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+}
+
+.heroTeamName {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 40px rgba(59, 130, 246, 0.35);
+}
+
+.signingLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px 16px;
+  margin: 12px 0 0;
+  font-size: clamp(0.9rem, 1.6vw, 1.2rem);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.signingLine span {
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 199, 44, 0.85);
+}
+
+.signingLine strong {
+  font-size: clamp(1.2rem, 2.4vw, 1.8rem);
+  font-weight: 900;
+  color: #fff;
+}
+
+.signingLine em {
+  font-style: normal;
+  font-weight: 900;
+  color: #00d26a;
+  font-size: clamp(1rem, 2vw, 1.4rem);
+}
+
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(18px, 3vw, 36px);
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.progressRing {
+  position: relative;
+  width: clamp(110px, 12vw, 140px);
+  height: clamp(110px, 12vw, 140px);
+}
+
+.progressRing svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ringTrack {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 8;
+}
+
+.ringValue {
+  fill: none;
+  stroke: #ffc72c;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  filter: drop-shadow(0 0 8px rgba(255, 199, 44, 0.45));
+}
+
+.ringLabel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.ringLabel strong {
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-weight: 900;
+  color: #fff;
+}
+
+.ringLabel span {
+  font-size: clamp(0.72rem, 1.1vw, 0.9rem);
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.62);
+  letter-spacing: 0.08em;
+}
+
+.summaryStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 10px;
+  min-width: min(100%, 360px);
+}
+
+.summaryStat,
+.summaryStatWide {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: left;
+}
+
+.summaryStatWide {
+  grid-column: 1 / -1;
+}
+
+.summaryStat span:first-child,
+.summaryStatWide span:first-child {
+  font-size: clamp(0.62rem, 0.9vw, 0.75rem);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.summaryStat strong,
+.summaryStatWide strong {
+  font-size: clamp(1rem, 1.8vw, 1.35rem);
+  font-weight: 900;
+  color: #00d26a;
+}
+
+.squadPanel {
+  flex: 1;
+  min-height: 0;
+  width: min(100%, 1180px);
+  padding: clamp(10px, 1.4vw, 18px);
+  border-radius: 22px;
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px) saturate(1.15);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1vh, 12px);
+  overflow: hidden;
+}
+
+.progressBlockCompact .blockFilled,
+.progressBlockCompact .blockEmpty {
+  width: clamp(10px, 1.2vw, 16px);
+  height: clamp(6px, 0.7vw, 9px);
+}
+
+.progressBlockCompact .progressFraction {
+  font-size: clamp(0.72rem, 1.1vw, 0.88rem);
+}
+
+.progressBlockWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progressBlockMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: clamp(0.72rem, 1.1vw, 0.9rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.progressBlockMeta span:last-child {
+  color: rgba(255, 199, 44, 0.9);
+}
+
+.progressBlocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.blockFilled,
+.blockEmpty {
+  width: clamp(18px, 2.2vw, 28px);
+  height: clamp(10px, 1.2vw, 14px);
+  border-radius: 4px;
+}
+
+.blockFilled {
+  background: linear-gradient(90deg, #00d26a, #10b981);
+  box-shadow: 0 0 12px rgba(0, 210, 106, 0.35);
+}
+
+.blockEmpty {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.progressFraction {
+  font-size: clamp(0.85rem, 1.3vw, 1rem);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.06em;
+}
+
+.filledGrid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols, 5), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--grid-rows, 1), minmax(0, 1fr));
+  gap: clamp(6px, 0.9vw, 12px);
+  align-content: stretch;
+  overflow: hidden;
+}
+
+.filledCard,
+.nextSlot {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.filledCard {
+  border-radius: 14px;
+  padding: clamp(4px, 0.6vw, 8px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3px, 0.5vw, 6px);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.densityRelaxed .filledCard {
+  border-radius: 18px;
+  padding: clamp(8px, 1vw, 12px);
+  gap: 8px;
+}
+
+.densityDense .filledCard,
+.densityDense .nextSlot {
+  border-radius: 10px;
+  padding: clamp(3px, 0.45vw, 5px);
+  gap: 3px;
+}
+
+.densityDense .filledName {
+  font-size: clamp(0.62rem, 0.95vw, 0.78rem);
+}
+
+.densityDense .filledRole {
+  font-size: clamp(0.52rem, 0.75vw, 0.65rem);
+}
+
+.filledCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.34), 0 0 24px rgba(59, 130, 246, 0.12);
+}
+
+.filledCardNew {
+  animation: signingPulse 2s ease-out both;
+  border-color: rgba(255, 199, 44, 0.75);
+  box-shadow:
+    0 0 0 2px rgba(255, 199, 44, 0.45),
+    0 0 36px rgba(255, 199, 44, 0.35);
+}
+
+@keyframes signingPulse {
+  0% { transform: scale(0.92); }
+  18% { transform: scale(1.04); }
+  40% { transform: scale(1); }
+  70% { box-shadow: 0 0 0 2px rgba(255, 199, 44, 0.55), 0 0 40px rgba(255, 199, 44, 0.42); }
+  100% { transform: scale(1); }
+}
+
+.filledPhoto {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.filledPhoto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.filledPhotoFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.filledMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.filledName {
+  font-size: clamp(0.68rem, 1.1vw, 0.92rem);
+  font-weight: 900;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.boardRoot {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.2vh, 16px);
+  min-height: 0;
+}
+
+.boardOverlay {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  justify-content: center;
+}
+
+.boardOverlay .squadPanel {
+  flex: 0 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.boardOverlay .filledGrid {
+  flex: 0 1 auto;
+  grid-template-rows: none;
+  grid-auto-rows: auto;
+  align-content: center;
+  justify-content: center;
+  justify-items: center;
+}
+
+.boardOverlay .filledCard,
+.boardOverlay .nextSlot {
+  height: auto;
+  max-height: none;
+  width: 100%;
+  max-width: var(--overlay-card-max-w, 200px);
+}
+
+.boardOverlay .filledPhoto {
+  aspect-ratio: 3 / 4;
+  flex: none;
+  width: 100%;
+  height: auto;
+  max-height: var(--overlay-photo-max-h, 175px);
+}
+
+.boardOverlay .nextSlot {
+  min-height: 0;
+  aspect-ratio: 3 / 4.8;
+  max-height: calc(var(--overlay-photo-max-h, 175px) + 3.5rem);
+}
+
+.boardOverlay .nextSlotSilhouette {
+  flex: none;
+  width: 42%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  max-height: var(--overlay-photo-max-h, 175px);
+}
+
+.filledRole {
+  font-size: clamp(0.62rem, 0.95vw, 0.78rem);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ffc72c;
+}
+
+.filledPrice {
+  font-size: clamp(0.58rem, 0.9vw, 0.75rem);
+  font-weight: 900;
+  color: #00d26a;
+  letter-spacing: 0.02em;
+}
+
+.nextSlot {
+  border-radius: 14px;
+  padding: clamp(4px, 0.6vw, 8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.38);
+  font-size: clamp(0.58rem, 0.85vw, 0.72rem);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nextSlotSilhouette {
+  width: 38%;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 70%;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
+  position: relative;
+}
+
+.nextSlotSilhouette::before {
+  content: '';
+  position: absolute;
+  top: 16%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36%;
+  height: 22%;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+}
+
+.flyOrigin {
+  position: fixed;
+  left: 50%;
+  top: 34%;
+  width: clamp(220px, 26vw, 340px);
+  height: clamp(280px, 32vw, 420px);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.flyLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+}
+
+.flyCard {
+  position: fixed;
+  border-radius: 22px;
+  overflow: hidden;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.5), 0 0 50px rgba(59, 130, 246, 0.25);
+  backdrop-filter: blur(12px);
+  will-change: transform, opacity;
+}
+
+.flyPhoto {
+  width: 100%;
+  height: 80%;
+  background: rgba(0, 0, 0, 0.25);
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.flyPhoto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.flyMeta {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.flyMeta span {
+  font-size: clamp(1rem, 1.8vw, 1.3rem);
+  font-weight: 900;
+  color: #fff;
+}
+
+.flyMeta small {
+  font-size: clamp(0.7rem, 1.1vw, 0.85rem);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ffc72c;
+}

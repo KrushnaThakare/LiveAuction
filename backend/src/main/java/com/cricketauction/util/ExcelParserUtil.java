@@ -1,19 +1,25 @@
 package com.cricketauction.util;
 
 import com.cricketauction.entity.Player;
+import com.cricketauction.entity.Team;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.service.PlayerRoleService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Component
 public class ExcelParserUtil {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final GoogleDriveUtil googleDriveUtil;
     private final PlayerRoleService playerRoleService;
@@ -28,32 +34,78 @@ public class ExcelParserUtil {
 
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
+            if (sheet == null) return players;
 
-            // Skip header row
-            boolean firstRow = true;
-            for (Row row : sheet) {
-                if (firstRow) {
-                    firstRow = false;
-                    continue;
+            Row headerRow = sheet.getRow(0);
+            if (headerRow == null) return players;
+
+            Map<Integer, KnownColumn> knownColumns = new LinkedHashMap<>();
+            Map<Integer, String> extraColumnLabels = new LinkedHashMap<>();
+
+            for (Cell cell : headerRow) {
+                if (cell == null) continue;
+                int index = cell.getColumnIndex();
+                String headerLabel = blankToNull(formatCellValue(cell));
+                if (headerLabel == null) continue;
+
+                KnownColumn kind = resolveKnownColumn(headerLabel);
+                if (kind != null) {
+                    knownColumns.putIfAbsent(index, kind);
+                } else {
+                    extraColumnLabels.put(index, headerLabel);
                 }
+            }
 
+            boolean hasNameColumn = knownColumns.containsValue(KnownColumn.NAME);
+            int startRow = 1;
+
+            if (!hasNameColumn) {
+                knownColumns.clear();
+                extraColumnLabels.clear();
+                knownColumns.put(0, KnownColumn.NAME);
+                knownColumns.put(1, KnownColumn.ROLE);
+                knownColumns.put(2, KnownColumn.BASE_PRICE);
+                knownColumns.put(3, KnownColumn.IMAGE_URL);
+                knownColumns.put(4, KnownColumn.CRICHEROES_URL);
+                startRow = 0;
+            }
+
+            DataFormatter formatter = new DataFormatter();
+            for (int rowIndex = startRow; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                Row row = sheet.getRow(rowIndex);
                 if (isRowEmpty(row)) continue;
 
-                String name = getCellStringValue(row.getCell(0));
-                String roleStr = getCellStringValue(row.getCell(1));
-                Double basePrice = getCellNumericValue(row.getCell(2));
-                String imageUrl = getCellStringValue(row.getCell(3));
-                String cricheroesProfileUrl = normalizeCricHeroesProfileUrl(getCellStringValue(row.getCell(4)));
+                String name = null;
+                String roleStr = null;
+                Double basePrice = null;
+                String imageUrl = null;
+                String cricheroesProfileUrl = null;
+                LinkedHashMap<String, String> extras = new LinkedHashMap<>();
+
+                for (Map.Entry<Integer, KnownColumn> entry : knownColumns.entrySet()) {
+                    String value = blankToNull(formatCellValue(row.getCell(entry.getKey()), formatter));
+                    switch (entry.getValue()) {
+                        case NAME -> name = value;
+                        case ROLE -> roleStr = value;
+                        case BASE_PRICE -> basePrice = parseNumericValue(row.getCell(entry.getKey()));
+                        case IMAGE_URL -> imageUrl = value;
+                        case CRICHEROES_URL -> cricheroesProfileUrl = value;
+                        default -> { }
+                    }
+                }
+
+                for (Map.Entry<Integer, String> entry : extraColumnLabels.entrySet()) {
+                    String value = blankToNull(formatCellValue(row.getCell(entry.getKey()), formatter));
+                    if (value != null) extras.put(entry.getValue(), value);
+                }
 
                 if (name == null || name.isBlank()) continue;
 
                 String role = playerRoleService.resolveRole(tournament, roleStr);
-
                 if (basePrice == null || basePrice <= 0) basePrice = 1000.0;
 
-                // Convert Drive share URL to direct-view URL stored in DB.
-                // The browser renders it directly (user is logged into Google).
                 String convertedImageUrl = googleDriveUtil.convertToDirectLink(imageUrl);
+                String extraDataJson = extras.isEmpty() ? null : OBJECT_MAPPER.writeValueAsString(extras);
 
                 Player player = Player.builder()
                         .name(name.trim())
@@ -61,10 +113,11 @@ public class ExcelParserUtil {
                         .basePrice(basePrice)
                         .currentBid(0.0)
                         .imageUrl(convertedImageUrl)
-                        .cricheroesProfileUrl(blankToNull(cricheroesProfileUrl))
+                        .cricheroesProfileUrl(blankToNull(normalizeCricHeroesProfileUrl(cricheroesProfileUrl)))
                         .cricheroesPlayerId(extractCricHeroesPlayerId(cricheroesProfileUrl))
                         .status(Player.PlayerStatus.AVAILABLE)
                         .tournament(tournament)
+                        .extraData(extraDataJson)
                         .build();
 
                 players.add(player);
@@ -74,34 +127,140 @@ public class ExcelParserUtil {
         return players;
     }
 
+    public List<Team> parseTeamsFromExcel(MultipartFile file, Tournament tournament, double defaultBudget) throws IOException {
+        List<Team> teams = new ArrayList<>();
+        double safeDefaultBudget = defaultBudget > 0 ? defaultBudget : 100000.0;
+
+        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            if (sheet == null) return teams;
+
+            Row headerRow = sheet.getRow(0);
+            if (headerRow == null) return teams;
+
+            Map<Integer, TeamColumn> knownColumns = new LinkedHashMap<>();
+
+            for (Cell cell : headerRow) {
+                if (cell == null) continue;
+                int index = cell.getColumnIndex();
+                String headerLabel = blankToNull(formatCellValue(cell));
+                if (headerLabel == null) continue;
+
+                TeamColumn kind = resolveTeamColumn(headerLabel);
+                if (kind != null) {
+                    knownColumns.putIfAbsent(index, kind);
+                }
+            }
+
+            boolean hasNameColumn = knownColumns.containsValue(TeamColumn.NAME);
+            int startRow = 1;
+
+            if (!hasNameColumn) {
+                knownColumns.clear();
+                knownColumns.put(0, TeamColumn.NAME);
+                knownColumns.put(1, TeamColumn.BUDGET);
+                knownColumns.put(2, TeamColumn.LOGO_URL);
+                startRow = 0;
+            }
+
+            DataFormatter formatter = new DataFormatter();
+            for (int rowIndex = startRow; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                Row row = sheet.getRow(rowIndex);
+                if (isRowEmpty(row)) continue;
+
+                String name = null;
+                Double budget = null;
+                String logoUrl = null;
+
+                for (Map.Entry<Integer, TeamColumn> entry : knownColumns.entrySet()) {
+                    String value = blankToNull(formatCellValue(row.getCell(entry.getKey()), formatter));
+                    switch (entry.getValue()) {
+                        case NAME -> name = value;
+                        case BUDGET -> budget = parseNumericValue(row.getCell(entry.getKey()));
+                        case LOGO_URL -> logoUrl = value;
+                    }
+                }
+
+                if (name == null || name.isBlank()) continue;
+                if (budget == null || budget <= 0) budget = safeDefaultBudget;
+
+                String convertedLogoUrl = googleDriveUtil.convertToDirectLink(logoUrl);
+
+                teams.add(Team.builder()
+                        .name(name.trim())
+                        .logoUrl(convertedLogoUrl)
+                        .budget(budget)
+                        .remainingBudget(budget)
+                        .tournament(tournament)
+                        .build());
+            }
+        }
+
+        return teams;
+    }
+
+    private enum TeamColumn {
+        NAME, BUDGET, LOGO_URL
+    }
+
+    private TeamColumn resolveTeamColumn(String headerLabel) {
+        String normalized = normalizeHeader(headerLabel);
+        return switch (normalized) {
+            case "name", "team", "teamname" -> TeamColumn.NAME;
+            case "budget", "balance", "purse", "teambudget", "remainingbudget" -> TeamColumn.BUDGET;
+            case "logourl", "logo", "image", "imageurl", "teamlogo" -> TeamColumn.LOGO_URL;
+            default -> null;
+        };
+    }
+
+    private enum KnownColumn {
+        NAME, ROLE, BASE_PRICE, IMAGE_URL, CRICHEROES_URL
+    }
+
+    private KnownColumn resolveKnownColumn(String headerLabel) {
+        String normalized = normalizeHeader(headerLabel);
+        return switch (normalized) {
+            case "name", "playername", "player" -> KnownColumn.NAME;
+            case "role", "playerrole" -> KnownColumn.ROLE;
+            case "baseprice", "price", "base" -> KnownColumn.BASE_PRICE;
+            case "imageurl", "image", "photo", "photourl", "playerphoto" -> KnownColumn.IMAGE_URL;
+            case "cricheroesprofileurl", "cricheroesurl", "cricheroes", "cricheroesprofile", "crhprofile", "crh" ->
+                    KnownColumn.CRICHEROES_URL;
+            default -> null;
+        };
+    }
+
+    private String normalizeHeader(String header) {
+        return header == null ? "" : header.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+    }
+
     private boolean isRowEmpty(Row row) {
         if (row == null) return true;
         for (Cell cell : row) {
-            if (cell.getCellType() != CellType.BLANK) {
+            if (cell != null && cell.getCellType() != CellType.BLANK) {
                 return false;
             }
         }
         return true;
     }
 
-    private String getCellStringValue(Cell cell) {
-        if (cell == null) return null;
-        return switch (cell.getCellType()) {
-            case STRING -> cell.getStringCellValue();
-            case NUMERIC -> String.valueOf((long) cell.getNumericCellValue());
-            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
-            case FORMULA -> cell.getCellFormula();
-            default -> null;
-        };
+    private String formatCellValue(Cell cell) {
+        return formatCellValue(cell, new DataFormatter());
     }
 
-    private Double getCellNumericValue(Cell cell) {
+    private String formatCellValue(Cell cell, DataFormatter formatter) {
+        if (cell == null) return null;
+        String value = formatter.formatCellValue(cell);
+        return value == null ? null : value.trim();
+    }
+
+    private Double parseNumericValue(Cell cell) {
         if (cell == null) return null;
         return switch (cell.getCellType()) {
             case NUMERIC -> cell.getNumericCellValue();
             case STRING -> {
                 try {
-                    yield Double.parseDouble(cell.getStringCellValue());
+                    yield Double.parseDouble(cell.getStringCellValue().trim());
                 } catch (NumberFormatException e) {
                     yield null;
                 }
