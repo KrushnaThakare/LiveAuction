@@ -87,6 +87,7 @@ function mergeTeams(currentTeams = [], incomingTeams = []) {
 
 export function useOverlayRealtime(tournamentId, token, options = {}) {
   const includePlayers = Boolean(options.includePlayers);
+  const studioOverlay = Boolean(options.studioOverlay);
   const applyOverlayClass = options.applyOverlayClass !== false;
   const [data, setData] = useState(null);
   const [config, setConfig] = useState(null);
@@ -228,7 +229,10 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       if (snapshotInFlightRef.current || stoppedRef.current) return;
       snapshotInFlightRef.current = true;
       try {
-        const snapshotRes = await overlayApi.getSnapshot(tournamentId, token, { includePlayers: withPlayers });
+        const snapshotRes = await overlayApi.getSnapshot(tournamentId, token, {
+          includePlayers: withPlayers,
+          studio: studioOverlay,
+        });
         if (!stoppedRef.current) {
           mergeSnapshot(snapshotRes.data.data, source);
         }
@@ -303,11 +307,13 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
             try {
               const payload = JSON.parse(frame.body);
               if (payload?.broadcastDisabled) {
-                setConfig(current => ({ ...(current || {}), overlayEnabled: false }));
-                setTransportMode('offline');
-                stoppedRef.current = true;
-                clearTimers();
-                closeWebSocket();
+                if (!studioOverlay) {
+                  setConfig(current => ({ ...(current || {}), overlayEnabled: false }));
+                  setTransportMode('offline');
+                  stoppedRef.current = true;
+                  clearTimers();
+                  closeWebSocket();
+                }
                 continue;
               }
               mergeSnapshot(payload, 'websocket');
@@ -343,7 +349,7 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
         const configRes = await overlayApi.getConfig(tournamentId, token);
         if (stoppedRef.current) return;
         setConfig(configRes.data.data);
-        if (configRes.data.data?.overlayEnabled === false) {
+        if (!studioOverlay && configRes.data.data?.overlayEnabled === false) {
           setTransportMode('offline');
           return;
         }
@@ -368,7 +374,7 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       clearTimers();
       closeWebSocket();
     };
-  }, [tournamentId, token, includePlayers]);
+  }, [tournamentId, token, includePlayers, studioOverlay]);
 
   useEffect(() => {
     if (!tournamentId) return undefined;

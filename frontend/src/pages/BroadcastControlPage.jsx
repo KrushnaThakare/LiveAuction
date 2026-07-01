@@ -90,7 +90,7 @@ export default function BroadcastControlPage() {
       <div className='card p-4 mb-4 space-y-2'>
         <label><input type='checkbox' checked={settings.overlayEnabled !== false} onChange={e=>setSettings(s=>({...s,overlayEnabled:e.target.checked}))} /> Broadcaster mode enabled</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
-          Turn this off during performance incidents to stop broadcaster snapshots, WebSocket subscriptions, and public viewer updates. Auction operations continue normally.
+          Turn this off to stop the public home-viewer link (/view) and reduce WebSocket fan-out. Studio overlay screens (Main, Audience Display, etc.) keep working for your auction desk and OBS.
         </p>
         <label><input type='checkbox' checked={!!settings.overlayShowTeamBudget} onChange={e=>setSettings(s=>({...s,overlayShowTeamBudget:e.target.checked}))} /> Show Team Budget</label>
         <label><input type='checkbox' checked={!!settings.overlayShowTeamList} onChange={e=>setSettings(s=>({...s,overlayShowTeamList:e.target.checked}))} /> Show Team List</label>

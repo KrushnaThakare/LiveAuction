@@ -7,8 +7,7 @@ export default function OverlayBreakScreenPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const { config } = useOverlayRealtime(tid, token);
-  if (config && config.overlayEnabled === false) return null;
+  const { config } = useOverlayRealtime(tid, token, { studioOverlay: true });
 
   return <div className="overlay-stage overlay-break-screen">
     <OverlayFullscreenButton />

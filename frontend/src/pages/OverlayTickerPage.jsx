@@ -9,7 +9,7 @@ export default function OverlayTickerPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const { data, config } = useOverlayRealtime(tid, token);
+  const { data, config } = useOverlayRealtime(tid, token, { studioOverlay: true });
   const auction = data?.auction;
   if (config && config.overlayShowTicker === false) return null;
 

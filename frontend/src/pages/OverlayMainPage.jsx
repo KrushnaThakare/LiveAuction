@@ -48,7 +48,7 @@ export default function OverlayMainPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const { data, config, connected } = useOverlayRealtime(tid, token);
+  const { data, config, connected } = useOverlayRealtime(tid, token, { studioOverlay: true });
   const auction = data?.auction;
   const player = auction?.currentPlayer;
   const teams = data?.teams || [];
@@ -66,8 +66,6 @@ export default function OverlayMainPage() {
     config?.overlayShowPlayerStatsIntro !== false,
     config?.overlayPlayerStatsIntroMs || 5500
   );
-
-  if (config && config.overlayEnabled === false) return null;
 
   if (!data && !config) {
     return (
