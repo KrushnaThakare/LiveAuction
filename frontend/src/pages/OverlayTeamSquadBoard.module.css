@@ -1,0 +1,118 @@
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: clamp(12px, 2vh, 28px);
+  overflow: hidden;
+  box-sizing: border-box;
+  color: #fff;
+  font-family: Inter, Rajdhani, system-ui, sans-serif;
+}
+
+.stage *,
+.stage *::before,
+.stage *::after {
+  box-sizing: border-box;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 12%, rgba(37, 99, 235, 0.22), transparent 58%),
+    radial-gradient(ellipse 80% 55% at 50% 100%, rgba(255, 199, 44, 0.14), transparent 52%),
+    linear-gradient(165deg, #040a16 0%, #0a1428 42%, #050b18 100%);
+  pointer-events: none;
+}
+
+.connecting {
+  position: relative;
+  z-index: 2;
+  font-size: clamp(1rem, 2vw, 1.4rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.boardWrap {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 1180px);
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: stretch;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.boardVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.boardHidden {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.navBtn {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: clamp(48px, 5vw, 64px);
+  height: clamp(48px, 5vw, 64px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(6, 12, 28, 0.72);
+  color: #ffc72c;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.navBtn:hover {
+  background: rgba(255, 199, 44, 0.16);
+  border-color: rgba(255, 199, 44, 0.45);
+  transform: translateY(-50%) scale(1.04);
+}
+
+.navLeft {
+  left: clamp(10px, 2vw, 28px);
+}
+
+.navRight {
+  right: clamp(10px, 2vw, 28px);
+}
+
+.teamIndicator {
+  position: absolute;
+  top: clamp(12px, 2vh, 24px);
+  left: 50%;
+  z-index: 4;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(6, 12, 28, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: clamp(0.72rem, 1.1vw, 0.9rem);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+  max-width: min(92vw, 720px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { teamApi } from '../api/teams';
+import { registrationApi } from '../api/registration';
 import TeamForm from '../components/teams/TeamForm';
 import Modal from '../components/common/Modal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
-import { exportTeamRosters } from '../utils/teamExport';
+import { exportTeamRosters, exportTeamSquadDetails, exportTeamSquadBoard } from '../utils/teamExport';
+import { clampSquadSize } from '../utils/squadFormation';
+import { getPlayerRoles } from '../utils/formatters';
 import { resolveUrl } from '../utils/resolveUrl';
 import toast from 'react-hot-toast';
-import { ShieldCheck, Plus, Edit, Trash2, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { ShieldCheck, Plus, Edit, Trash2, ChevronDown, ChevronUp, Download, FileSpreadsheet } from 'lucide-react';
 
 const TEAM_ACCENT_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
@@ -26,6 +29,7 @@ export default function TeamsPage() {
   const [editingTeam, setEditingTeam]   = useState(null);
   const [expandedTeam, setExpandedTeam] = useState(null);
   const [teamLogoFile, setTeamLogoFile] = useState(null);
+  const [exportingDetails, setExportingDetails] = useState(false);
 
   const fetchTeams = useCallback(async () => {
     if (!activeTournament) return;
@@ -81,7 +85,43 @@ export default function TeamsPage() {
 
   const handleExport = () => {
     if (teams.length === 0) { toast.error('No teams to export'); return; }
+    exportTeamSquadBoard(
+      teams,
+      activeTournament?.name,
+      clampSquadSize(activeTournament?.maxSquadSize),
+      getPlayerRoles(activeTournament),
+    );
+    toast.success('Squad board PDF ready — use Print in the new tab');
+  };
+
+  const handleExportClassic = () => {
+    if (teams.length === 0) { toast.error('No teams to export'); return; }
     exportTeamRosters(teams, activeTournament?.name);
+  };
+
+  const handleExportSquadDetails = async () => {
+    if (!activeTournament || teams.length === 0) {
+      toast.error('No teams to export');
+      return;
+    }
+    setExportingDetails(true);
+    try {
+      const [regRes, formRes] = await Promise.all([
+        registrationApi.getRegistrations(activeTournament.id),
+        registrationApi.getForm(activeTournament.id),
+      ]);
+      exportTeamSquadDetails(
+        teams,
+        activeTournament.name,
+        regRes.data.data || [],
+        formRes.data.data || [],
+      );
+      toast.success('Squad details CSV downloaded — use Print in the new tab for PDF');
+    } catch {
+      toast.error('Failed to export squad details');
+    } finally {
+      setExportingDetails(false);
+    }
   };
 
   if (!activeTournament) {
@@ -106,10 +146,20 @@ export default function TeamsPage() {
         </div>
         <div className="flex items-center gap-2">
           {teams.length > 0 && (
-            <button className="btn-secondary" onClick={handleExport}>
-              <Download size={15} />
-              Export Rosters
-            </button>
+            <>
+              <button className="btn-secondary" onClick={handleExport}>
+                <Download size={15} />
+                Export Squad Board (PDF)
+              </button>
+              <button className="btn-secondary" onClick={handleExportClassic}>
+                <Download size={15} />
+                Export Classic PDF
+              </button>
+              <button className="btn-secondary" onClick={handleExportSquadDetails} disabled={exportingDetails}>
+                <FileSpreadsheet size={15} />
+                {exportingDetails ? 'Preparing…' : 'Export Squad Details'}
+              </button>
+            </>
           )}
           <button className="btn-primary" onClick={() => { setEditingTeam(null); setTeamLogoFile(null); setShowModal(true); }}>
             <Plus size={15} />New Team

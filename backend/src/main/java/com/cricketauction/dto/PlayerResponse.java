@@ -26,4 +26,9 @@ public class PlayerResponse {
     private Long tournamentId;
     private Long teamId;
     private String teamName;
+    /** Export-only optional fields from Excel (e.g. mobile, t-shirt size) */
+    private java.util.Map<String, String> extraData;
+    private com.cricketauction.entity.Player.WhatsAppNotifyStatus whatsappNotifyStatus;
+    private String whatsappNotifyError;
+    private String whatsappSentAt;
 }

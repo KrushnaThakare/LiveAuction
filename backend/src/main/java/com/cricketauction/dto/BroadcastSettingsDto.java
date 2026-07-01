@@ -16,8 +16,16 @@ public class BroadcastSettingsDto {
     private Boolean publicViewShowUnsold;
     private Boolean overlayShowPlayerStatsIntro;
     private Integer overlayPlayerStatsIntroMs;
+    private Boolean overlayShowCinematicIntro;
+    private Boolean overlayCinematicIntroLive;
+    private Boolean overlayShowPlayerTransition;
+    private Boolean overlayShowBidPop;
+    private Boolean overlayShowSquadFormation;
+    private Integer maxSquadSize;
     private Boolean tokenEnabled;
     private String overlaySecretToken;
+    private Boolean whatsappAutoEnabled;
+    private Boolean whatsappConfigured;
     private String tournamentName;
     private String auctionDisplayName;
     private String logoUrl;

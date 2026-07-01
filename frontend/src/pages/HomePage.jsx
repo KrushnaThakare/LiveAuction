@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi } from '../api/tournaments';
 import Modal from '../components/common/Modal';
@@ -10,6 +10,8 @@ import { Trophy, Plus, Users, ShieldCheck, CheckCircle, XCircle, Edit, Trash2, U
 import { resolveUrl } from '../utils/resolveUrl';
 import { useAuth } from '../contexts/AuthContext';
 import { DEFAULT_PLAYER_ROLES, FOOTBALL_PLAYER_ROLES, roleConfigToLines, roleLinesToConfig } from '../utils/formatters';
+import SquadSizeInput from '../components/common/SquadSizeInput';
+import { clampSquadSize } from '../utils/squadFormation';
 
 export default function HomePage() {
   const { tournaments, loading, fetchTournaments, selectTournament, activeTournament } = useTournament();
@@ -17,10 +19,11 @@ export default function HomePage() {
 
   const [showCreateModal, setShowCreateModal]   = useState(false);
   const [editingTournament, setEditingTournament] = useState(null);
-  const [editForm, setEditForm]                 = useState({ name: '', auctionDisplayName: '', sport: 'CRICKET', roleLines: '', description: '' });
+  const [editForm, setEditForm]                 = useState({ name: '', auctionDisplayName: '', sport: 'CRICKET', roleLines: '', description: '', maxSquadSize: 15 });
   const [editLogoFile, setEditLogoFile]         = useState(null);
   const [editLogoPreview, setEditLogoPreview]   = useState(null);
   const [editSaving, setEditSaving]             = useState(false);
+  const editSquadSizeRef = useRef(null);
 
   const openEdit = (e, t) => {
     e.stopPropagation();
@@ -31,6 +34,7 @@ export default function HomePage() {
       sport: t.sport || 'CRICKET',
       roleLines: roleConfigToLines(t.playerRoles || DEFAULT_PLAYER_ROLES),
       description: t.description || '',
+      maxSquadSize: t.maxSquadSize ?? 15,
     });
     setEditLogoFile(null);
     setEditLogoPreview(resolveUrl(t.logoUrl));
@@ -41,12 +45,14 @@ export default function HomePage() {
     if (!editForm.name.trim()) { toast.error('Name is required'); return; }
     setEditSaving(true);
     try {
+      const maxSquadSize = editSquadSizeRef.current?.commit?.() ?? clampSquadSize(editForm.maxSquadSize);
       await tournamentApi.update(editingTournament.id, {
         name: editForm.name,
         auctionDisplayName: editForm.auctionDisplayName,
         sport: editForm.sport,
         playerRoles: roleLinesToConfig(editForm.roleLines),
         description: editForm.description,
+        maxSquadSize: clampSquadSize(maxSquadSize),
       });
       if (editLogoFile) {
         await tournamentApi.uploadLogo(editingTournament.id, editLogoFile);
@@ -287,6 +293,15 @@ export default function HomePage() {
             <textarea className="input font-mono text-xs" rows={4} value={editForm.roleLines}
               onChange={e => setEditForm(f => ({ ...f, roleLines: e.target.value, sport: 'CUSTOM' }))} />
             <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>One per line: KEY|Label|Short Label|Color</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Maximum Squad Size</label>
+            <SquadSizeInput
+              ref={editSquadSizeRef}
+              value={editForm.maxSquadSize}
+              onChange={(maxSquadSize) => setEditForm((f) => ({ ...f, maxSquadSize }))}
+            />
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Allowed range: 5–30 (e.g. 11, 12, 13, 15).</p>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Description</label>

@@ -9,6 +9,26 @@ export function formatCurrency(amount) {
   return `₹${amount.toLocaleString('en-IN')}`;
 }
 
+/** e.g. 1 → "1st", 10 → "10th", 11 → "11th" */
+export function formatOrdinal(value) {
+  const n = Math.trunc(Number(value));
+  if (!Number.isFinite(n) || n < 1) return null;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
+/** e.g. 10 → "10th Player" — uses team.playerCount already in overlay snapshots */
+export function formatSquadPickLabel(playerCount) {
+  const ordinal = formatOrdinal(playerCount);
+  return ordinal ? `${ordinal} Player` : null;
+}
+
 export function getAuctionDisplayName(tournament, fallback = 'Auction') {
   return tournament?.auctionDisplayName || tournament?.name || tournament?.tournamentName || fallback;
 }

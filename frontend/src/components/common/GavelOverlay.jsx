@@ -18,9 +18,11 @@ import { formatCurrency } from '../../utils/formatters';
  *   team      winning team name (SOLD only)
  *   teamLogo  absolute URL of team logo (SOLD only)
  *   amount    final bid amount (SOLD only)
+ *   squadPick squad position label e.g. "10th Player" (SOLD only)
  *   duration  total display time in ms (default 5500)
+ *   onComplete optional callback when overlay finishes
  */
-export default function GavelOverlay({ verdict, name, team, teamLogo, amount, duration = 5500 }) {
+export default function GavelOverlay({ verdict, name, team, teamLogo, amount, squadPick, duration = 5500, onComplete }) {
   const isSold = verdict === 'SOLD';
 
   // Colour scheme
@@ -48,9 +50,10 @@ export default function GavelOverlay({ verdict, name, team, teamLogo, amount, du
     const t4 = setTimeout(() => setDetails(true), 1200);
     // near end: start fade
     const t5 = setTimeout(() => setExiting(true), duration - 600);
+    const t6 = setTimeout(() => onComplete?.(), duration);
 
-    return () => [t1, t2, t3, t4, t5].forEach(clearTimeout);
-  }, [duration]);
+    return () => [t1, t2, t3, t4, t5, t6].forEach(clearTimeout);
+  }, [duration, onComplete]);
 
   return (
     <div
@@ -324,6 +327,26 @@ export default function GavelOverlay({ verdict, name, team, teamLogo, amount, du
             >
               {team}
             </p>
+
+            {squadPick && (
+              <p
+                className="animate-detail-up"
+                style={{
+                  position: 'relative', zIndex: 2,
+                  fontWeight: 900,
+                  fontSize: 'clamp(1rem, 3.2vw, 1.6rem)',
+                  color: '#ffffff',
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  margin: '4px 0 0',
+                  textShadow: `0 0 20px rgba(${accentRgb},0.45)`,
+                  animationDelay: '0.22s',
+                  animationFillMode: 'both',
+                }}
+              >
+                {squadPick} in Squad
+              </p>
+            )}
 
             <p
               className="animate-amount-pop"

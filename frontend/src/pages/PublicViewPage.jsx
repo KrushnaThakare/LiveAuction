@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
 import { formatCurrency, formatRole, getRoleColor, getRoleBg, getPlayerRoles, getAuctionDisplayName } from '../utils/formatters';
@@ -6,8 +6,11 @@ import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { resolveUrl } from '../utils/resolveUrl';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
+import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
+import { useAuctionVerdictOverlay } from '../hooks/useAuctionVerdictOverlay';
 import SequentialImage from '../components/common/SequentialImage';
 import GavelOverlay from '../components/common/GavelOverlay';
+import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import { Gavel, ShieldCheck, Trophy, XCircle, Wifi, ChevronDown, ChevronUp } from 'lucide-react';
 
 async function get(path) {
@@ -35,11 +38,11 @@ export default function PublicViewPage() {
   const [unsold, setUnsold]           = useState([]);
   const [loadedTabs, setLoadedTabs]   = useState({});
   const [tabLoading, setTabLoading]   = useState(false);
-  const [soldOverlay, setSoldOverlay] = useState(null); // { name, team, teamLogo, amount }
-  const previousAuctionRef = useRef(null);
+  const soldOverlay = useAuctionVerdictOverlay(data?.auction, data?.teams);
+  const loadedTabsRef = useRef({});
 
   const loadTabData = useCallback(async (targetTab, force = false) => {
-    if (!tournamentId || (!force && loadedTabs[targetTab])) return;
+    if (!tournamentId || (!force && loadedTabsRef.current[targetTab])) return;
     if (!['teams', 'sold', 'unsold'].includes(targetTab)) return;
     if (targetTab === 'teams' && config?.publicViewShowTeams === false) return;
     if (targetTab === 'sold' && config?.publicViewShowSold === false) return;
@@ -56,7 +59,8 @@ export default function PublicViewPage() {
         const u = await get(`/tournaments/${tournamentId}/players?status=UNSOLD`);
         setUnsold(u || []);
       }
-      setLoadedTabs(tabs => ({ ...tabs, [targetTab]: true }));
+      loadedTabsRef.current = { ...loadedTabsRef.current, [targetTab]: true };
+      setLoadedTabs(loadedTabsRef.current);
     } catch { /* silent */ }
     finally { setTabLoading(false); }
   }, [tournamentId, loadedTabs, config?.publicViewShowTeams, config?.publicViewShowSold, config?.publicViewShowUnsold]);
@@ -131,7 +135,6 @@ export default function PublicViewPage() {
   const teamsForTab = fullTeams || summaryTeams;
   const live = auctionState?.status === 'ACTIVE';
   const logoSrc = resolveUrl(tournament.logoUrl);
-  const playerRoles = getPlayerRoles(tournament);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-background)', color: 'var(--color-text-primary)' }}>
@@ -189,7 +192,18 @@ export default function PublicViewPage() {
       </div>
 
       {/* Gavel overlay — same for SOLD and UNSOLD */}
-      {soldOverlay && <GavelOverlay {...soldOverlay} duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000} />}
+      {soldOverlay && (
+        <GavelOverlay
+          key={soldOverlay.sessionKey}
+          verdict={soldOverlay.verdict}
+          name={soldOverlay.name}
+          team={soldOverlay.team}
+          teamLogo={soldOverlay.teamLogo}
+          amount={soldOverlay.amount}
+          squadPick={soldOverlay.squadPick}
+          duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
+        />
+      )}
     </div>
   );
 }
@@ -197,9 +211,10 @@ export default function PublicViewPage() {
 /* GavelOverlay handles both SOLD and UNSOLD — imported from components/common */
 
 /* ═══ AUCTION VIEW ═══ */
-function AuctionView({ auctionState, teams, roles }) {
+function AuctionView({ auctionState, teams, roles, bidPopEnabled = true }) {
   const isActive = auctionState?.status === 'ACTIVE';
   const player   = auctionState?.currentPlayer;
+  const bidPopToken = useOverlayBidPop(auctionState?.currentBid, auctionState?.sessionId, bidPopEnabled && isActive);
 
   if (!isActive || !player) {
     return (
@@ -262,10 +277,13 @@ function AuctionView({ auctionState, teams, roles }) {
                  boxShadow: '0 0 20px rgba(59,130,246,0.2)' }}>
         <p className="text-xs uppercase tracking-widest font-semibold mb-1"
           style={{ color: 'var(--color-text-secondary)' }}>Current Bid</p>
-        <p className="font-black animate-bid-glow" style={{ fontSize: 'clamp(2rem,8vw,3.5rem)',
-          color: 'var(--color-primary)', textShadow: '0 0 20px rgba(59,130,246,0.5)' }}>
-          {formatCurrency(auctionState.currentBid)}
-        </p>
+        <BidAmountDisplay
+          className="font-black"
+          amount={auctionState.currentBid}
+          formatAmount={formatCurrency}
+          popToken={bidPopToken}
+          style={{ fontSize: 'clamp(2rem,8vw,3.5rem)', color: 'var(--color-primary)', textShadow: '0 0 20px rgba(59,130,246,0.5)' }}
+        />
         {auctionState.highestBidderTeamName ? (
           <p className="text-base font-bold mt-1" style={{ color: 'var(--color-accent)' }}>
             🏏 {auctionState.highestBidderTeamName}
@@ -400,7 +418,7 @@ function TeamsView({ teams, roles, loading }) {
 }
 
 /* ═══ PLAYER LIST (Sold / Unsold) ═══ */
-function PlayerListView({ players, roles, loading, emptyMsg }) {
+const PlayerListView = memo(function PlayerListView({ players, roles, loading, emptyMsg }) {
   if (loading) return (
     <p className="text-center py-12 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Loading players...</p>
   );
@@ -446,4 +464,4 @@ function PlayerListView({ players, roles, loading, emptyMsg }) {
       })}
     </div>
   );
-}
+});

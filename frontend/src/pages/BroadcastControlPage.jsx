@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { broadcastApi } from '../api/broadcast';
 import { bidRuleApi } from '../api/bidRules';
 import toast from 'react-hot-toast';
+import SquadSizeInput from '../components/common/SquadSizeInput';
+import { clampSquadSize } from '../utils/squadFormation';
 
 export default function BroadcastControlPage() {
   const { activeTournament } = useTournament();
@@ -20,18 +22,35 @@ export default function BroadcastControlPage() {
     publicViewShowUnsold: true,
     tokenEnabled: false,
     overlaySecretToken: '',
+    whatsappAutoEnabled: false,
+    whatsappConfigured: false,
   });
   const [bidRules, setBidRules] = useState([]);
+  const squadSizeInputRef = useRef(null);
 
   useEffect(() => {
     if (!tid) return;
-    broadcastApi.getSettings(tid).then(r => setSettings(s => ({ ...s, ...r.data.data, overlaySecretToken: r.data.data.overlaySecretToken || '' })));
+    broadcastApi.getSettings(tid).then((r) => {
+      const data = r.data.data || {};
+      setSettings((s) => ({
+        ...s,
+        ...data,
+        maxSquadSize: clampSquadSize(data.maxSquadSize),
+        overlaySecretToken: data.overlaySecretToken || '',
+      }));
+    });
     bidRuleApi.getRules(tid).then(r => setBidRules(r.data.data || []));
   }, [tid]);
 
   const save = async () => {
     if (!tid) return;
-    await broadcastApi.updateSettings(tid, settings);
+    const committedSquadSize = squadSizeInputRef.current?.commit?.() ?? clampSquadSize(settings.maxSquadSize);
+    const payload = {
+      ...settings,
+      maxSquadSize: clampSquadSize(committedSquadSize),
+    };
+    await broadcastApi.updateSettings(tid, payload);
+    setSettings(payload);
     await bidRuleApi.updateRules(tid, bidRules);
     try {
       const channel = new BroadcastChannel('auction-bid-rules');
@@ -53,6 +72,7 @@ export default function BroadcastControlPage() {
     ['Main', `${base}/overlay/main?tournamentId=${tid}${tokenQ}`],
     ['Team Budget', `${base}/overlay/team-budget?tournamentId=${tid}${tokenQ}`],
     ['Team Squad', `${base}/overlay/team-squad?tournamentId=${tid}${tokenQ}`],
+    ['Team Squad Board', `${base}/overlay/team-squad-board?tournamentId=${tid}${tokenQ}`],
     ['Audience Display', `${base}/auction-display?tournamentId=${tid}${tokenQ}`],
     ['Ticker', `${base}/overlay/ticker?tournamentId=${tid}${tokenQ}`],
     ['Sold Screen', `${base}/overlay/sold?tournamentId=${tid}${tokenQ}`],
@@ -86,6 +106,40 @@ export default function BroadcastControlPage() {
             />
           </label>
         )}
+        <label><input type='checkbox' checked={!!settings.overlayShowCinematicIntro} onChange={e=>setSettings(s=>({...s,overlayShowCinematicIntro:e.target.checked}))} /> Enable cinematic player intro (Audience Display only)</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Plays a premium reveal sequence on the Audience Display when the next player is picked. Does not affect the admin auction screen or other overlays.
+        </p>
+        <label><input type='checkbox' checked={settings.overlayShowPlayerTransition !== false} onChange={e=>setSettings(s=>({...s,overlayShowPlayerTransition:e.target.checked}))} /> Enable main overlay player transition</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Premium slide transition on the Main overlay when the next player is selected.
+        </p>
+        <label><input type='checkbox' checked={settings.overlayShowBidPop !== false} onChange={e=>setSettings(s=>({...s,overlayShowBidPop:e.target.checked}))} /> Enable bid amount pop on overlays</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Subtle scale pulse on current bid across overlay displays when the amount changes.
+        </p>
+        <label><input type='checkbox' checked={!!settings.overlayShowSquadFormation} onChange={e=>setSettings(s=>({...s,overlayShowSquadFormation:e.target.checked}))} /> Audience Squad Formation Animation</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Full-screen squad signing ceremony on the Audience Display after each SOLD gavel. Does not affect the admin auction screen or other overlays.
+        </p>
+        <label className='block'>
+          <span className='text-sm'>Maximum Squad Size</span>
+          <SquadSizeInput
+            ref={squadSizeInputRef}
+            value={settings.maxSquadSize}
+            onChange={(maxSquadSize) => setSettings((s) => ({ ...s, maxSquadSize }))}
+          />
+        </label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Any whole number from 5 to 30 (e.g. 11, 12, 13, 15). Type the full number, then Save.
+        </p>
+        <label><input type='checkbox' checked={!!settings.whatsappAutoEnabled} onChange={e=>setSettings(s=>({...s,whatsappAutoEnabled:e.target.checked}))} /> Auto WhatsApp on sell</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Sends a congratulations message when a player is sold. Turn off during live auction to reduce backend load.
+          {settings.whatsappConfigured === false && (
+            <span style={{ color: 'var(--color-warning)' }}> WhatsApp API is not configured on the server yet.</span>
+          )}
+        </p>
         <label><input type='checkbox' checked={!!settings.tokenEnabled} onChange={e=>setSettings(s=>({...s,tokenEnabled:e.target.checked}))} /> Enable token</label>
         {settings.tokenEnabled && <input className='input' value={settings.overlaySecretToken||''} onChange={e=>setSettings(s=>({...s,overlaySecretToken:e.target.value}))} placeholder='secret token'/>}
 

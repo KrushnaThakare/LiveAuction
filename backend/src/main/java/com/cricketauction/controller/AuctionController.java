@@ -6,6 +6,7 @@ import com.cricketauction.dto.BidAmountRequest;
 import com.cricketauction.dto.BidRequest;
 import com.cricketauction.service.AuctionService;
 import com.cricketauction.service.OverlayPushService;
+import com.cricketauction.service.WhatsAppNotifyService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,10 +19,14 @@ public class AuctionController {
 
     private final AuctionService auctionService;
     private final OverlayPushService overlayPushService;
+    private final WhatsAppNotifyService whatsAppNotifyService;
 
-    public AuctionController(AuctionService auctionService, OverlayPushService overlayPushService) {
+    public AuctionController(AuctionService auctionService,
+                             OverlayPushService overlayPushService,
+                             WhatsAppNotifyService whatsAppNotifyService) {
         this.auctionService = auctionService;
         this.overlayPushService = overlayPushService;
+        this.whatsAppNotifyService = whatsAppNotifyService;
     }
 
     @GetMapping("/state")
@@ -78,7 +83,12 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionStateResponse>> sellPlayer(
             @PathVariable Long tournamentId) {
         var r = auctionService.sellPlayer(tournamentId);
-        overlayPushService.pushSnapshot(tournamentId, r);
+        overlayPushService.pushLightweightSnapshot(tournamentId, r);
+        overlayPushService.pushSquadSnapshot(tournamentId);
+        if (r.getCurrentPlayer() != null && r.getCurrentPlayer().getId() != null
+                && Boolean.TRUE.equals(r.getWhatsappAutoEnabled())) {
+            whatsAppNotifyService.notifyPlayerSoldAsync(tournamentId, r.getCurrentPlayer().getId());
+        }
         return ResponseEntity.ok(ApiResponse.success("Player sold", r));
     }
 
@@ -105,7 +115,8 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionStateResponse>> undoLastDecision(
             @PathVariable Long tournamentId) {
         var r = auctionService.undoLastDecision(tournamentId);
-        overlayPushService.pushSnapshot(tournamentId, r);
+        overlayPushService.pushLightweightSnapshot(tournamentId, r);
+        overlayPushService.pushSquadSnapshot(tournamentId);
         return ResponseEntity.ok(ApiResponse.success("Decision reversed", r));
     }
 
@@ -114,7 +125,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<Integer>> reAuctionUnsold(
             @PathVariable Long tournamentId) {
         int count = auctionService.reAuctionUnsold(tournamentId);
-        overlayPushService.pushSnapshot(tournamentId);
+        overlayPushService.pushLightweightSnapshot(tournamentId);
         return ResponseEntity.ok(ApiResponse.success(
                 count + " unsold players reset to available", count));
     }
