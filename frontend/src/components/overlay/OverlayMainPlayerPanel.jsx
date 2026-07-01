@@ -3,18 +3,24 @@ import { resolveUrl } from '../../utils/resolveUrl';
 import { driveImg } from '../../utils/driveImage';
 import { playerIdLabel } from '../../utils/playerSearch';
 import { getRoleShortLabel } from '../../utils/formatters';
+import { MAIN_OVERLAY_STAT_SLOTS, resolvePlayerDetailSlots } from '../../utils/playerDisplayExtras';
 import { useOverlayPlayerTransition } from '../../hooks/useOverlayPlayerTransition';
 import styles from '../../pages/OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 
-function Stat({ icon: Icon, label, value, enterClass = '' }) {
+function Stat({ icon: Icon, label, value, enterClass = '', valueClamp = false }) {
   return (
     <div className={`${styles.glassCard} ${styles.statCard} ${enterClass}`}>
       <span className={styles.statIcon}><Icon size={17} /></span>
-      <span>
+      <span className={styles.statText}>
         <span className={styles.statLabel}>{label}</span>
-        <span className={styles.statValue}>{value}</span>
+        <span
+          className={`${styles.statValue} ${valueClamp ? styles.statValueClamp : ''}`}
+          title={valueClamp ? value : undefined}
+        >
+          {value}
+        </span>
       </span>
     </div>
   );
@@ -27,6 +33,7 @@ function PlayerPanelContent({
   mode,
 }) {
   const isEnter = mode === 'enter';
+  const [ageSlot, historySlot] = resolvePlayerDetailSlots(player, MAIN_OVERLAY_STAT_SLOTS);
 
   return (
     <>
@@ -54,8 +61,8 @@ function PlayerPanelContent({
             value={money(player?.basePrice)}
             enterClass={isEnter ? styles.playerStatEnterBase : ''}
           />
-          <Stat icon={Calendar} label="Age" value={player?.age || 'Auction Pool'} />
-          <Stat icon={Trophy} label="History" value={player?.teamName || player?.stats || 'Fresh pick'} />
+          <Stat icon={Calendar} label={ageSlot.label} value={ageSlot.value} valueClamp />
+          <Stat icon={Trophy} label={historySlot.label} value={historySlot.value} valueClamp />
         </div>
       </div>
 

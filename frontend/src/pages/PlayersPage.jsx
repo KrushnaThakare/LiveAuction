@@ -379,8 +379,8 @@ export default function PlayersPage() {
         </span>
         <div className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>
           <strong style={{ color: 'var(--color-accent)' }}>Optional extra columns</strong>
-          {' '}(any header after the standard columns — e.g. Mobile, T-Shirt Size, Pant Size).
-          These are stored for squad export only and are not shown in the auction UI.
+          {' '}(any header after the standard columns — e.g. Category, Age, Mobile, T-Shirt Size).
+          Matched columns appear on Main and Audience overlay detail cards; others are kept for export.
         </div>
         <div className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>
           <strong style={{ color: 'var(--color-accent)' }}>Valid roles:</strong>

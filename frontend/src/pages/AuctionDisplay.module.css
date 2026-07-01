@@ -145,6 +145,7 @@
 
 .detailCard {
   min-height: 112px;
+  min-width: 0;
 }
 
 .value {
@@ -156,6 +157,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.valueClamp {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: clamp(18px, 1.55vw, 30px);
+  line-height: 1.12;
+  word-break: break-word;
 }
 
 .imageFrame {
