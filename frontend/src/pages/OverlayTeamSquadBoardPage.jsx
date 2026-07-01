@@ -6,7 +6,10 @@ import SquadBoardPanel from '../components/overlay/SquadBoardPanel';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import {
   boardPlayersFromTeam,
+  buildRosterByTeam,
+  mergeBoardPlayers,
   resolveSquadSize,
+  teamHasServerRoster,
   toSlotPlayer,
 } from '../utils/squadFormation';
 import { getRoleShortLabel } from '../utils/formatters';
@@ -30,26 +33,37 @@ export default function OverlayTeamSquadBoardPage() {
 
   useEffect(() => {
     if (!teams.length) return;
+    const serverRoster = buildRosterByTeam(teams, playerRoles, true);
+    const hasAnyServerRoster = teams.some(teamHasServerRoster);
+
     setRosterByTeam((current) => {
       let changed = false;
       const next = { ...current };
+
       for (const team of teams) {
-        const serverPlayers = boardPlayersFromTeam(team, playerRoles, true);
-        if (!serverPlayers.length) continue;
-        const byId = new Map((next[team.id] || []).map((player) => [String(player.id), player]));
-        let teamChanged = false;
-        for (const player of serverPlayers) {
-          const key = String(player.id);
-          if (!byId.has(key)) {
-            byId.set(key, player);
-            teamChanged = true;
-          }
+        const serverPlayers = serverRoster[team.id] || [];
+        const localPlayers = next[team.id] || [];
+        const expected = Math.max(Number(team.playerCount) || 0, serverPlayers.length);
+
+        if (serverPlayers.length > 0 && (localPlayers.length < serverPlayers.length || localPlayers.length < expected)) {
+          next[team.id] = serverPlayers;
+          changed = true;
+          continue;
         }
-        if (teamChanged) {
-          next[team.id] = Array.from(byId.values());
+
+        if (!serverPlayers.length) continue;
+
+        const merged = mergeBoardPlayers(localPlayers, team, playerRoles, true);
+        if (merged.length !== localPlayers.length) {
+          next[team.id] = merged;
           changed = true;
         }
       }
+
+      if (!hasAnyServerRoster && !Object.keys(current).length) {
+        return current;
+      }
+
       return changed ? next : current;
     });
   }, [teams, playerRoles]);
@@ -59,10 +73,18 @@ export default function OverlayTeamSquadBoardPage() {
     if (!auction || auction.status !== 'SOLD') return;
     const player = auction.currentPlayer;
     const teamId = auction.highestBidderTeamId;
-    if (!player?.id || !teamId) return;
+    const team = teams.find((entry) => String(entry.id) === String(teamId));
+    if (!player?.id || !teamId || !team) return;
 
     const soldKey = `${auction.sessionId || 'session'}:${player.id}`;
     if (lastSoldKeyRef.current === soldKey) return;
+
+    const serverPlayers = boardPlayersFromTeam(team, playerRoles, true);
+    if (serverPlayers.some((entry) => String(entry.id) === String(player.id))) {
+      lastSoldKeyRef.current = soldKey;
+      return;
+    }
+
     lastSoldKeyRef.current = soldKey;
 
     const slotPlayer = {
@@ -76,7 +98,7 @@ export default function OverlayTeamSquadBoardPage() {
       if (list.some((entry) => String(entry.id) === String(player.id))) return current;
       return { ...current, [teamId]: [...list, slotPlayer] };
     });
-  }, [data?.auction, playerRoles]);
+  }, [data?.auction, playerRoles, teams]);
 
   const teamCount = teams.length;
   const safeIndex = teamCount ? ((teamIndex % teamCount) + teamCount) % teamCount : 0;
@@ -84,16 +106,7 @@ export default function OverlayTeamSquadBoardPage() {
 
   const filledPlayers = useMemo(() => {
     if (!team) return [];
-    const local = rosterByTeam[team.id] || [];
-    const server = boardPlayersFromTeam(team, playerRoles, true);
-    if (!local.length) return server;
-    if (!server.length) return local;
-    const byId = new Map(local.map((player) => [String(player.id), player]));
-    for (const player of server) {
-      const key = String(player.id);
-      byId.set(key, byId.has(key) ? { ...byId.get(key), ...player } : player);
-    }
-    return Array.from(byId.values());
+    return mergeBoardPlayers(rosterByTeam[team.id], team, playerRoles, true);
   }, [rosterByTeam, team, playerRoles]);
 
   const goTo = useCallback((nextIndex) => {

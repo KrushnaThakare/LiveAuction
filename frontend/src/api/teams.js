@@ -14,4 +14,12 @@ export const teamApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  upload: (tid, file, defaultBudget) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post(`/tournaments/${tid}/teams/upload`, fd, {
+      params: defaultBudget ? { defaultBudget } : {},
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };

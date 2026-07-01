@@ -1,6 +1,7 @@
 package com.cricketauction.util;
 
 import com.cricketauction.entity.Player;
+import com.cricketauction.entity.Team;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.service.PlayerRoleService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -124,6 +125,92 @@ public class ExcelParserUtil {
         }
 
         return players;
+    }
+
+    public List<Team> parseTeamsFromExcel(MultipartFile file, Tournament tournament, double defaultBudget) throws IOException {
+        List<Team> teams = new ArrayList<>();
+        double safeDefaultBudget = defaultBudget > 0 ? defaultBudget : 100000.0;
+
+        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            if (sheet == null) return teams;
+
+            Row headerRow = sheet.getRow(0);
+            if (headerRow == null) return teams;
+
+            Map<Integer, TeamColumn> knownColumns = new LinkedHashMap<>();
+
+            for (Cell cell : headerRow) {
+                if (cell == null) continue;
+                int index = cell.getColumnIndex();
+                String headerLabel = blankToNull(formatCellValue(cell));
+                if (headerLabel == null) continue;
+
+                TeamColumn kind = resolveTeamColumn(headerLabel);
+                if (kind != null) {
+                    knownColumns.putIfAbsent(index, kind);
+                }
+            }
+
+            boolean hasNameColumn = knownColumns.containsValue(TeamColumn.NAME);
+            int startRow = 1;
+
+            if (!hasNameColumn) {
+                knownColumns.clear();
+                knownColumns.put(0, TeamColumn.NAME);
+                knownColumns.put(1, TeamColumn.BUDGET);
+                knownColumns.put(2, TeamColumn.LOGO_URL);
+                startRow = 0;
+            }
+
+            DataFormatter formatter = new DataFormatter();
+            for (int rowIndex = startRow; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                Row row = sheet.getRow(rowIndex);
+                if (isRowEmpty(row)) continue;
+
+                String name = null;
+                Double budget = null;
+                String logoUrl = null;
+
+                for (Map.Entry<Integer, TeamColumn> entry : knownColumns.entrySet()) {
+                    String value = blankToNull(formatCellValue(row.getCell(entry.getKey()), formatter));
+                    switch (entry.getValue()) {
+                        case NAME -> name = value;
+                        case BUDGET -> budget = parseNumericValue(row.getCell(entry.getKey()));
+                        case LOGO_URL -> logoUrl = value;
+                    }
+                }
+
+                if (name == null || name.isBlank()) continue;
+                if (budget == null || budget <= 0) budget = safeDefaultBudget;
+
+                String convertedLogoUrl = googleDriveUtil.convertToDirectLink(logoUrl);
+
+                teams.add(Team.builder()
+                        .name(name.trim())
+                        .logoUrl(convertedLogoUrl)
+                        .budget(budget)
+                        .remainingBudget(budget)
+                        .tournament(tournament)
+                        .build());
+            }
+        }
+
+        return teams;
+    }
+
+    private enum TeamColumn {
+        NAME, BUDGET, LOGO_URL
+    }
+
+    private TeamColumn resolveTeamColumn(String headerLabel) {
+        String normalized = normalizeHeader(headerLabel);
+        return switch (normalized) {
+            case "name", "team", "teamname" -> TeamColumn.NAME;
+            case "budget", "balance", "purse", "teambudget", "remainingbudget" -> TeamColumn.BUDGET;
+            case "logourl", "logo", "image", "imageurl", "teamlogo" -> TeamColumn.LOGO_URL;
+            default -> null;
+        };
     }
 
     private enum KnownColumn {

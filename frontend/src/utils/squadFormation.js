@@ -111,3 +111,38 @@ export function boardPlayersFromTeam(team, playerRoles, includePrices = false) {
     soldPrice: includePrices ? (player.currentBid ?? player.basePrice ?? 0) : undefined,
   }));
 }
+
+/** Merge local overlay roster with server team data; server wins when it has the fuller squad. */
+export function mergeBoardPlayers(localPlayers, team, playerRoles, includePrices = false) {
+  const server = boardPlayersFromTeam(team, playerRoles, includePrices);
+  const local = Array.isArray(localPlayers) ? localPlayers : [];
+  const expected = Math.max(Number(team?.playerCount) || 0, server.length);
+
+  if (!local.length) return server;
+  if (!server.length) return local;
+  if (server.length >= expected || server.length >= local.length) {
+    return mergePlayersById(server, local);
+  }
+  return mergePlayersById(local, server);
+}
+
+export function mergePlayersById(primary, secondary) {
+  const byId = new Map((primary || []).map((player) => [String(player.id), player]));
+  for (const player of secondary || []) {
+    const key = String(player.id);
+    byId.set(key, byId.has(key) ? { ...byId.get(key), ...player } : player);
+  }
+  return Array.from(byId.values());
+}
+
+export function buildRosterByTeam(teams, playerRoles, includePrices = false) {
+  const roster = {};
+  for (const team of teams || []) {
+    roster[team.id] = boardPlayersFromTeam(team, playerRoles, includePrices);
+  }
+  return roster;
+}
+
+export function teamHasServerRoster(team) {
+  return squadPlayersFromTeam(team).length > 0;
+}
