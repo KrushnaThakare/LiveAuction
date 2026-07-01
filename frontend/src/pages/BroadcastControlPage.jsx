@@ -31,12 +31,16 @@ export default function BroadcastControlPage() {
   useEffect(() => {
     if (!tid) return;
     broadcastApi.getSettings(tid).then((r) => {
-      const data = r.data.data || {};
+      const loaded = r.data.data || {};
       setSettings((s) => ({
         ...s,
-        ...data,
-        maxSquadSize: clampSquadSize(data.maxSquadSize),
-        overlaySecretToken: data.overlaySecretToken || '',
+        ...loaded,
+        overlayEnabled: loaded.overlayEnabled !== false,
+        maxSquadSize: clampSquadSize(loaded.maxSquadSize),
+        overlaySecretToken: loaded.overlaySecretToken || '',
+        publicViewShowTeams: loaded.publicViewShowTeams !== false,
+        publicViewShowSold: loaded.publicViewShowSold !== false,
+        publicViewShowUnsold: loaded.publicViewShowUnsold !== false,
       }));
     });
     bidRuleApi.getRules(tid).then(r => setBidRules(r.data.data || []));
@@ -84,7 +88,7 @@ export default function BroadcastControlPage() {
     <h1 className='text-2xl font-bold mb-4'>Broadcast Control</h1>
     {!tid ? <p>Select tournament first.</p> : <>
       <div className='card p-4 mb-4 space-y-2'>
-        <label><input type='checkbox' checked={!!settings.overlayEnabled} onChange={e=>setSettings(s=>({...s,overlayEnabled:e.target.checked}))} /> Broadcaster mode enabled</label>
+        <label><input type='checkbox' checked={settings.overlayEnabled !== false} onChange={e=>setSettings(s=>({...s,overlayEnabled:e.target.checked}))} /> Broadcaster mode enabled</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
           Turn this off during performance incidents to stop broadcaster snapshots, WebSocket subscriptions, and public viewer updates. Auction operations continue normally.
         </p>

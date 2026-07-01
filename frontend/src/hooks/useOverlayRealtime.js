@@ -109,7 +109,10 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
   });
 
   useEffect(() => {
-    if (!applyOverlayClass) return undefined;
+    if (!applyOverlayClass) {
+      document.documentElement.classList.remove('overlay-html');
+      return undefined;
+    }
     document.documentElement.classList.add('overlay-html');
     return () => document.documentElement.classList.remove('overlay-html');
   }, [applyOverlayClass]);
