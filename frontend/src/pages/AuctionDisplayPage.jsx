@@ -55,7 +55,7 @@ export default function AuctionDisplayPage() {
   const token = params.get('token');
   const sponsor = params.get('sponsor') || 'Premium Auction Arena';
   const [includePlayers, setIncludePlayers] = useState(false);
-  const { data, config, connected, transport } = useOverlayRealtime(tid, token, { includePlayers });
+  const { data, config, connected, transport } = useOverlayRealtime(tid, token, { includePlayers, studioOverlay: true });
   const ceremonyEnabled = config?.overlayShowSquadFormation === true;
   const squadSize = resolveSquadSize(config);
 
