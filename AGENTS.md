@@ -56,3 +56,15 @@ mvn clean package
 - Overlay behavior: `OverlayPushService.java`, `OverlayController.java`, `useOverlayRealtime.js`, one matching overlay page.
 - Auth/users: `SecurityConfig.java`, `JwtFilter.java`, `AuthController.java`, `AuthContext.jsx`.
 - Registration: registration controllers/services plus `RegistrationSettingsPage.jsx`, `PublicRegistrationPage.jsx`, `RegisteredPlayersPage.jsx`.
+
+## Cursor Cloud specific instructions
+
+The dependency-refresh startup script installs frontend npm deps and warms the Maven cache. Everything below is manual/service-level and is NOT run automatically.
+
+- Run services manually (do not use Docker here; run the three services directly in dev mode):
+  - MySQL: `sudo service mysql start` (must be started every session; it is not auto-started). Root is configured as `root`/`root` and the `cricket_auction` DB exists. The MySQL CLI over the unix socket fails with a permission error under this user; connect over TCP instead: `mysql -uroot -proot -h127.0.0.1`.
+  - Backend: `cd backend && mvn spring-boot:run` (port 8080, API base `/api`). It needs MySQL up first; it auto-creates the schema (`ddl-auto=update`) and seeds a super-admin `admin`/`admin123` on startup.
+  - Frontend: `cd frontend && npm run dev` (Vite dev server on port 5173, proxies to `http://localhost:8080/api` via `VITE_API_URL`). CORS already allows `localhost:5173`.
+- Log in at `http://localhost:5173` with `admin`/`admin123` to reach the tournament dashboard.
+- Lint/test/build commands are in the `## Commands` section above. Note: `npm run lint` currently reports pre-existing errors in the repo (e.g. `UsersPage.jsx`); this is the repo's existing state, not an environment problem. `npm run build` and backend `mvn test` (H2-backed) pass.
+- Optional services (`cricheroes-worker`, Cloudinary, Google Sheets webhook) degrade gracefully when their env vars are unset and are not needed for core auction flows.
