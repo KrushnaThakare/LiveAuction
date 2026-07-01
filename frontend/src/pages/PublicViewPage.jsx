@@ -15,9 +15,16 @@ async function get(path) {
   return res.data.data;
 }
 
-const TABS = ['auction', 'teams', 'sold', 'unsold'];
 const TAB_LABELS = { auction: 'Live Auction', teams: 'Teams', sold: 'Sold', unsold: 'Unsold' };
 const TAB_ICONS  = { auction: Gavel, teams: ShieldCheck, sold: Trophy, unsold: XCircle };
+
+function publicViewTabs(config) {
+  const tabs = ['auction'];
+  if (config?.publicViewShowTeams !== false) tabs.push('teams');
+  if (config?.publicViewShowSold !== false) tabs.push('sold');
+  if (config?.publicViewShowUnsold !== false) tabs.push('unsold');
+  return tabs;
+}
 
 export default function PublicViewPage() {
   const { tournamentId } = useParams();
@@ -34,6 +41,9 @@ export default function PublicViewPage() {
   const loadTabData = useCallback(async (targetTab, force = false) => {
     if (!tournamentId || (!force && loadedTabs[targetTab])) return;
     if (!['teams', 'sold', 'unsold'].includes(targetTab)) return;
+    if (targetTab === 'teams' && config?.publicViewShowTeams === false) return;
+    if (targetTab === 'sold' && config?.publicViewShowSold === false) return;
+    if (targetTab === 'unsold' && config?.publicViewShowUnsold === false) return;
     setTabLoading(true);
     try {
       if (targetTab === 'teams') {
@@ -49,9 +59,13 @@ export default function PublicViewPage() {
       setLoadedTabs(tabs => ({ ...tabs, [targetTab]: true }));
     } catch { /* silent */ }
     finally { setTabLoading(false); }
-  }, [tournamentId, loadedTabs]);
+  }, [tournamentId, loadedTabs, config?.publicViewShowTeams, config?.publicViewShowSold, config?.publicViewShowUnsold]);
+
+  const visibleTabs = publicViewTabs(config);
+  const activeTab = visibleTabs.includes(tab) ? tab : 'auction';
 
   const handleTabChange = (nextTab) => {
+    if (!visibleTabs.includes(nextTab)) return;
     setTab(nextTab);
     loadTabData(nextTab);
   };
@@ -70,16 +84,16 @@ export default function PublicViewPage() {
         amount: current.currentBid,
       });
       setTimeout(() => setSoldOverlay(null), 5200);
-      if (loadedTabs.teams) loadTabData('teams', true);
-      if (loadedTabs.sold) loadTabData('sold', true);
+      if (config?.publicViewShowTeams !== false && loadedTabs.teams) loadTabData('teams', true);
+      if (config?.publicViewShowSold !== false && loadedTabs.sold) loadTabData('sold', true);
     }
     if (previous?.status === 'ACTIVE' && current.status === 'UNSOLD') {
       setSoldOverlay({ verdict: 'UNSOLD', name: previous.currentPlayer?.name || current.currentPlayer?.name });
       setTimeout(() => setSoldOverlay(null), 4200);
-      if (loadedTabs.unsold) loadTabData('unsold', true);
+      if (config?.publicViewShowUnsold !== false && loadedTabs.unsold) loadTabData('unsold', true);
     }
     previousAuctionRef.current = current;
-  }, [data?.auction, data?.teams, loadedTabs, loadTabData]);
+  }, [data?.auction, data?.teams, loadedTabs, loadTabData, config?.publicViewShowTeams, config?.publicViewShowSold, config?.publicViewShowUnsold]);
 
   if (!data && !config) return (
     <div className="min-h-screen flex items-center justify-center"
@@ -147,11 +161,12 @@ export default function PublicViewPage() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — only enabled tabs from Broadcast settings */}
+      {visibleTabs.length > 1 && (
       <div className="flex flex-shrink-0" style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
-        {TABS.map(t => {
+        {visibleTabs.map(t => {
           const Icon = TAB_ICONS[t];
-          const active = tab === t;
+          const active = activeTab === t;
           return (
             <button key={t} onClick={() => handleTabChange(t)}
               className="flex-1 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-2.5 px-1 text-[10px] sm:text-xs font-semibold transition-all"
@@ -163,13 +178,14 @@ export default function PublicViewPage() {
           );
         })}
       </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-3">
-        {tab === 'auction' && <AuctionView auctionState={auctionState} teams={summaryTeams} roles={playerRoles} />}
-        {tab === 'teams'   && <TeamsView teams={teamsForTab} roles={playerRoles} loading={tabLoading && !fullTeams} />}
-        {tab === 'sold'    && <PlayerListView players={sold} roles={playerRoles} loading={tabLoading && !loadedTabs.sold} emptyMsg="No players sold yet" label="Sold" />}
-        {tab === 'unsold'  && <PlayerListView players={unsold} roles={playerRoles} loading={tabLoading && !loadedTabs.unsold} emptyMsg="No unsold players yet" label="Unsold" />}
+        {activeTab === 'auction' && <AuctionView auctionState={auctionState} teams={summaryTeams} roles={playerRoles} />}
+        {activeTab === 'teams'   && <TeamsView teams={teamsForTab} roles={playerRoles} loading={tabLoading && !fullTeams} />}
+        {activeTab === 'sold'    && <PlayerListView players={sold} roles={playerRoles} loading={tabLoading && !loadedTabs.sold} emptyMsg="No players sold yet" label="Sold" />}
+        {activeTab === 'unsold'  && <PlayerListView players={unsold} roles={playerRoles} loading={tabLoading && !loadedTabs.unsold} emptyMsg="No unsold players yet" label="Unsold" />}
       </div>
 
       {/* Gavel overlay — same for SOLD and UNSOLD */}
