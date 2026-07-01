@@ -31,7 +31,7 @@ function publicViewTabs(config) {
 
 export default function PublicViewPage() {
   const { tournamentId } = useParams();
-  const { data, config, connected } = useOverlayRealtime(tournamentId, null, { applyOverlayClass: false });
+  const { data, config, connected, error } = useOverlayRealtime(tournamentId, null, { applyOverlayClass: false });
   const [tab, setTab]                 = useState('auction');
   const [fullTeams, setFullTeams]     = useState(null);
   const [sold, setSold]               = useState([]);
@@ -40,6 +40,7 @@ export default function PublicViewPage() {
   const [tabLoading, setTabLoading]   = useState(false);
   const soldOverlay = useAuctionVerdictOverlay(data?.auction, data?.teams);
   const loadedTabsRef = useRef({});
+  const previousAuctionRef = useRef(null);
 
   const loadTabData = useCallback(async (targetTab, force = false) => {
     if (!tournamentId || (!force && loadedTabsRef.current[targetTab])) return;
@@ -63,7 +64,7 @@ export default function PublicViewPage() {
       setLoadedTabs(loadedTabsRef.current);
     } catch { /* silent */ }
     finally { setTabLoading(false); }
-  }, [tournamentId, loadedTabs, config?.publicViewShowTeams, config?.publicViewShowSold, config?.publicViewShowUnsold]);
+  }, [tournamentId, config?.publicViewShowTeams, config?.publicViewShowSold, config?.publicViewShowUnsold]);
 
   const visibleTabs = publicViewTabs(config);
   const activeTab = visibleTabs.includes(tab) ? tab : 'auction';
@@ -77,40 +78,52 @@ export default function PublicViewPage() {
   useEffect(() => {
     const current = data?.auction;
     const previous = previousAuctionRef.current;
-    if (!current) return;
-    if (previous?.status === 'ACTIVE' && current.status === 'SOLD') {
-      const winnerTeam = (data?.teams || []).find(t => t.id === current.highestBidderTeamId);
-      setSoldOverlay({
-        verdict: 'SOLD',
-        name: previous.currentPlayer?.name || current.currentPlayer?.name,
-        team: current.highestBidderTeamName,
-        teamLogo: resolveUrl(winnerTeam?.logoUrl),
-        amount: current.currentBid,
-      });
-      setTimeout(() => setSoldOverlay(null), 5200);
-      if (config?.publicViewShowTeams !== false && loadedTabs.teams) loadTabData('teams', true);
-      if (config?.publicViewShowSold !== false && loadedTabs.sold) loadTabData('sold', true);
+    if (!current || !previous) {
+      previousAuctionRef.current = current;
+      return;
     }
-    if (previous?.status === 'ACTIVE' && current.status === 'UNSOLD') {
-      setSoldOverlay({ verdict: 'UNSOLD', name: previous.currentPlayer?.name || current.currentPlayer?.name });
-      setTimeout(() => setSoldOverlay(null), 4200);
-      if (config?.publicViewShowUnsold !== false && loadedTabs.unsold) loadTabData('unsold', true);
+    if (previous.status === 'ACTIVE' && previous.sessionId === current.sessionId) {
+      if (current.status === 'SOLD') {
+        if (config?.publicViewShowTeams !== false && loadedTabsRef.current.teams) loadTabData('teams', true);
+        if (config?.publicViewShowSold !== false && loadedTabsRef.current.sold) loadTabData('sold', true);
+      }
+      if (current.status === 'UNSOLD') {
+        if (config?.publicViewShowUnsold !== false && loadedTabsRef.current.unsold) loadTabData('unsold', true);
+      }
     }
     previousAuctionRef.current = current;
-  }, [data?.auction, data?.teams, loadedTabs, loadTabData, config?.publicViewShowTeams, config?.publicViewShowSold, config?.publicViewShowUnsold]);
+  }, [data?.auction, loadTabData, config?.publicViewShowTeams, config?.publicViewShowSold, config?.publicViewShowUnsold]);
 
-  if (!data && !config) return (
-    <div className="min-h-screen flex items-center justify-center"
-      style={{ background: 'var(--color-background)' }}>
-      <div className="text-center">
-        <div className="w-10 h-10 rounded-full border-2 animate-spin mx-auto mb-3"
-          style={{ borderColor: 'var(--color-border)', borderTopColor: 'var(--color-primary)' }} />
-        <p style={{ color: 'var(--color-text-secondary)' }}>Loading…</p>
+  const screenStyle = { background: '#060d1a', color: '#f0f6ff', minHeight: '100vh' };
+
+  if (!config) {
+    const message = error?.response?.data?.message || error?.message;
+    if (message) {
+      return (
+        <div className="min-h-screen flex items-center justify-center px-6" style={screenStyle}>
+          <div className="card max-w-md text-center">
+            <Wifi size={42} className="mx-auto mb-4" style={{ color: '#7ba3d4' }} />
+            <h1 className="text-xl font-black mb-2">Could not load broadcast view</h1>
+            <p className="text-sm" style={{ color: '#7ba3d4' }}>{message}</p>
+            <p className="text-xs mt-3" style={{ color: '#7ba3d4' }}>
+              Ask the admin to confirm broadcaster mode is enabled and the server is up to date.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={screenStyle}>
+        <div className="text-center">
+          <div className="w-10 h-10 rounded-full border-2 animate-spin mx-auto mb-3"
+            style={{ borderColor: 'rgba(59,130,246,0.2)', borderTopColor: '#3b82f6' }} />
+          <p style={{ color: '#7ba3d4' }}>Loading broadcast view…</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  if (config?.overlayEnabled === false) return (
+  if (config.overlayEnabled === false) return (
     <div className="min-h-screen flex items-center justify-center px-6"
       style={{ background: 'var(--color-background)', color: 'var(--color-text-primary)' }}>
       <div className="card max-w-md text-center">
@@ -135,9 +148,11 @@ export default function PublicViewPage() {
   const teamsForTab = fullTeams || summaryTeams;
   const live = auctionState?.status === 'ACTIVE';
   const logoSrc = resolveUrl(tournament.logoUrl);
+  const playerRoles = getPlayerRoles(tournament);
+  const waitingForFeed = !data;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-background)', color: 'var(--color-text-primary)' }}>
+    <div className="min-h-screen flex flex-col" style={screenStyle}>
 
       {/* Header */}
       <div className="px-4 py-3 flex items-center gap-3 shadow-lg sticky top-0 z-10"
@@ -184,11 +199,24 @@ export default function PublicViewPage() {
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-3">
-        {activeTab === 'auction' && <AuctionView auctionState={auctionState} teams={summaryTeams} roles={playerRoles} />}
-        {activeTab === 'teams'   && <TeamsView teams={teamsForTab} roles={playerRoles} loading={tabLoading && !fullTeams} />}
-        {activeTab === 'sold'    && <PlayerListView players={sold} roles={playerRoles} loading={tabLoading && !loadedTabs.sold} emptyMsg="No players sold yet" label="Sold" />}
-        {activeTab === 'unsold'  && <PlayerListView players={unsold} roles={playerRoles} loading={tabLoading && !loadedTabs.unsold} emptyMsg="No unsold players yet" label="Unsold" />}
+      <div className="flex-1 overflow-auto p-3 min-h-[50vh]">
+        {waitingForFeed ? (
+          <div className="text-center py-16 max-w-sm mx-auto">
+            <div className="w-10 h-10 rounded-full border-2 animate-spin mx-auto mb-4"
+              style={{ borderColor: 'rgba(59,130,246,0.2)', borderTopColor: '#3b82f6' }} />
+            <h2 className="text-lg font-bold mb-2">Connecting live feed…</h2>
+            <p className="text-xs" style={{ color: '#7ba3d4' }}>
+              {connected ? 'Receiving updates' : 'Waiting for auction data'}
+            </p>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'auction' && <AuctionView auctionState={auctionState} teams={summaryTeams} roles={playerRoles} />}
+            {activeTab === 'teams'   && <TeamsView teams={teamsForTab} roles={playerRoles} loading={tabLoading && !fullTeams} />}
+            {activeTab === 'sold'    && <PlayerListView players={sold} roles={playerRoles} loading={tabLoading && !loadedTabs.sold} emptyMsg="No players sold yet" label="Sold" />}
+            {activeTab === 'unsold'  && <PlayerListView players={unsold} roles={playerRoles} loading={tabLoading && !loadedTabs.unsold} emptyMsg="No unsold players yet" label="Unsold" />}
+          </>
+        )}
       </div>
 
       {/* Gavel overlay — same for SOLD and UNSOLD */}
@@ -310,7 +338,7 @@ function AuctionView({ auctionState, teams, roles, bidPopEnabled = true }) {
                            color: isHighest ? 'white' : 'var(--color-primary)' }}>
                   {logoSrc
                     ? <img src={logoSrc} alt="" className="w-full h-full object-cover" onError={e => e.target.style.display='none'} />
-                    : team.name[0]}
+                    : (team.name?.[0] || '?')}
                 </div>
                 <p className="text-xs font-bold truncate" style={{ color: isHighest ? 'var(--color-primary)' : 'var(--color-text-primary)' }}>
                   {team.name}
@@ -358,7 +386,7 @@ function TeamsView({ teams, roles, loading }) {
                 style={{ background: 'var(--color-primary)', color: 'white' }}>
                 {logoSrc
                   ? <img src={logoSrc} alt="" className="w-full h-full object-cover" onError={e => e.target.style.display='none'} />
-                  : team.name[0]}
+                  : (team.name?.[0] || '?')}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>{team.name}</p>
