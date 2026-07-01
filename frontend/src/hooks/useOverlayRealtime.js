@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { overlayApi } from '../api/overlay';
 
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
@@ -22,6 +20,41 @@ function isOlderAuctionUpdate(currentAuction, incomingAuction) {
   const currentRevision = getBidRevision(currentAuction);
   const incomingRevision = getBidRevision(incomingAuction);
   return currentRevision != null && incomingRevision != null && incomingRevision < currentRevision;
+}
+
+function buildFrame(command, headers = {}, body = '') {
+  const headerLines = Object.entries(headers).map(([key, value]) => `${key}:${value}`).join('\n');
+  return `${command}\n${headerLines}\n\n${body}\0`;
+}
+
+function parseStompFrames(raw) {
+  return String(raw)
+    .split('\0')
+    .map(frame => frame.trim())
+    .filter(Boolean)
+    .map(frame => {
+      const [head, ...bodyParts] = frame.split('\n\n');
+      const [command, ...headerLines] = head.split('\n');
+      const headers = Object.fromEntries(headerLines.map(line => {
+        const idx = line.indexOf(':');
+        return idx === -1 ? [line, ''] : [line.slice(0, idx), line.slice(idx + 1)];
+      }));
+      return { command, headers, body: bodyParts.join('\n\n') };
+    });
+}
+
+function mergePlayerLists(existingPlayers, incomingPlayers) {
+  const existing = Array.isArray(existingPlayers) ? existingPlayers : [];
+  const incoming = Array.isArray(incomingPlayers) ? incomingPlayers : [];
+  if (!incoming.length) return existing;
+  if (!existing.length) return incoming;
+
+  const byId = new Map(existing.map((player) => [String(player.id), player]));
+  for (const player of incoming) {
+    const key = String(player.id);
+    byId.set(key, byId.has(key) ? { ...byId.get(key), ...player } : player);
+  }
+  return Array.from(byId.values());
 }
 
 function mergeTeams(currentTeams = [], incomingTeams = []) {
@@ -91,13 +124,35 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
     stoppedRef.current = false;
     debugRef.current = new URLSearchParams(window.location.search).get('debugOverlay') === '1';
 
-    let client;
-    let stopped = false;
-    let snapshotTimer;
-    // Prefer the raw WebSocket endpoint; fall back to SockJS if it never connects
-    // (some networks/proxies block raw WebSockets but allow SockJS transports).
-    let useSockJS = false;
-    let everConnected = false;
+    const clearTimers = () => {
+      const timers = timersRef.current;
+      if (timers.poll) clearInterval(timers.poll);
+      if (timers.summary) clearInterval(timers.summary);
+      if (timers.squad) clearInterval(timers.squad);
+      if (timers.reconnect) clearTimeout(timers.reconnect);
+      if (timers.staleCheck) clearInterval(timers.staleCheck);
+      timersRef.current = {
+        poll: null,
+        summary: null,
+        squad: null,
+        reconnect: null,
+        staleCheck: null,
+      };
+    };
+
+    const closeWebSocket = () => {
+      const socket = wsRef.current;
+      wsRef.current = null;
+      if (!socket) return;
+      try {
+        if (socket.readyState <= 1) {
+          socket.send(buildFrame('DISCONNECT', { receipt: 'close' }));
+        }
+      } catch { /* socket may already be closing */ }
+      try {
+        socket.close();
+      } catch { /* ignore */ }
+    };
 
     const logUpdate = (source, auction, status = 'accept') => {
       const line = `[overlay-sync] ${status} ${source}`;
@@ -170,88 +225,44 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       });
     };
 
-    const handleMessage = (body) => {
-      if (!body) return;
+    const fetchSnapshot = async (source, withPlayers = false) => {
+      if (snapshotInFlightRef.current || stoppedRef.current) return;
+      snapshotInFlightRef.current = true;
       try {
-        const payload = JSON.parse(body);
-        if (payload?.broadcastDisabled) {
-          setConfig(current => ({ ...(current || {}), overlayEnabled: false }));
-          setConnected(false);
-          connectedRef.current = false;
-          stopped = true;
-          clearInterval(snapshotTimer);
-          if (client) {
-            try {
-              client.deactivate();
-            } catch { /* already closing */ }
-          }
-          return;
+        const snapshotRes = await overlayApi.getSnapshot(tournamentId, token, {
+          includePlayers: withPlayers,
+          studio: studioOverlay,
+        });
+        if (!stoppedRef.current) {
+          mergeSnapshot(snapshotRes.data.data, source);
         }
-        mergeSnapshot(payload, useSockJS ? 'websocket-sockjs' : 'websocket');
       } catch (e) {
-        setError(e);
+        if (!stoppedRef.current) setError(e);
+      } finally {
+        snapshotInFlightRef.current = false;
       }
     };
 
-    const loadInitial = async () => {
-      const configRes = await overlayApi.getConfig(tournamentId, token);
-      if (!stopped) {
-        setConfig(configRes.data.data);
-      }
-      if (configRes.data.data?.overlayEnabled === false) {
-        return false;
-      }
-      const snapshotRes = await overlayApi.getSnapshot(tournamentId, token, { includePlayers });
-      if (!stopped) {
-        mergeSnapshot(snapshotRes.data.data, 'initial-snapshot');
-      }
-    };
+    const startPolling = () => {
+      clearTimers();
 
-    const startClient = () => {
-      if (stopped) return;
-      client = new Client({
-        webSocketFactory: () => (useSockJS
-          ? new SockJS(`${API_BASE}/ws-overlay`)
-          : new WebSocket(`${WS_BASE}/ws-overlay-native`)),
-        reconnectDelay: 2000,
-        heartbeatIncoming: 10000,
-        heartbeatOutgoing: 10000,
-        onConnect: () => {
-          everConnected = true;
-          connectedRef.current = true;
-          setConnected(true);
-          client.subscribe(
-            `/topic/overlay/${tournamentId}/snapshot`,
-            (message) => handleMessage(message.body),
-            { id: `overlay-${tournamentId}` },
-          );
-        },
-        onWebSocketClose: () => {
-          connectedRef.current = false;
-          setConnected(false);
-          // Raw WebSocket never established: switch to SockJS for the next auto-reconnect.
-          if (!everConnected && !useSockJS && !stopped) {
-            useSockJS = true;
-          }
-        },
-        onWebSocketError: () => {
-          connectedRef.current = false;
-          setConnected(false);
-        },
-        onStompError: (frame) => {
-          setError(new Error(frame?.headers?.message || frame?.body || 'Overlay websocket error'));
-        },
-      });
-      client.activate();
-    };
+      timersRef.current.poll = setInterval(() => {
+        if (stoppedRef.current || connectedRef.current) return;
+        fetchSnapshot('poll-snapshot', false);
+      }, POLL_MS_DISCONNECTED);
 
-    const connect = async () => {
-      try {
-        const shouldConnect = await loadInitial();
-        if (!shouldConnect || stopped) return;
-      } catch (e) {
-        if (!stopped) setError(e);
-        return;
+      timersRef.current.summary = setInterval(() => {
+        if (stoppedRef.current) return;
+        if (connectedRef.current) {
+          fetchSnapshot('summary-refresh', includePlayers);
+        }
+      }, SUMMARY_REFRESH_MS);
+
+      if (includePlayers) {
+        timersRef.current.squad = setInterval(() => {
+          if (stoppedRef.current) return;
+          fetchSnapshot('squad-refresh', true);
+        }, SQUAD_REFRESH_MS);
       }
 
       timersRef.current.staleCheck = setInterval(() => {
@@ -271,8 +282,65 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       logTransport('connecting', wsUrl);
       setTransportMode('connecting');
 
-      if (stopped) return;
-      startClient();
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        ws.send(buildFrame('CONNECT', {
+          'accept-version': '1.2',
+          'heart-beat': '10000,10000',
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        lastWsMessageAtRef.current = Date.now();
+        for (const frame of parseStompFrames(event.data)) {
+          if (frame.command === 'CONNECTED') {
+            setTransportMode('websocket');
+            logTransport('websocket', 'connected');
+            ws.send(buildFrame('SUBSCRIBE', {
+              id: `overlay-${tournamentId}`,
+              destination: `/topic/overlay/${tournamentId}/snapshot`,
+            }));
+          }
+          if (frame.command === 'MESSAGE' && frame.body) {
+            try {
+              const payload = JSON.parse(frame.body);
+              if (payload?.broadcastDisabled) {
+                if (!studioOverlay) {
+                  setConfig(current => ({ ...(current || {}), overlayEnabled: false }));
+                  setTransportMode('offline');
+                  stoppedRef.current = true;
+                  clearTimers();
+                  closeWebSocket();
+                }
+                continue;
+              }
+              mergeSnapshot(payload, 'websocket');
+            } catch (e) {
+              setError(e);
+            }
+          }
+          if (frame.command === 'ERROR') {
+            setError(new Error(frame.body || 'Overlay websocket error'));
+            logTransport('polling', '(websocket error frame)');
+            setTransportMode('polling');
+          }
+        }
+      };
+
+      ws.onclose = () => {
+        if (stoppedRef.current) return;
+        logTransport('polling', '(websocket closed — using HTTP poll)');
+        setTransportMode('polling');
+        wsRef.current = null;
+        timersRef.current.reconnect = setTimeout(connectWebSocket, 2000);
+      };
+
+      ws.onerror = () => {
+        logTransport('polling', '(websocket error)');
+        setTransportMode('polling');
+      };
     };
 
     const bootstrap = async () => {
@@ -303,12 +371,8 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
     return () => {
       stoppedRef.current = true;
       connectedRef.current = false;
-      clearInterval(snapshotTimer);
-      if (client) {
-        try {
-          client.deactivate();
-        } catch { /* already closing */ }
-      }
+      clearTimers();
+      closeWebSocket();
     };
   }, [tournamentId, token, includePlayers, studioOverlay]);
 
