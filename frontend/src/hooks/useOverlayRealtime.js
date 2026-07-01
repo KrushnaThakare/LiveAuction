@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { overlayApi } from '../api/overlay';
 
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
@@ -22,6 +20,27 @@ function isOlderAuctionUpdate(currentAuction, incomingAuction) {
   const currentRevision = getBidRevision(currentAuction);
   const incomingRevision = getBidRevision(incomingAuction);
   return currentRevision != null && incomingRevision != null && incomingRevision < currentRevision;
+}
+
+function buildFrame(command, headers = {}, body = '') {
+  const headerLines = Object.entries(headers).map(([key, value]) => `${key}:${value}`).join('\n');
+  return `${command}\n${headerLines}\n\n${body}\0`;
+}
+
+function parseStompFrames(raw) {
+  return String(raw)
+    .split('\0')
+    .map(frame => frame.trim())
+    .filter(Boolean)
+    .map(frame => {
+      const [head, ...bodyParts] = frame.split('\n\n');
+      const [command, ...headerLines] = head.split('\n');
+      const headers = Object.fromEntries(headerLines.map(line => {
+        const idx = line.indexOf(':');
+        return idx === -1 ? [line, ''] : [line.slice(0, idx), line.slice(idx + 1)];
+      }));
+      return { command, headers, body: bodyParts.join('\n\n') };
+    });
 }
 
 function mergeTeams(currentTeams = [], incomingTeams = []) {
@@ -91,13 +110,10 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
     stoppedRef.current = false;
     debugRef.current = new URLSearchParams(window.location.search).get('debugOverlay') === '1';
 
-    let client;
+    let ws;
     let stopped = false;
+    let reconnectTimer;
     let snapshotTimer;
-    // Prefer the raw WebSocket endpoint; fall back to SockJS if it never connects
-    // (some networks/proxies block raw WebSockets but allow SockJS transports).
-    let useSockJS = false;
-    let everConnected = false;
 
     const logUpdate = (source, auction, status = 'accept') => {
       const line = `[overlay-sync] ${status} ${source}`;
@@ -170,29 +186,6 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       });
     };
 
-    const handleMessage = (body) => {
-      if (!body) return;
-      try {
-        const payload = JSON.parse(body);
-        if (payload?.broadcastDisabled) {
-          setConfig(current => ({ ...(current || {}), overlayEnabled: false }));
-          setConnected(false);
-          connectedRef.current = false;
-          stopped = true;
-          clearInterval(snapshotTimer);
-          if (client) {
-            try {
-              client.deactivate();
-            } catch { /* already closing */ }
-          }
-          return;
-        }
-        mergeSnapshot(payload, useSockJS ? 'websocket-sockjs' : 'websocket');
-      } catch (e) {
-        setError(e);
-      }
-    };
-
     const loadInitial = async () => {
       const configRes = await overlayApi.getConfig(tournamentId, token);
       if (!stopped) {
@@ -205,44 +198,6 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       if (!stopped) {
         mergeSnapshot(snapshotRes.data.data, 'initial-snapshot');
       }
-    };
-
-    const startClient = () => {
-      if (stopped) return;
-      client = new Client({
-        webSocketFactory: () => (useSockJS
-          ? new SockJS(`${API_BASE}/ws-overlay`)
-          : new WebSocket(`${WS_BASE}/ws-overlay-native`)),
-        reconnectDelay: 2000,
-        heartbeatIncoming: 10000,
-        heartbeatOutgoing: 10000,
-        onConnect: () => {
-          everConnected = true;
-          connectedRef.current = true;
-          setConnected(true);
-          client.subscribe(
-            `/topic/overlay/${tournamentId}/snapshot`,
-            (message) => handleMessage(message.body),
-            { id: `overlay-${tournamentId}` },
-          );
-        },
-        onWebSocketClose: () => {
-          connectedRef.current = false;
-          setConnected(false);
-          // Raw WebSocket never established: switch to SockJS for the next auto-reconnect.
-          if (!everConnected && !useSockJS && !stopped) {
-            useSockJS = true;
-          }
-        },
-        onWebSocketError: () => {
-          connectedRef.current = false;
-          setConnected(false);
-        },
-        onStompError: (frame) => {
-          setError(new Error(frame?.headers?.message || frame?.body || 'Overlay websocket error'));
-        },
-      });
-      client.activate();
     };
 
     const connect = async () => {
@@ -272,7 +227,61 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       setTransportMode('connecting');
 
       if (stopped) return;
-      startClient();
+      ws = new WebSocket(`${WS_BASE}/ws-overlay-native`);
+
+      ws.onopen = () => {
+        ws.send(buildFrame('CONNECT', {
+          'accept-version': '1.2',
+          'heart-beat': '10000,10000',
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        for (const frame of parseStompFrames(event.data)) {
+          if (frame.command === 'CONNECTED') {
+            connectedRef.current = true;
+            setConnected(true);
+            ws.send(buildFrame('SUBSCRIBE', {
+              id: `overlay-${tournamentId}`,
+              destination: `/topic/overlay/${tournamentId}/snapshot`,
+            }));
+          }
+          if (frame.command === 'MESSAGE' && frame.body) {
+            try {
+              const payload = JSON.parse(frame.body);
+              if (payload?.broadcastDisabled) {
+                setConfig(current => ({ ...(current || {}), overlayEnabled: false }));
+                setConnected(false);
+                connectedRef.current = false;
+                stopped = true;
+                clearInterval(snapshotTimer);
+                clearTimeout(reconnectTimer);
+                try {
+                  ws.close();
+                } catch { /* already closing */ }
+                continue;
+              }
+              mergeSnapshot(payload, 'websocket');
+            } catch (e) {
+              setError(e);
+            }
+          }
+          if (frame.command === 'ERROR') {
+            setError(new Error(frame.body || 'Overlay websocket error'));
+          }
+        }
+      };
+
+      ws.onclose = () => {
+        connectedRef.current = false;
+        setConnected(false);
+        if (!stopped) reconnectTimer = setTimeout(connect, 2000);
+      };
+
+      ws.onerror = () => {
+        connectedRef.current = false;
+        setConnected(false);
+      };
     };
 
     const bootstrap = async () => {
@@ -303,11 +312,15 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
     return () => {
       stoppedRef.current = true;
       connectedRef.current = false;
+      clearTimeout(reconnectTimer);
       clearInterval(snapshotTimer);
-      if (client) {
+      if (ws && ws.readyState <= 1) {
         try {
-          client.deactivate();
-        } catch { /* already closing */ }
+          ws.send(buildFrame('DISCONNECT', { receipt: 'close' }));
+        } catch {
+          // Socket may already be closing; close() below is enough.
+        }
+        ws.close();
       }
     };
   }, [tournamentId, token, includePlayers, studioOverlay]);
