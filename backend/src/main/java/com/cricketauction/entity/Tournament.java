@@ -96,6 +96,18 @@ public class Tournament {
     @Builder.Default
     private Boolean overlayShowTicker = true;
 
+    @Column(name = "public_view_show_teams")
+    @Builder.Default
+    private Boolean publicViewShowTeams = true;
+
+    @Column(name = "public_view_show_sold")
+    @Builder.Default
+    private Boolean publicViewShowSold = true;
+
+    @Column(name = "public_view_show_unsold")
+    @Builder.Default
+    private Boolean publicViewShowUnsold = true;
+
     @Column(name = "overlay_show_player_stats_intro")
     @Builder.Default
     private Boolean overlayShowPlayerStatsIntro = true;

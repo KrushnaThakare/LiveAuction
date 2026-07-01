@@ -39,6 +39,9 @@ public class BroadcastController {
         if (d.getOverlayShowTeamBudget() != null) t.setOverlayShowTeamBudget(d.getOverlayShowTeamBudget());
         if (d.getOverlayShowTeamList() != null) t.setOverlayShowTeamList(d.getOverlayShowTeamList());
         if (d.getOverlayShowTicker() != null) t.setOverlayShowTicker(d.getOverlayShowTicker());
+        if (d.getPublicViewShowTeams() != null) t.setPublicViewShowTeams(d.getPublicViewShowTeams());
+        if (d.getPublicViewShowSold() != null) t.setPublicViewShowSold(d.getPublicViewShowSold());
+        if (d.getPublicViewShowUnsold() != null) t.setPublicViewShowUnsold(d.getPublicViewShowUnsold());
         if (d.getOverlayShowPlayerStatsIntro() != null) t.setOverlayShowPlayerStatsIntro(d.getOverlayShowPlayerStatsIntro());
         if (d.getOverlayPlayerStatsIntroMs() != null) {
             t.setOverlayPlayerStatsIntroMs(Math.max(1000, Math.min(15000, d.getOverlayPlayerStatsIntroMs())));
@@ -80,6 +83,9 @@ public class BroadcastController {
                 .overlayShowTeamBudget(t.getOverlayShowTeamBudget())
                 .overlayShowTeamList(t.getOverlayShowTeamList())
                 .overlayShowTicker(t.getOverlayShowTicker())
+                .publicViewShowTeams(t.getPublicViewShowTeams())
+                .publicViewShowSold(t.getPublicViewShowSold())
+                .publicViewShowUnsold(t.getPublicViewShowUnsold())
                 .overlayShowPlayerStatsIntro(t.getOverlayShowPlayerStatsIntro())
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
                 .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())

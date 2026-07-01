@@ -17,12 +17,9 @@ export default function BroadcastControlPage() {
     overlayShowTicker: true,
     overlayShowPlayerStatsIntro: true,
     overlayPlayerStatsIntroMs: 5500,
-    overlayShowCinematicIntro: false,
-    overlayCinematicIntroLive: true,
-    overlayShowPlayerTransition: true,
-    overlayShowBidPop: true,
-    overlayShowSquadFormation: false,
-    maxSquadSize: 15,
+    publicViewShowTeams: true,
+    publicViewShowSold: true,
+    publicViewShowUnsold: true,
     tokenEnabled: false,
     overlaySecretToken: '',
     whatsappAutoEnabled: false,
@@ -145,6 +142,20 @@ export default function BroadcastControlPage() {
         </p>
         <label><input type='checkbox' checked={!!settings.tokenEnabled} onChange={e=>setSettings(s=>({...s,tokenEnabled:e.target.checked}))} /> Enable token</label>
         {settings.tokenEnabled && <input className='input' value={settings.overlaySecretToken||''} onChange={e=>setSettings(s=>({...s,overlaySecretToken:e.target.value}))} placeholder='secret token'/>}
+
+        <div className='pt-3 mt-2' style={{ borderTop: '1px solid var(--color-border)' }}>
+          <h3 className='text-sm font-bold mb-1'>Public broadcast view (/view link)</h3>
+          <p className='text-xs mb-2' style={{ color: 'var(--color-text-secondary)' }}>
+            Home viewers use the share link. Disable tabs to avoid extra API calls when people browse Teams / Sold / Unsold. Live Auction tab is always shown.
+          </p>
+          <label><input type='checkbox' checked={settings.publicViewShowTeams !== false} onChange={e=>setSettings(s=>({...s,publicViewShowTeams:e.target.checked}))} /> Show Teams tab</label>
+          <label><input type='checkbox' checked={settings.publicViewShowSold !== false} onChange={e=>setSettings(s=>({...s,publicViewShowSold:e.target.checked}))} /> Show Sold tab</label>
+          <label><input type='checkbox' checked={settings.publicViewShowUnsold !== false} onChange={e=>setSettings(s=>({...s,publicViewShowUnsold:e.target.checked}))} /> Show Unsold tab</label>
+          <p className='text-xs mt-1' style={{ color: 'var(--color-text-secondary)' }}>
+            Share link: <code className='text-xs'>{tid ? `${base}/view/${tid}` : '—'}</code>
+          </p>
+        </div>
+
         <button className='btn-primary' onClick={save}>Save</button>
       </div>
 
