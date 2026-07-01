@@ -1,6 +1,7 @@
 package com.cricketauction.controller;
 
 import com.cricketauction.dto.ApiResponse;
+import com.cricketauction.dto.TeamImportResult;
 import com.cricketauction.dto.TeamRequest;
 import com.cricketauction.dto.TeamResponse;
 import com.cricketauction.entity.Team;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -43,6 +45,24 @@ public class TeamController {
         overlayPushService.pushSnapshot(tournamentId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Team created successfully", response));
+    }
+
+    @PostMapping("/upload")
+    public ResponseEntity<ApiResponse<TeamImportResult>> uploadTeams(
+            @PathVariable Long tournamentId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "defaultBudget", required = false) Double defaultBudget) {
+        try {
+            TeamImportResult result = teamService.uploadTeams(tournamentId, file, defaultBudget);
+            overlayPushService.pushSnapshot(tournamentId);
+            String message = result.getSkipped() > 0
+                    ? result.getImported() + " teams imported, " + result.getSkipped() + " skipped"
+                    : result.getImported() + " teams imported successfully";
+            return ResponseEntity.ok(ApiResponse.success(message, result));
+        } catch (IOException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Failed to parse Excel file: " + e.getMessage()));
+        }
     }
 
     @GetMapping

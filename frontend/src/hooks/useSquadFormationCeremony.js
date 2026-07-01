@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  buildRosterByTeam,
   clampSquadSize,
+  mergePlayersById,
   squadPlayersFromTeam,
+  teamHasServerRoster,
   toSlotPlayer,
 } from '../utils/squadFormation';
 
@@ -12,11 +15,7 @@ const EXIT_MS = 600;
 const NEW_PLAYER_HIGHLIGHT_MS = 2000;
 
 function hydrateRoster(teams, playerRoles) {
-  const roster = {};
-  for (const team of teams || []) {
-    roster[team.id] = squadPlayersFromTeam(team).map((player) => toSlotPlayer(player, playerRoles));
-  }
-  return roster;
+  return buildRosterByTeam(teams, playerRoles, false);
 }
 
 export function useSquadFormationCeremony(enabled, teams, playerRoles, configuredSquadSize) {
@@ -46,33 +45,46 @@ export function useSquadFormationCeremony(enabled, teams, playerRoles, configure
       return;
     }
 
-    if (hydratedRef.current || !teams?.length) return;
-    setRoster(hydrateRoster(teams, playerRoles));
-    hydratedRef.current = true;
-  }, [enabled, teams, playerRoles, clearTimers]);
+    if (!teams?.length) return;
 
-  useEffect(() => {
-    if (!enabled || !hydratedRef.current || !teams?.length) return;
+    const serverRoster = hydrateRoster(teams, playerRoles);
+    const hasServerRosters = teams.some(teamHasServerRoster);
+    const hasSoldPlayers = teams.some((team) => Number(team.playerCount) > 0);
+
+    if (!hydratedRef.current) {
+      if (hasSoldPlayers && !hasServerRosters) return;
+      setRoster(serverRoster);
+      hydratedRef.current = true;
+      return;
+    }
+
     setRoster((current) => {
       const merged = { ...current };
       let changed = false;
+
       for (const team of teams) {
-        const serverPlayers = squadPlayersFromTeam(team).map((player) => toSlotPlayer(player, playerRoles));
-        const local = merged[team.id] || [];
-        const byId = new Map(local.filter(Boolean).map((player) => [String(player.id), player]));
-        for (const player of serverPlayers) {
-          if (!byId.has(String(player.id))) {
-            byId.set(String(player.id), player);
-            changed = true;
-          } else {
-            byId.set(String(player.id), { ...byId.get(String(player.id)), ...player });
-          }
+        const serverPlayers = serverRoster[team.id] || [];
+        const localPlayers = merged[team.id] || [];
+        const expected = Math.max(Number(team.playerCount) || 0, serverPlayers.length);
+
+        if (serverPlayers.length > 0 && (localPlayers.length < serverPlayers.length || localPlayers.length < expected)) {
+          merged[team.id] = serverPlayers;
+          changed = true;
+          continue;
         }
-        if (changed) merged[team.id] = Array.from(byId.values());
+
+        if (!serverPlayers.length) continue;
+
+        const nextPlayers = mergePlayersById(localPlayers, serverPlayers);
+        if (nextPlayers.length !== localPlayers.length) {
+          merged[team.id] = nextPlayers;
+          changed = true;
+        }
       }
+
       return changed ? merged : current;
     });
-  }, [enabled, teams, playerRoles]);
+  }, [enabled, teams, playerRoles, clearTimers]);
 
   const registerNextSlot = useCallback((teamId, node) => {
     const key = `${teamId}:next`;
@@ -161,10 +173,17 @@ export function useSquadFormationCeremony(enabled, teams, playerRoles, configure
   const teamRoster = useMemo(() => {
     const map = {};
     for (const team of teams || []) {
-      map[team.id] = roster[team.id] || [];
+      const local = roster[team.id] || [];
+      const server = squadPlayersFromTeam(team).map((player) => toSlotPlayer(player, playerRoles));
+      const expected = Math.max(Number(team.playerCount) || 0, server.length);
+      if (server.length >= expected || server.length >= local.length) {
+        map[team.id] = mergePlayersById(server, local);
+      } else {
+        map[team.id] = local;
+      }
     }
     return map;
-  }, [teams, roster]);
+  }, [teams, roster, playerRoles]);
 
   return {
     active: phase != null,

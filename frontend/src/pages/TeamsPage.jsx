@@ -12,7 +12,7 @@ import { clampSquadSize } from '../utils/squadFormation';
 import { getPlayerRoles } from '../utils/formatters';
 import { resolveUrl } from '../utils/resolveUrl';
 import toast from 'react-hot-toast';
-import { ShieldCheck, Plus, Edit, Trash2, ChevronDown, ChevronUp, Download, FileSpreadsheet } from 'lucide-react';
+import { ShieldCheck, Plus, Edit, Trash2, ChevronDown, ChevronUp, Download, FileSpreadsheet, Upload } from 'lucide-react';
 
 const TEAM_ACCENT_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
@@ -30,6 +30,7 @@ export default function TeamsPage() {
   const [expandedTeam, setExpandedTeam] = useState(null);
   const [teamLogoFile, setTeamLogoFile] = useState(null);
   const [exportingDetails, setExportingDetails] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const fetchTeams = useCallback(async () => {
     if (!activeTournament) return;
@@ -124,6 +125,26 @@ export default function TeamsPage() {
     }
   };
 
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !activeTournament) return;
+    setUploading(true);
+    try {
+      const res = await teamApi.upload(activeTournament.id, file);
+      toast.success(res.data.message || 'Teams uploaded');
+      const warnings = res.data.data?.warnings || [];
+      if (warnings.length) {
+        toast(warnings.slice(0, 3).join('\n'), { icon: 'ℹ️', duration: 6000 });
+      }
+      fetchTeams();
+    } catch {
+      /* handled by axios */
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (!activeTournament) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -161,10 +182,24 @@ export default function TeamsPage() {
               </button>
             </>
           )}
+          <label className="btn-secondary cursor-pointer">
+            {uploading
+              ? <><span className="animate-spin inline-block">⏳</span> Uploading...</>
+              : <><Upload size={15} /> Upload Excel</>}
+            <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleUpload} disabled={uploading} />
+          </label>
           <button className="btn-primary" onClick={() => { setEditingTeam(null); setTeamLogoFile(null); setShowModal(true); }}>
             <Plus size={15} />New Team
           </button>
         </div>
+      </div>
+
+      <div className="rounded-lg px-4 py-3 mb-6 text-sm"
+        style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+        <strong style={{ color: 'var(--color-primary)' }}>Team Excel format:</strong>
+        <span style={{ color: 'var(--color-text-secondary)' }}>
+          {' '}Name | Budget (optional, default ₹1,00,000) | Logo URL (optional, Google Drive links auto-converted)
+        </span>
       </div>
 
       {/* Budget Overview */}
@@ -188,7 +223,7 @@ export default function TeamsPage() {
       {loading ? (
         <div className="py-16 flex justify-center"><LoadingSpinner size="lg" text="Loading teams..." /></div>
       ) : teams.length === 0 ? (
-        <EmptyState icon={ShieldCheck} title="No teams yet" description="Create teams to participate in the auction."
+        <EmptyState icon={ShieldCheck} title="No teams yet" description="Create teams manually or upload an Excel file to get started."
           action={<button className="btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />Create Team</button>}
         />
       ) : (

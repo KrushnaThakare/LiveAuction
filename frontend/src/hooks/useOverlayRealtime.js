@@ -254,7 +254,7 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       timersRef.current.summary = setInterval(() => {
         if (stoppedRef.current) return;
         if (connectedRef.current) {
-          fetchSnapshot('summary-refresh', false);
+          fetchSnapshot('summary-refresh', includePlayers);
         }
       }, SUMMARY_REFRESH_MS);
 
