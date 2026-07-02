@@ -20,6 +20,7 @@ export default function TournamentCountdownOverlay({
   const [count, setCount] = useState(countdownSeconds);
   const [goVisible, setGoVisible] = useState(false);
   const logoSrc = logoUrl ? resolveUrl(logoUrl) : null;
+  const showLogo = Boolean(logoSrc) && !goVisible && phase !== 'count';
 
   const numbers = useMemo(() => {
     const n = Math.max(5, Math.min(15, countdownSeconds));
@@ -72,50 +73,52 @@ export default function TournamentCountdownOverlay({
       <div className={styles.particles} />
       <div className={styles.zoom} />
 
-      {(phase === 'intro' || phase === 'welcome' || phase === 'logo' || phase === 'begin' || phase === 'count' || goVisible) && (
-        <div className={styles.welcomeBlock}>
-          <div className={styles.welcomeKicker}>WELCOME TO</div>
-          <div className={styles.tournamentName}>{tournamentName}</div>
-        </div>
-      )}
+      <div className={styles.contentStack}>
+        {(phase === 'intro' || phase === 'welcome' || phase === 'logo' || phase === 'begin' || phase === 'count' || goVisible) && (
+          <header className={styles.welcomeBlock}>
+            <div className={styles.welcomeKicker}>WELCOME TO</div>
+            <div className={styles.tournamentName}>{tournamentName}</div>
+          </header>
+        )}
 
-      {(phase === 'logo' || phase === 'begin' || phase === 'count' || goVisible) && logoSrc && (
-        <div className={styles.logoWrap}>
-          <div className={styles.logoGlow} />
-          <img src={logoSrc} alt="" className={styles.logo} />
-        </div>
-      )}
-
-      {(phase === 'begin' || phase === 'count' || goVisible) && !goVisible && (
-        <div className={styles.beginText}>LET THE AUCTION BEGIN</div>
-      )}
-
-      {phase === 'count' && count > 0 && !goVisible && (
-        <div key={count} className={styles.countBlock}>
-          <div className={styles.countGlow} />
-          <div className={styles.countNumber}>{count}</div>
-          <div className={styles.countBurst} />
-        </div>
-      )}
-
-      {goVisible && (
-        <div className={styles.goBlock}>
-          <div className={styles.goText}>GO!!</div>
-          <div className={styles.goParticles}>
-            {Array.from({ length: 24 }, (_, i) => (
-              <span
-                key={i}
-                style={{
-                  left: `${10 + (i * 7) % 80}%`,
-                  top: `${15 + (i * 11) % 70}%`,
-                  background: i % 3 === 0 ? '#ffd76a' : i % 3 === 1 ? '#3b82f6' : '#fff',
-                  animationDelay: `${(i % 5) * 0.05}s`,
-                }}
-              />
-            ))}
+        {showLogo && (
+          <div className={styles.logoBadge}>
+            <div className={styles.logoGlow} />
+            <img src={logoSrc} alt="" className={styles.logo} />
           </div>
-        </div>
-      )}
+        )}
+
+        {(phase === 'begin' || phase === 'count') && !goVisible && (
+          <div className={styles.beginText}>LET THE AUCTION BEGIN</div>
+        )}
+
+        {phase === 'count' && count > 0 && !goVisible && (
+          <div key={count} className={styles.countBlock}>
+            <div className={styles.countGlow} />
+            <div className={styles.countNumber}>{count}</div>
+            <div className={styles.countBurst} />
+          </div>
+        )}
+
+        {goVisible && (
+          <div className={styles.goBlock}>
+            <div className={styles.goText}>GO!!</div>
+            <div className={styles.goParticles}>
+              {Array.from({ length: 24 }, (_, i) => (
+                <span
+                  key={i}
+                  style={{
+                    left: `${10 + (i * 7) % 80}%`,
+                    top: `${15 + (i * 11) % 70}%`,
+                    background: i % 3 === 0 ? '#ffd76a' : i % 3 === 1 ? '#3b82f6' : '#fff',
+                    animationDelay: `${(i % 5) * 0.05}s`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -35,13 +35,20 @@
   animation: countdownParticles 10s linear infinite;
 }
 
+.contentStack {
+  position: relative;
+  z-index: 2;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(18px, 3vh, 36px);
+  padding: clamp(48px, 8vh, 96px) clamp(24px, 5vw, 64px);
+}
+
 .welcomeBlock {
-  position: absolute;
-  top: 14%;
-  left: 50%;
-  transform: translateX(-50%);
   text-align: center;
-  z-index: 3;
   animation: countdownFadeUp 1s ease forwards;
 }
 
@@ -58,16 +65,14 @@
   text-transform: uppercase;
   color: #ffd76a;
   text-shadow: 0 0 40px rgba(255, 199, 44, 0.55);
+  line-height: 1.05;
 }
 
-.logoWrap {
-  position: absolute;
-  top: 38%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(28vw, 220px);
-  height: min(28vw, 220px);
-  z-index: 4;
+.logoBadge {
+  position: relative;
+  width: min(22vw, 168px);
+  height: min(22vw, 168px);
+  flex-shrink: 0;
   animation: countdownLogoIn 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
@@ -86,35 +91,30 @@
   height: 100%;
   object-fit: contain;
   border-radius: 50%;
-  animation: countdownLogoSpin 6s linear infinite;
+  animation: countdownLogoSpin 8s linear infinite;
   filter: drop-shadow(0 0 30px rgba(255, 199, 44, 0.45));
 }
 
 .beginText {
-  position: absolute;
-  top: 58%;
-  left: 50%;
-  transform: translateX(-50%);
   font-size: clamp(1rem, 3.2vw, 1.8rem);
   letter-spacing: 0.28em;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.82);
-  z-index: 3;
+  text-align: center;
   animation: countdownFadeUp 0.8s ease forwards;
 }
 
 .countBlock {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 5;
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: clamp(180px, 28vh, 320px);
   animation: countdownShake 0.85s ease forwards;
 }
 
 .countGlow {
   position: absolute;
-  inset: -40%;
+  inset: -20%;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 199, 44, 0.5) 0%, transparent 70%);
   filter: blur(14px);
@@ -142,11 +142,10 @@
 }
 
 .goBlock {
-  position: absolute;
-  inset: 0;
+  position: relative;
   display: grid;
   place-items: center;
-  z-index: 6;
+  min-height: clamp(220px, 34vh, 380px);
 }
 
 .goText {
@@ -188,13 +187,13 @@
 }
 
 @keyframes countdownFadeUp {
-  from { opacity: 0; transform: translateX(-50%) translateY(24px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes countdownLogoIn {
-  from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes countdownLogoGlow {
@@ -220,11 +219,11 @@
 }
 
 @keyframes countdownShake {
-  0%, 100% { transform: translate(-50%, -50%); }
-  20% { transform: translate(calc(-50% - 6px), -50%); }
-  40% { transform: translate(calc(-50% + 5px), calc(-50% - 4px)); }
-  60% { transform: translate(calc(-50% - 4px), calc(-50% + 3px)); }
-  80% { transform: translate(calc(-50% + 3px), -50%); }
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
 }
 
 @keyframes countdownGoPop {

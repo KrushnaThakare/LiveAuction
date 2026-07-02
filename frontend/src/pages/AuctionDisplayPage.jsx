@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
@@ -102,13 +102,23 @@ export default function AuctionDisplayPage() {
   const { soldOverlay, dismissOverlay } = useAuctionVerdictOverlay(auction, teams);
   const recordBreakEnabled = config?.overlayShowRecordBreak !== false;
   const [recordBreakDone, setRecordBreakDone] = useState(false);
+  const prevRecordFlagRef = useRef(false);
   const needsRecordBreak = soldOverlay?.verdict === 'SOLD'
     && soldOverlay?.isRecord
     && recordBreakEnabled;
 
   useEffect(() => {
     setRecordBreakDone(false);
+    prevRecordFlagRef.current = false;
   }, [soldOverlay?.sessionKey]);
+
+  useEffect(() => {
+    const isRecord = soldOverlay?.isRecord === true;
+    if (isRecord && !prevRecordFlagRef.current && recordBreakEnabled) {
+      setRecordBreakDone(false);
+    }
+    prevRecordFlagRef.current = isRecord;
+  }, [recordBreakEnabled, soldOverlay?.isRecord]);
 
   const showRecordBreak = Boolean(soldOverlay && needsRecordBreak && !recordBreakDone);
   const showGavel = Boolean(soldOverlay && !showRecordBreak);

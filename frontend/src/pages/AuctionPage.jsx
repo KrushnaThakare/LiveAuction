@@ -58,11 +58,17 @@ const CALLING_BID_DEBOUNCE_MS = 300;
 
 function buildClosedAuctionState(active, status) {
   if (!active) return null;
+  const amount = Number(active.currentBid) || 0;
+  const previousHighest = Number(active.tournamentHighestSoldBid) || 0;
+  const isRecord = status === 'SOLD' && amount > previousHighest;
   return {
     ...active,
     status,
     undoable: true,
     undoSessionId: active.sessionId,
+    highestSoldRecord: isRecord,
+    previousHighestSoldBid: isRecord ? previousHighest : null,
+    tournamentHighestSoldBid: isRecord ? amount : previousHighest,
   };
 }
 
