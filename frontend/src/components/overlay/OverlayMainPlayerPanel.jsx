@@ -3,7 +3,7 @@ import { resolveUrl } from '../../utils/resolveUrl';
 import { driveImg } from '../../utils/driveImage';
 import { playerIdLabel } from '../../utils/playerSearch';
 import { getRoleShortLabel } from '../../utils/formatters';
-import { MAIN_OVERLAY_STAT_SLOTS, resolvePlayerDetailSlots } from '../../utils/playerDisplayExtras';
+import { MAIN_OVERLAY_STAT_SLOTS, buildDetailSlotDefs, resolvePlayerDetailSlots } from '../../utils/playerDisplayExtras';
 import { useOverlayPlayerTransition } from '../../hooks/useOverlayPlayerTransition';
 import styles from '../../pages/OverlayBroadcast.module.css';
 
@@ -30,10 +30,14 @@ function PlayerPanelContent({
   player,
   connected,
   playerRoles,
+  detailFields,
   mode,
 }) {
   const isEnter = mode === 'enter';
-  const [ageSlot, historySlot] = resolvePlayerDetailSlots(player, MAIN_OVERLAY_STAT_SLOTS);
+  const [ageSlot, historySlot] = resolvePlayerDetailSlots(
+    player,
+    buildDetailSlotDefs(detailFields, MAIN_OVERLAY_STAT_SLOTS),
+  );
 
   return (
     <>
@@ -87,6 +91,7 @@ export default function OverlayMainPlayerPanel({
   transitionEnabled,
   connected,
   playerRoles,
+  detailFields,
 }) {
   const { exitingPlayer, displayPlayer, isEntering } = useOverlayPlayerTransition(
     sessionId,
@@ -102,6 +107,7 @@ export default function OverlayMainPlayerPanel({
             player={exitingPlayer}
             connected={connected}
             playerRoles={playerRoles}
+            detailFields={detailFields}
             mode="exit"
           />
         </div>
@@ -111,6 +117,7 @@ export default function OverlayMainPlayerPanel({
           player={displayPlayer}
           connected={connected}
           playerRoles={playerRoles}
+          detailFields={detailFields}
           mode={isEntering ? 'enter' : 'idle'}
         />
       </div>

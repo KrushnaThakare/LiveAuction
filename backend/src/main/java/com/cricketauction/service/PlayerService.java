@@ -66,6 +66,33 @@ public class PlayerService {
         return players.stream().map(this::mapToResponse).toList();
     }
 
+    public int repairRolesFromExtraData(Long tournamentId) {
+        Tournament tournament = tournamentService.findById(tournamentId);
+        List<Player> players = playerRepository.findByTournamentId(tournamentId);
+        int updated = 0;
+        for (Player player : players) {
+            LinkedHashMap<String, String> extras = excelParserUtil.mutableExtrasCopy(parseExtraData(player.getExtraData()));
+            if (extras.isEmpty()) continue;
+            String rawRole = excelParserUtil.extractRoleFromExtras(extras);
+            if (rawRole == null || rawRole.isBlank()) continue;
+            String resolved;
+            try {
+                resolved = playerRoleService.resolveRole(tournament, rawRole);
+            } catch (AuctionException ignored) {
+                continue;
+            }
+            boolean roleChanged = !resolved.equals(player.getRole());
+            String nextExtraJson = writeExtraData(extras);
+            boolean extrasChanged = !java.util.Objects.equals(nextExtraJson, player.getExtraData());
+            if (!roleChanged && !extrasChanged) continue;
+            player.setRole(resolved);
+            player.setExtraData(nextExtraJson);
+            playerRepository.save(player);
+            if (roleChanged) updated++;
+        }
+        return updated;
+    }
+
     public PlayerResponse createPlayer(Long tournamentId, PlayerRequest request) {
         Tournament tournament = tournamentService.findById(tournamentId);
         Player player = Player.builder()
@@ -239,6 +266,16 @@ public class PlayerService {
         } catch (Exception e) {
             log.warn("Could not parse player extraData JSON");
             return Map.of();
+        }
+    }
+
+    private String writeExtraData(Map<String, String> extras) {
+        if (extras == null || extras.isEmpty()) return null;
+        try {
+            return OBJECT_MAPPER.writeValueAsString(extras);
+        } catch (Exception e) {
+            log.warn("Could not serialize player extraData JSON");
+            return null;
         }
     }
 

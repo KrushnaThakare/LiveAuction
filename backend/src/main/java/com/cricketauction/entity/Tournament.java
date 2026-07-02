@@ -149,6 +149,16 @@ public class Tournament {
     @Column(name = "overlay_secret_token", length = 120)
     private String overlaySecretToken;
 
+    /** JSON array of Excel extra column headers for Audience Display detail cards (max 2) */
+    @Lob
+    @Column(name = "overlay_audience_detail_fields", columnDefinition = "TEXT")
+    private String overlayAudienceDetailFields;
+
+    /** JSON array of Excel extra column headers for Main overlay stat cards (max 2) */
+    @Lob
+    @Column(name = "overlay_main_detail_fields", columnDefinition = "TEXT")
+    private String overlayMainDetailFields;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

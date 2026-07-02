@@ -6,6 +6,7 @@ import com.cricketauction.entity.Tournament;
 import com.cricketauction.service.OverlayPushService;
 import com.cricketauction.service.TournamentService;
 import com.cricketauction.service.WhatsAppNotifyService;
+import com.cricketauction.util.OverlayDetailFieldsUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -55,6 +56,12 @@ public class BroadcastController {
         if (d.getWhatsappAutoEnabled() != null) t.setWhatsappAutoEnabled(d.getWhatsappAutoEnabled());
         if (Boolean.FALSE.equals(d.getTokenEnabled())) t.setOverlaySecretToken(null);
         if (d.getOverlaySecretToken() != null) t.setOverlaySecretToken(d.getOverlaySecretToken().isBlank() ? null : d.getOverlaySecretToken());
+        if (d.getOverlayAudienceDetailFields() != null) {
+            t.setOverlayAudienceDetailFields(OverlayDetailFieldsUtil.serialize(d.getOverlayAudienceDetailFields()));
+        }
+        if (d.getOverlayMainDetailFields() != null) {
+            t.setOverlayMainDetailFields(OverlayDetailFieldsUtil.serialize(d.getOverlayMainDetailFields()));
+        }
         tournamentService.saveTournament(t);
         if (wasEnabled && Boolean.FALSE.equals(t.getOverlayEnabled())) {
             overlayPushService.pushBroadcastDisabled(tournamentId);
@@ -98,6 +105,8 @@ public class BroadcastController {
                 .overlaySecretToken(includeSecret ? t.getOverlaySecretToken() : null)
                 .whatsappAutoEnabled(t.getWhatsappAutoEnabled())
                 .whatsappConfigured(whatsAppNotifyService.isConfigured())
+                .overlayAudienceDetailFields(OverlayDetailFieldsUtil.parse(t.getOverlayAudienceDetailFields()))
+                .overlayMainDetailFields(OverlayDetailFieldsUtil.parse(t.getOverlayMainDetailFields()))
                 .build();
     }
 

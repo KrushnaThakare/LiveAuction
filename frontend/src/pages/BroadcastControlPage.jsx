@@ -20,6 +20,8 @@ export default function BroadcastControlPage() {
     publicViewShowTeams: true,
     publicViewShowSold: true,
     publicViewShowUnsold: true,
+    overlayAudienceDetailFields: ['', ''],
+    overlayMainDetailFields: ['', ''],
     tokenEnabled: false,
     overlaySecretToken: '',
     whatsappAutoEnabled: false,
@@ -41,6 +43,14 @@ export default function BroadcastControlPage() {
         publicViewShowTeams: loaded.publicViewShowTeams !== false,
         publicViewShowSold: loaded.publicViewShowSold !== false,
         publicViewShowUnsold: loaded.publicViewShowUnsold !== false,
+        overlayAudienceDetailFields: [
+          loaded.overlayAudienceDetailFields?.[0] || '',
+          loaded.overlayAudienceDetailFields?.[1] || '',
+        ],
+        overlayMainDetailFields: [
+          loaded.overlayMainDetailFields?.[0] || '',
+          loaded.overlayMainDetailFields?.[1] || '',
+        ],
       }));
     });
     bidRuleApi.getRules(tid).then(r => setBidRules(r.data.data || []));
@@ -52,6 +62,14 @@ export default function BroadcastControlPage() {
     const payload = {
       ...settings,
       maxSquadSize: clampSquadSize(committedSquadSize),
+      overlayAudienceDetailFields: (settings.overlayAudienceDetailFields || [])
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+        .slice(0, 2),
+      overlayMainDetailFields: (settings.overlayMainDetailFields || [])
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+        .slice(0, 2),
     };
     await broadcastApi.updateSettings(tid, payload);
     setSettings(payload);
@@ -69,6 +87,17 @@ export default function BroadcastControlPage() {
   const setRule = (idx, key, value) => setBidRules(rules => rules.map((rule, i) => i === idx ? { ...rule, [key]: Number(value) } : rule));
   const addRule = () => setBidRules(rules => [...rules, { minAmount: 0, maxAmount: 0, incrementAmount: 1000, position: rules.length }]);
   const removeRule = (idx) => setBidRules(rules => rules.filter((_, i) => i !== idx));
+
+  const setAudienceField = (index, value) => setSettings((s) => {
+    const next = [...(s.overlayAudienceDetailFields || ['', ''])];
+    next[index] = value;
+    return { ...s, overlayAudienceDetailFields: next };
+  });
+  const setMainField = (index, value) => setSettings((s) => {
+    const next = [...(s.overlayMainDetailFields || ['', ''])];
+    next[index] = value;
+    return { ...s, overlayMainDetailFields: next };
+  });
 
   const base = window.location.origin;
   const tokenQ = settings.tokenEnabled && settings.overlaySecretToken ? `&token=${encodeURIComponent(settings.overlaySecretToken)}` : '';
@@ -122,6 +151,27 @@ export default function BroadcastControlPage() {
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
           Subtle scale pulse on current bid across overlay displays when the amount changes.
         </p>
+
+        <div className='pt-3 mt-2 space-y-2' style={{ borderTop: '1px solid var(--color-border)' }}>
+          <h3 className='text-sm font-bold'>Overlay player detail cards</h3>
+          <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+            Pick up to two Excel extra column headers to show on Audience Display (left) and Main overlay (left stat cards).
+            Leave blank to use automatic mapping (Category/Age/History). Role and Base Price always stay fixed.
+          </p>
+          <div className='grid sm:grid-cols-2 gap-3'>
+            <div className='space-y-2'>
+              <p className='text-xs font-semibold'>Audience Display</p>
+              <input className='input' placeholder='Field 1 e.g. Category' value={settings.overlayAudienceDetailFields?.[0] || ''} onChange={e=>setAudienceField(0, e.target.value)} />
+              <input className='input' placeholder='Field 2 e.g. Age' value={settings.overlayAudienceDetailFields?.[1] || ''} onChange={e=>setAudienceField(1, e.target.value)} />
+            </div>
+            <div className='space-y-2'>
+              <p className='text-xs font-semibold'>Main overlay (OBS)</p>
+              <input className='input' placeholder='Field 1 e.g. Age' value={settings.overlayMainDetailFields?.[0] || ''} onChange={e=>setMainField(0, e.target.value)} />
+              <input className='input' placeholder='Field 2 e.g. Club' value={settings.overlayMainDetailFields?.[1] || ''} onChange={e=>setMainField(1, e.target.value)} />
+            </div>
+          </div>
+        </div>
+
         <label><input type='checkbox' checked={!!settings.overlayShowSquadFormation} onChange={e=>setSettings(s=>({...s,overlayShowSquadFormation:e.target.checked}))} /> Audience Squad Formation Animation</label>
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
           Full-screen squad signing ceremony on the Audience Display after each SOLD gavel. Does not affect the admin auction screen or other overlays.

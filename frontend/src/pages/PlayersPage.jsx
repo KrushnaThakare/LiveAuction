@@ -53,6 +53,7 @@ export default function PlayersPage() {
   const [bulkStatsFetching, setBulkStatsFetching] = useState(false);
   const [bulkStatsProgress, setBulkStatsProgress] = useState({ done: 0, total: 0 });
   const [cleaningProfiles, setCleaningProfiles] = useState(false);
+  const [repairingRoles, setRepairingRoles] = useState(false);
   const playerRoles = getPlayerRoles(activeTournament);
   const defaultRole = playerRoles[0]?.key || 'BATSMAN';
 
@@ -86,6 +87,19 @@ export default function PlayersPage() {
     } finally {
       setUploading(false);
       e.target.value = '';
+    }
+  };
+
+  const handleRepairRoles = async () => {
+    if (!activeTournament) return;
+    setRepairingRoles(true);
+    try {
+      const res = await playerApi.repairRoles(activeTournament.id);
+      const updated = res.data.data?.updated ?? 0;
+      toast.success(updated > 0 ? `Updated roles for ${updated} player(s)` : 'No roles needed repair');
+      fetchPlayers();
+    } finally {
+      setRepairingRoles(false);
     }
   };
 
@@ -316,6 +330,10 @@ export default function PlayersPage() {
                 <X size={15} />
                 {cleaningProfiles ? 'Cleaning...' : 'Clean Bad Stats URLs'}
               </button>
+              <button className="btn-secondary" onClick={handleRepairRoles} disabled={repairingRoles || uploading}>
+                <RefreshCw size={15} />
+                {repairingRoles ? 'Repairing roles...' : 'Repair Roles from Excel'}
+              </button>
             </>
           )}
           <button className="btn-secondary" onClick={openManualAdd}>
@@ -378,9 +396,14 @@ export default function PlayersPage() {
           {' '}| CricHeroes Profile URL (optional)
         </span>
         <div className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+          <strong style={{ color: 'var(--color-accent)' }}>Role column</strong>
+          {' '}must be titled Role, Playing Role, Type, Skill, or similar. Values: Batsman, Bowler, All-Rounder, AR, WK, etc.
+          If everyone imported as BAT, use <strong>Repair Roles from Excel</strong> or re-upload after fixing the header.
+        </div>
+        <div className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>
           <strong style={{ color: 'var(--color-accent)' }}>Optional extra columns</strong>
-          {' '}(any header after the standard columns — e.g. Category, Age, Mobile, T-Shirt Size).
-          Matched columns appear on Main and Audience overlay detail cards; others are kept for export.
+          {' '}(any header after the standard columns — e.g. Category, Age, Mobile).
+          Configure which show on overlays in Broadcast Control.
         </div>
         <div className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>
           <strong style={{ color: 'var(--color-accent)' }}>Valid roles:</strong>

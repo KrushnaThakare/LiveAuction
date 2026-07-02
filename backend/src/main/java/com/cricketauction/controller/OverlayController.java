@@ -10,6 +10,7 @@ import com.cricketauction.exception.AuctionException;
 import com.cricketauction.service.TeamService;
 import com.cricketauction.service.TournamentService;
 import com.cricketauction.service.PlayerRoleService;
+import com.cricketauction.util.OverlayDetailFieldsUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -82,6 +83,8 @@ public class OverlayController {
                 .logoUrl(t.getLogoUrl())
                 .sport(t.getSport() == null ? "CRICKET" : t.getSport())
                 .playerRoles(playerRoleService.getRoles(t))
+                .overlayAudienceDetailFields(OverlayDetailFieldsUtil.parse(t.getOverlayAudienceDetailFields()))
+                .overlayMainDetailFields(OverlayDetailFieldsUtil.parse(t.getOverlayMainDetailFields()))
                 .build();
     }
 

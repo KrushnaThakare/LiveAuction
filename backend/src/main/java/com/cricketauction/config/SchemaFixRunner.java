@@ -149,7 +149,9 @@ public class SchemaFixRunner implements ApplicationRunner {
             "overlay_player_stats_intro_ms INT DEFAULT 5500",
             "public_view_show_teams BOOLEAN DEFAULT TRUE",
             "public_view_show_sold BOOLEAN DEFAULT TRUE",
-            "public_view_show_unsold BOOLEAN DEFAULT TRUE"
+            "public_view_show_unsold BOOLEAN DEFAULT TRUE",
+            "overlay_audience_detail_fields TEXT",
+            "overlay_main_detail_fields TEXT"
         });
     }
 
