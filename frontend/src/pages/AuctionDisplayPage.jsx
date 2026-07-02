@@ -20,6 +20,7 @@ import SquadFormationCeremony from '../components/overlay/SquadFormationCeremony
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import { useAuctionVerdictOverlay } from '../hooks/useAuctionVerdictOverlay';
 import { useAudienceCountdown } from '../hooks/useAudienceCountdown';
+import { useSquadFormationCeremony } from '../hooks/useSquadFormationCeremony';
 import { CINEMATIC_INTRO_MS } from '../constants/cinematicIntroTiming';
 import { resolveSquadSize } from '../utils/squadFormation';
 import styles from './AuctionDisplay.module.css';
