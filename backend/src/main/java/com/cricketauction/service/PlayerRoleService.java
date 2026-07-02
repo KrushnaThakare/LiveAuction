@@ -7,6 +7,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 
@@ -19,17 +21,22 @@ public class PlayerRoleService {
     }
 
     public List<PlayerRoleDto> getRoles(Tournament tournament) {
+        List<PlayerRoleDto> defaults = defaultRoles(tournament != null ? tournament.getSport() : null);
         if (tournament != null && tournament.getPlayerRolesConfig() != null && !tournament.getPlayerRolesConfig().isBlank()) {
             try {
                 List<PlayerRoleDto> roles = objectMapper.readValue(
                         tournament.getPlayerRolesConfig(),
                         new TypeReference<List<PlayerRoleDto>>() {});
-                if (roles != null && !roles.isEmpty()) return roles;
+                if (roles != null && !roles.isEmpty()) {
+                    return roles.stream()
+                            .map(role -> mergeWithDefaultAliases(role, defaults))
+                            .toList();
+                }
             } catch (Exception ignored) {
                 // Fall back to sport preset when stored JSON is invalid.
             }
         }
-        return defaultRoles(tournament != null ? tournament.getSport() : null);
+        return defaults;
     }
 
     public String toConfigJson(List<PlayerRoleDto> roles, String sport) {
@@ -69,7 +76,7 @@ public class PlayerRoleService {
         return List.of(
                 role("BATSMAN", "Batsman", "BAT", "#3b82f6", "BAT", "bat", "batter", "batsmen"),
                 role("BOWLER", "Bowler", "BOWL", "#ef4444", "BOWL", "bowl", "b"),
-                role("ALL_ROUNDER", "All-Rounder", "AR", "#10b981", "AR", "all rounder", "allrounder", "all", "ar"),
+                role("ALL_ROUNDER", "All-Rounder", "AR", "#10b981", "AR", "all rounder", "allrounder", "all-rounder", "ar"),
                 role("WICKET_KEEPER", "Wicket Keeper", "WK", "#f59e0b", "WK", "wicketkeeper", "keeper", "wkt", "wk")
         );
     }
@@ -116,5 +123,25 @@ public class PlayerRoleService {
 
     private String blankToDefault(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    private PlayerRoleDto mergeWithDefaultAliases(PlayerRoleDto role, List<PlayerRoleDto> defaults) {
+        PlayerRoleDto fallback = defaults.stream()
+                .filter(item -> normalizeRoleKey(item.getKey()).equals(normalizeRoleKey(role.getKey())))
+                .findFirst()
+                .orElse(null);
+        if (fallback == null) return normalizeRoleConfig(role);
+
+        LinkedHashSet<String> aliases = new LinkedHashSet<>();
+        if (role.getAliases() != null) aliases.addAll(role.getAliases());
+        if (fallback.getAliases() != null) aliases.addAll(fallback.getAliases());
+        return PlayerRoleDto.builder()
+                .key(normalizeRoleKey(role.getKey()))
+                .label(blankToDefault(role.getLabel(), fallback.getLabel()))
+                .shortLabel(blankToDefault(role.getShortLabel(), fallback.getShortLabel()))
+                .color(blankToDefault(role.getColor(), fallback.getColor()))
+                .icon(blankToDefault(role.getIcon(), fallback.getIcon()))
+                .aliases(new ArrayList<>(aliases))
+                .build();
     }
 }

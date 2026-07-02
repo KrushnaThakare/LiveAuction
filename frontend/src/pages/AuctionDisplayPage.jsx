@@ -9,7 +9,7 @@ import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { hasPlayerStats, statValue } from '../utils/playerStats';
-import { AUDIENCE_DETAIL_SLOTS, resolvePlayerDetailSlots } from '../utils/playerDisplayExtras';
+import { AUDIENCE_DETAIL_SLOTS, buildDetailSlotDefs, resolvePlayerDetailSlots } from '../utils/playerDisplayExtras';
 import { getAuctionDisplayName, getRoleShortLabel, formatSquadPickLabel } from '../utils/formatters';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import GavelOverlay from '../components/common/GavelOverlay';
@@ -113,7 +113,10 @@ export default function AuctionDisplayPage() {
     config?.overlayShowPlayerStatsIntro !== false && sessionReady,
     config?.overlayPlayerStatsIntroMs || 5500
   );
-  const [categorySlot, ageSlot] = resolvePlayerDetailSlots(player, AUDIENCE_DETAIL_SLOTS);
+  const [categorySlot, ageSlot] = resolvePlayerDetailSlots(
+    player,
+    buildDetailSlotDefs(config?.overlayAudienceDetailFields, AUDIENCE_DETAIL_SLOTS),
+  );
 
   return (
     <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''} ${cinematicPlaying ? styles.cinematicMode : ''}`}>

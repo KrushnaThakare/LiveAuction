@@ -49,6 +49,14 @@ public class PlayerController {
         }
     }
 
+    @PostMapping("/repair-roles")
+    public ResponseEntity<ApiResponse<Map<String, Integer>>> repairRoles(@PathVariable Long tournamentId) {
+        int updated = playerService.repairRolesFromExtraData(tournamentId);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Repaired roles for " + updated + " player(s)",
+                Map.of("updated", updated)));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<PlayerResponse>>> getPlayers(
             @PathVariable Long tournamentId,

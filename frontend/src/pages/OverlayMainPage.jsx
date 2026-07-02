@@ -111,6 +111,7 @@ export default function OverlayMainPage() {
           transitionEnabled={config?.overlayShowPlayerTransition !== false}
           connected={connected}
           playerRoles={config?.playerRoles}
+          detailFields={config?.overlayMainDetailFields}
         />
 
         <div className={`${styles.bidPanel} ${showVerdict ? styles.bidPanelSoldLayout : ''}`}>

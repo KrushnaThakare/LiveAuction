@@ -31,4 +31,6 @@ public class BroadcastSettingsDto {
     private String logoUrl;
     private String sport;
     private java.util.List<PlayerRoleDto> playerRoles;
+    private java.util.List<String> overlayAudienceDetailFields;
+    private java.util.List<String> overlayMainDetailFields;
 }

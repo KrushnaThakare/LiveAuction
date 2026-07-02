@@ -16,6 +16,8 @@ export const playerApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  repairRoles: (tournamentId) =>
+    api.post(`/tournaments/${tournamentId}/players/repair-roles`),
   update: (tournamentId, playerId, data) =>
     api.put(`/tournaments/${tournamentId}/players/${playerId}`, data),
   fetchCricHeroesStats: (tournamentId, playerId) =>

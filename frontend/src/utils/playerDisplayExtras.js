@@ -14,6 +14,26 @@ export function parsePlayerExtraEntries(player) {
     }));
 }
 
+function findExtraValue(entries, headerName) {
+  if (!headerName) return null;
+  const target = normalizeHeader(headerName);
+  const match = entries.find((entry) => entry.key === target);
+  return match ? { label: match.label, value: match.value } : null;
+}
+
+export function buildDetailSlotDefs(configuredHeaders = [], defaultSlotDefs = []) {
+  const headers = (configuredHeaders || []).map((header) => String(header || '').trim()).filter(Boolean).slice(0, 2);
+  if (!headers.length) return defaultSlotDefs;
+
+  return headers.map((header, index) => ({
+    key: normalizeHeader(header),
+    defaultLabel: header,
+    headerAliases: [normalizeHeader(header)],
+    configuredHeader: header,
+    fallback: defaultSlotDefs[index]?.fallback || (() => '—'),
+  }));
+}
+
 /**
  * Maps optional Excel extra columns onto overlay detail slots.
  * Known header names match first; remaining extras fill empty slots in column order.
@@ -24,6 +44,17 @@ export function resolvePlayerDetailSlots(player, slotDefs) {
   const used = new Set();
 
   return slotDefs.map((slot) => {
+    if (slot.configuredHeader) {
+      const configured = findExtraValue(entries, slot.configuredHeader);
+      if (configured) {
+        return configured;
+      }
+      return {
+        label: slot.defaultLabel,
+        value: slot.fallback(player),
+      };
+    }
+
     const aliases = new Set([
       normalizeHeader(slot.key),
       ...(slot.headerAliases || []).map(normalizeHeader),

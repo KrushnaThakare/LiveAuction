@@ -101,6 +101,10 @@ public class ExcelParserUtil {
 
                 if (name == null || name.isBlank()) continue;
 
+                if (roleStr == null || roleStr.isBlank()) {
+                    roleStr = pullRoleFromExtras(extras);
+                }
+
                 String role = playerRoleService.resolveRole(tournament, roleStr);
                 if (basePrice == null || basePrice <= 0) basePrice = 1000.0;
 
@@ -221,7 +225,8 @@ public class ExcelParserUtil {
         String normalized = normalizeHeader(headerLabel);
         return switch (normalized) {
             case "name", "playername", "player" -> KnownColumn.NAME;
-            case "role", "playerrole" -> KnownColumn.ROLE;
+            case "role", "playerrole", "playingrole", "playertype", "roletype", "position",
+                    "skill", "specialty", "playercategory", "batbowl", "playerroletype" -> KnownColumn.ROLE;
             case "baseprice", "price", "base" -> KnownColumn.BASE_PRICE;
             case "imageurl", "image", "photo", "photourl", "playerphoto" -> KnownColumn.IMAGE_URL;
             case "cricheroesprofileurl", "cricheroesurl", "cricheroes", "cricheroesprofile", "crhprofile", "crh" ->
@@ -301,5 +306,43 @@ public class ExcelParserUtil {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    public LinkedHashMap<String, String> mutableExtrasCopy(Map<String, String> extras) {
+        return extras == null ? new LinkedHashMap<>() : new LinkedHashMap<>(extras);
+    }
+
+    public String extractRoleFromExtras(LinkedHashMap<String, String> extras) {
+        return pullRoleFromExtras(extras);
+    }
+
+    /**
+     * When the role column header was not recognized, role values often land in extra columns.
+     * Pull the first value from a header that looks like a playing role.
+     */
+    private String pullRoleFromExtras(LinkedHashMap<String, String> extras) {
+        if (extras.isEmpty()) return null;
+        String matchedKey = null;
+        String matchedValue = null;
+        for (Map.Entry<String, String> entry : extras.entrySet()) {
+            if (!looksLikeRoleHeader(entry.getKey())) continue;
+            matchedKey = entry.getKey();
+            matchedValue = entry.getValue();
+            break;
+        }
+        if (matchedKey != null) {
+            extras.remove(matchedKey);
+        }
+        return matchedValue;
+    }
+
+    private boolean looksLikeRoleHeader(String header) {
+        String normalized = normalizeHeader(header);
+        if (normalized.isEmpty()) return false;
+        return switch (normalized) {
+            case "role", "playerrole", "playingrole", "playertype", "roletype", "position",
+                    "skill", "specialty", "playercategory", "type", "batbowl", "playerroletype" -> true;
+            default -> normalized.contains("role") || normalized.endsWith("type") || normalized.contains("skill");
+        };
     }
 }
