@@ -159,6 +159,21 @@ public class Tournament {
     @Column(name = "overlay_main_detail_fields", columnDefinition = "TEXT")
     private String overlayMainDetailFields;
 
+    /** Highest sold price reached in this tournament (for record-break overlay) */
+    @Column(name = "highest_sold_bid")
+    @Builder.Default
+    private Double highestSoldBid = 0.0;
+
+    /** Audience Display: play record-break animation on new highest sold price */
+    @Column(name = "overlay_show_record_break")
+    @Builder.Default
+    private Boolean overlayShowRecordBreak = true;
+
+    /** Audience Display: countdown duration in seconds (5, 10, or 15) */
+    @Column(name = "overlay_countdown_seconds")
+    @Builder.Default
+    private Integer overlayCountdownSeconds = 5;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

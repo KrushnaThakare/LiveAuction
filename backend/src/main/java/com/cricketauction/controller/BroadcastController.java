@@ -3,6 +3,7 @@ package com.cricketauction.controller;
 import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.dto.BroadcastSettingsDto;
 import com.cricketauction.entity.Tournament;
+import com.cricketauction.service.OverlayAudienceSignalService;
 import com.cricketauction.service.OverlayPushService;
 import com.cricketauction.service.TournamentService;
 import com.cricketauction.service.WhatsAppNotifyService;
@@ -16,13 +17,16 @@ public class BroadcastController {
     private final TournamentService tournamentService;
     private final OverlayPushService overlayPushService;
     private final WhatsAppNotifyService whatsAppNotifyService;
+    private final OverlayAudienceSignalService overlayAudienceSignalService;
 
     public BroadcastController(TournamentService tournamentService,
                                OverlayPushService overlayPushService,
-                               WhatsAppNotifyService whatsAppNotifyService) {
+                               WhatsAppNotifyService whatsAppNotifyService,
+                               OverlayAudienceSignalService overlayAudienceSignalService) {
         this.tournamentService = tournamentService;
         this.overlayPushService = overlayPushService;
         this.whatsAppNotifyService = whatsAppNotifyService;
+        this.overlayAudienceSignalService = overlayAudienceSignalService;
     }
 
     @GetMapping("/settings")
@@ -62,6 +66,10 @@ public class BroadcastController {
         if (d.getOverlayMainDetailFields() != null) {
             t.setOverlayMainDetailFields(OverlayDetailFieldsUtil.serialize(d.getOverlayMainDetailFields()));
         }
+        if (d.getOverlayShowRecordBreak() != null) t.setOverlayShowRecordBreak(d.getOverlayShowRecordBreak());
+        if (d.getOverlayCountdownSeconds() != null) {
+            t.setOverlayCountdownSeconds(countdownSecondsOrDefault(d.getOverlayCountdownSeconds()));
+        }
         tournamentService.saveTournament(t);
         if (wasEnabled && Boolean.FALSE.equals(t.getOverlayEnabled())) {
             overlayPushService.pushBroadcastDisabled(tournamentId);
@@ -81,6 +89,18 @@ public class BroadcastController {
             overlayPushService.pushLightweightSnapshot(tournamentId);
         }
         return ResponseEntity.ok(ApiResponse.success(map(t, false)));
+    }
+
+    /** Audience Display only — triggers tournament countdown cinematic on studio overlay */
+    @PostMapping("/countdown")
+    public ResponseEntity<ApiResponse<BroadcastSettingsDto>> triggerCountdown(
+            @PathVariable Long tournamentId,
+            @RequestBody(required = false) BroadcastSettingsDto d) {
+        Tournament t = tournamentService.findById(tournamentId);
+        int seconds = countdownSecondsOrDefault(d != null ? d.getOverlayCountdownSeconds() : t.getOverlayCountdownSeconds());
+        overlayAudienceSignalService.triggerCountdown(tournamentId, seconds);
+        overlayPushService.pushStudioSnapshot(tournamentId);
+        return ResponseEntity.ok(ApiResponse.success("Countdown triggered", map(t, false)));
     }
 
     private BroadcastSettingsDto map(Tournament t, boolean includeSecret) {
@@ -107,7 +127,16 @@ public class BroadcastController {
                 .whatsappConfigured(whatsAppNotifyService.isConfigured())
                 .overlayAudienceDetailFields(OverlayDetailFieldsUtil.parse(t.getOverlayAudienceDetailFields()))
                 .overlayMainDetailFields(OverlayDetailFieldsUtil.parse(t.getOverlayMainDetailFields()))
+                .overlayShowRecordBreak(t.getOverlayShowRecordBreak())
+                .overlayCountdownSeconds(countdownSecondsOrDefault(t.getOverlayCountdownSeconds()))
                 .build();
+    }
+
+    private static int countdownSecondsOrDefault(Integer value) {
+        if (value == null) return 5;
+        if (value <= 7) return 5;
+        if (value <= 12) return 10;
+        return 15;
     }
 
     private static int squadSizeOrDefault(Integer value) {

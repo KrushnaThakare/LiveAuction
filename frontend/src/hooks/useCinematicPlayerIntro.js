@@ -4,40 +4,52 @@ import { CINEMATIC_INTRO_MS } from '../constants/cinematicIntroTiming';
 
 /**
  * Audience Display only — plays a full-screen cinematic when a new auction session starts.
- * Returns isPlaying while the sequence runs; sessionReady when main layout can show stats intro.
+ * forcePlayKey: increment to replay intro (e.g. after tournament countdown GO).
  */
-export function useCinematicPlayerIntro(sessionId, status, enabled, durationMs = CINEMATIC_INTRO_MS) {
+export function useCinematicPlayerIntro(sessionId, status, enabled, durationMs = CINEMATIC_INTRO_MS, forcePlayKey = 0) {
   const [isPlaying, setIsPlaying] = useState(false);
   const lastSessionRef = useRef(null);
   const skipInitialRef = useRef(true);
+  const lastForceRef = useRef(forcePlayKey);
+
+  const startIntro = () => {
+    setIsPlaying(true);
+    return setTimeout(
+      () => setIsPlaying(false),
+      Math.max(3000, Number(durationMs) || CINEMATIC_INTRO_MS)
+    );
+  };
 
   useEffect(() => {
     if (!sessionId || status !== 'ACTIVE') {
       setIsPlaying(false);
-      return;
+      return undefined;
+    }
+
+    if (forcePlayKey !== lastForceRef.current) {
+      lastForceRef.current = forcePlayKey;
+      if (!enabled) return undefined;
+      const timer = startIntro();
+      return () => clearTimeout(timer);
     }
 
     if (skipInitialRef.current) {
       skipInitialRef.current = false;
       lastSessionRef.current = sessionId;
-      return;
+      return undefined;
     }
 
-    if (lastSessionRef.current === sessionId) return;
+    if (lastSessionRef.current === sessionId) return undefined;
     lastSessionRef.current = sessionId;
 
     if (!enabled) {
       setIsPlaying(false);
-      return;
+      return undefined;
     }
 
-    setIsPlaying(true);
-    const timer = setTimeout(
-      () => setIsPlaying(false),
-      Math.max(3000, Number(durationMs) || CINEMATIC_INTRO_MS)
-    );
+    const timer = startIntro();
     return () => clearTimeout(timer);
-  }, [durationMs, enabled, sessionId, status]);
+  }, [durationMs, enabled, forcePlayKey, sessionId, status]);
 
   useEffect(() => {
     if (!enabled) setIsPlaying(false);

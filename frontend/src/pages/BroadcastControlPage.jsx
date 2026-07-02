@@ -22,6 +22,8 @@ export default function BroadcastControlPage() {
     publicViewShowUnsold: true,
     overlayAudienceDetailFields: ['', ''],
     overlayMainDetailFields: ['', ''],
+    overlayShowRecordBreak: true,
+    overlayCountdownSeconds: 5,
     tokenEnabled: false,
     overlaySecretToken: '',
     whatsappAutoEnabled: false,
@@ -176,6 +178,30 @@ export default function BroadcastControlPage() {
         <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
           Full-screen squad signing ceremony on the Audience Display after each SOLD gavel. Does not affect the admin auction screen or other overlays.
         </p>
+
+        <div className='pt-3 mt-2 space-y-2' style={{ borderTop: '1px solid var(--color-border)' }}>
+          <h3 className='text-sm font-bold'>Audience Display cinematics</h3>
+          <label><input type='checkbox' checked={settings.overlayShowRecordBreak !== false} onChange={e=>setSettings(s=>({...s,overlayShowRecordBreak:e.target.checked}))} /> Record-break animation on new highest sold price</label>
+          <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+            Plays a premium full-screen record animation before the SOLD gavel when a sale exceeds the tournament&apos;s previous highest price.
+          </p>
+          <label className='block'>
+            <span className='text-sm'>Tournament countdown duration</span>
+            <select
+              className='input mt-1'
+              value={settings.overlayCountdownSeconds || 5}
+              onChange={e=>setSettings(s=>({...s,overlayCountdownSeconds: Number(e.target.value)}))}
+            >
+              <option value={5}>5 seconds</option>
+              <option value={10}>10 seconds</option>
+              <option value={15}>15 seconds</option>
+            </select>
+          </label>
+          <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+            Used when the auction admin triggers Countdown from the live auction screen. Audience Display only.
+          </p>
+        </div>
+
         <label className='block'>
           <span className='text-sm'>Maximum Squad Size</span>
           <SquadSizeInput

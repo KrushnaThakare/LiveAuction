@@ -85,6 +85,8 @@ public class OverlayController {
                 .playerRoles(playerRoleService.getRoles(t))
                 .overlayAudienceDetailFields(OverlayDetailFieldsUtil.parse(t.getOverlayAudienceDetailFields()))
                 .overlayMainDetailFields(OverlayDetailFieldsUtil.parse(t.getOverlayMainDetailFields()))
+                .overlayShowRecordBreak(t.getOverlayShowRecordBreak())
+                .overlayCountdownSeconds(countdownSecondsOrDefault(t.getOverlayCountdownSeconds()))
                 .build();
     }
 
@@ -101,6 +103,13 @@ public class OverlayController {
     private static int squadSizeOrDefault(Integer value) {
         if (value == null) return 15;
         return Math.max(5, Math.min(30, value));
+    }
+
+    private static int countdownSecondsOrDefault(Integer value) {
+        if (value == null) return 5;
+        if (value <= 7) return 5;
+        if (value <= 12) return 10;
+        return 15;
     }
 }
 

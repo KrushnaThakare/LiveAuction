@@ -38,7 +38,7 @@ export default function PublicViewPage() {
   const [unsold, setUnsold]           = useState([]);
   const [loadedTabs, setLoadedTabs]   = useState({});
   const [tabLoading, setTabLoading]   = useState(false);
-  const soldOverlay = useAuctionVerdictOverlay(data?.auction, data?.teams);
+  const { soldOverlay } = useAuctionVerdictOverlay(data?.auction, data?.teams);
   const loadedTabsRef = useRef({});
   const previousAuctionRef = useRef(null);
 

@@ -151,7 +151,10 @@ public class SchemaFixRunner implements ApplicationRunner {
             "public_view_show_sold BOOLEAN DEFAULT TRUE",
             "public_view_show_unsold BOOLEAN DEFAULT TRUE",
             "overlay_audience_detail_fields TEXT",
-            "overlay_main_detail_fields TEXT"
+            "overlay_main_detail_fields TEXT",
+            "highest_sold_bid DOUBLE DEFAULT 0",
+            "overlay_show_record_break BOOLEAN DEFAULT TRUE",
+            "overlay_countdown_seconds INT DEFAULT 5"
         });
     }
 

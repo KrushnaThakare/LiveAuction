@@ -3,18 +3,19 @@ import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { formatSquadPickLabel } from '../utils/formatters';
 
-const SOLD_DURATION_MS = 5600;
 const UNSOLD_DURATION_MS = 4200;
 
 /**
  * Shows the gavel overlay once per closed auction session.
- * Ignores late SOLD/UNSOLD payloads after the admin has already started the next player.
+ * SOLD overlays persist until dismissOverlay() — parent chains record-break → gavel → ceremony.
  */
 export function useAuctionVerdictOverlay(auction, teams) {
   const [soldOverlay, setSoldOverlay] = useState(null);
   const previousAuctionRef = useRef(null);
   const gavelShownForSessionRef = useRef(null);
   const gavelTimerRef = useRef(null);
+
+  const dismissOverlay = () => setSoldOverlay(null);
 
   useEffect(() => () => {
     if (gavelTimerRef.current) clearTimeout(gavelTimerRef.current);
@@ -53,11 +54,9 @@ export function useAuctionVerdictOverlay(auction, teams) {
                 ? (driveImg(frozenPlayer.imageUrl) || resolveUrl(frozenPlayer.imageUrl))
                 : null,
               playerRole: frozenPlayer?.role ?? null,
+              isRecord: current.highestSoldRecord === true,
+              previousRecord: current.previousHighestSoldBid ?? 0,
             });
-            gavelTimerRef.current = setTimeout(() => {
-              setSoldOverlay(null);
-              gavelTimerRef.current = null;
-            }, SOLD_DURATION_MS);
           }
         }
       } else if (current.status === 'UNSOLD') {
@@ -95,5 +94,5 @@ export function useAuctionVerdictOverlay(auction, teams) {
     } : current);
   }, [teams, soldOverlay]);
 
-  return soldOverlay;
+  return { soldOverlay, dismissOverlay };
 }

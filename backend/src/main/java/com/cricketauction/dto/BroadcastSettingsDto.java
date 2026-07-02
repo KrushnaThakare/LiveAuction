@@ -33,4 +33,6 @@ public class BroadcastSettingsDto {
     private java.util.List<PlayerRoleDto> playerRoles;
     private java.util.List<String> overlayAudienceDetailFields;
     private java.util.List<String> overlayMainDetailFields;
+    private Boolean overlayShowRecordBreak;
+    private Integer overlayCountdownSeconds;
 }

@@ -29,6 +29,7 @@ public class AuctionService {
     private final PlayerService            playerService;
     private final BidRuleService           bidRuleService;
     private final AuditLogService          auditLogService;
+    private final OverlayAudienceSignalService overlayAudienceSignalService;
 
     public AuctionService(AuctionSessionRepository auctionSessionRepository,
                           PlayerRepository playerRepository,
@@ -36,7 +37,8 @@ public class AuctionService {
                           TournamentService tournamentService,
                           PlayerService playerService,
                           BidRuleService bidRuleService,
-                          AuditLogService auditLogService) {
+                          AuditLogService auditLogService,
+                          OverlayAudienceSignalService overlayAudienceSignalService) {
         this.auctionSessionRepository = auctionSessionRepository;
         this.playerRepository         = playerRepository;
         this.teamRepository           = teamRepository;
@@ -44,6 +46,7 @@ public class AuctionService {
         this.playerService            = playerService;
         this.bidRuleService           = bidRuleService;
         this.auditLogService          = auditLogService;
+        this.overlayAudienceSignalService = overlayAudienceSignalService;
     }
 
     /* ── start auction for a specific player ── */
@@ -203,7 +206,15 @@ public class AuctionService {
         auditLogService.record("PLAYER_SOLD", "Player", closedPlayer.getId(), tournamentId,
                 "Player #" + closedPlayer.getId() + " " + closedPlayer.getName()
                         + " sold to " + closedWinnerTeam.getName() + " for " + (long) closedBid);
-        return mapToResponse(session);
+
+        Tournament tournament = session.getTournament();
+        double previousHighest = tournament.getHighestSoldBid() == null ? 0.0 : tournament.getHighestSoldBid();
+        boolean isRecord = closedBid > previousHighest;
+        if (isRecord) {
+            tournament.setHighestSoldBid(closedBid);
+            tournamentService.saveTournament(tournament);
+        }
+        return mapToResponse(session, isRecord, isRecord ? previousHighest : null);
     }
 
     /* ── mark unsold ── */
@@ -291,6 +302,12 @@ public class AuctionService {
         bumpStateRevision(session);
         auctionSessionRepository.save(session);
 
+        if (wasSold) {
+            Tournament tournament = tournamentService.findById(tournamentId);
+            refreshHighestSoldBid(tournament);
+            tournamentService.saveTournament(tournament);
+        }
+
         // Return current auction state (idle, ready for next player)
         return getAuctionState(tournamentId);
     }
@@ -321,15 +338,32 @@ public class AuctionService {
                 .findTopByTournamentIdOrderByIdDesc(tournamentId);
         return last.map(this::mapToResponse).orElseGet(() -> {
                 Tournament tournament = tournamentService.findById(tournamentId);
-                return AuctionStateResponse.builder()
-                        .status(AuctionSession.AuctionStatus.IDLE)
-                        .tournamentId(tournamentId)
-                        .bidRevision(0L)
-                        .currentBid(0.0)
-                        .cinematicIntroLive(cinematicIntroLive(tournament))
-                        .whatsappAutoEnabled(tournament.getWhatsappAutoEnabled())
-                        .build();
+                return buildIdleState(tournament);
         });
+    }
+
+    private AuctionStateResponse buildIdleState(Tournament tournament) {
+        var countdown = overlayAudienceSignalService.latestCountdown(tournament.getId());
+        return AuctionStateResponse.builder()
+                .status(AuctionSession.AuctionStatus.IDLE)
+                .tournamentId(tournament.getId())
+                .bidRevision(0L)
+                .currentBid(0.0)
+                .cinematicIntroLive(cinematicIntroLive(tournament))
+                .whatsappAutoEnabled(tournament.getWhatsappAutoEnabled())
+                .tournamentHighestSoldBid(safeHighestSoldBid(tournament))
+                .audienceCountdownId(countdown != null ? countdown.id() : null)
+                .audienceCountdownSeconds(countdown != null ? countdown.seconds() : null)
+                .build();
+    }
+
+    private void refreshHighestSoldBid(Tournament tournament) {
+        Double max = playerRepository.findMaxSoldBidByTournament(tournament.getId());
+        tournament.setHighestSoldBid(max != null ? max : 0.0);
+    }
+
+    private double safeHighestSoldBid(Tournament tournament) {
+        return tournament.getHighestSoldBid() == null ? 0.0 : tournament.getHighestSoldBid();
     }
 
     /* ── history ── */
@@ -394,10 +428,16 @@ public class AuctionService {
     }
 
     private AuctionStateResponse mapToResponse(AuctionSession session) {
+        return mapToResponse(session, null, null);
+    }
+
+    private AuctionStateResponse mapToResponse(AuctionSession session, Boolean highestSoldRecord, Double previousHighestSoldBid) {
         double current = session.getCurrentBid();
         double next = current + bidRuleService.getIncrement(session.getTournament().getId(), current);
         Player currentPlayer = resolveSessionPlayer(session);
         Team highestBidderTeam = resolveSessionTeam(session);
+        Tournament tournament = session.getTournament();
+        var countdown = overlayAudienceSignalService.latestCountdown(tournament.getId());
 
         // A session is undoable if it is SOLD or UNSOLD and has undo metadata
         boolean undoable = (session.getStatus() == AuctionSession.AuctionStatus.SOLD
@@ -413,11 +453,16 @@ public class AuctionService {
                 .highestBidderTeamId(highestBidderTeam != null ? highestBidderTeam.getId() : null)
                 .highestBidderTeamName(highestBidderTeam != null ? highestBidderTeam.getName() : null)
                 .nextBidAmount(next)
-                .tournamentId(session.getTournament().getId())
+                .tournamentId(tournament.getId())
                 .undoable(undoable)
                 .undoSessionId(undoable ? session.getId() : null)
-                .cinematicIntroLive(cinematicIntroLive(session.getTournament()))
-                .whatsappAutoEnabled(session.getTournament().getWhatsappAutoEnabled())
+                .cinematicIntroLive(cinematicIntroLive(tournament))
+                .whatsappAutoEnabled(tournament.getWhatsappAutoEnabled())
+                .highestSoldRecord(highestSoldRecord)
+                .previousHighestSoldBid(previousHighestSoldBid)
+                .tournamentHighestSoldBid(safeHighestSoldBid(tournament))
+                .audienceCountdownId(countdown != null ? countdown.id() : null)
+                .audienceCountdownSeconds(countdown != null ? countdown.seconds() : null)
                 .build();
     }
 

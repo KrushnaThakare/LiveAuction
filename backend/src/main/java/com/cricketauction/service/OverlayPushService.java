@@ -55,6 +55,13 @@ public class OverlayPushService {
         pushSnapshotPayload(tournamentId, auction, true);
     }
 
+    /** Studio overlay screens (Audience Display) — bypasses overlayEnabled gate */
+    @Async("overlayPushExecutor")
+    public void pushStudioSnapshot(Long tournamentId) {
+        AuctionStateResponse auction = auctionService.getAuctionState(tournamentId);
+        pushStudioSnapshotPayload(tournamentId, auction, true);
+    }
+
     @Async("overlayPushExecutor")
     public void pushBroadcastDisabled(Long tournamentId) {
         messagingTemplate.convertAndSend("/topic/overlay/" + tournamentId + "/snapshot",
@@ -66,6 +73,10 @@ public class OverlayPushService {
         if (!Boolean.TRUE.equals(tournament.getOverlayEnabled())) {
             return;
         }
+        pushStudioSnapshotPayload(tournamentId, auction, includePlayers);
+    }
+
+    private void pushStudioSnapshotPayload(Long tournamentId, AuctionStateResponse auction, boolean includePlayers) {
         List<TeamResponse> teams = includePlayers
                 ? teamService.getTeamsByTournament(tournamentId)
                 : teamService.getTeamSummariesByTournament(tournamentId);
