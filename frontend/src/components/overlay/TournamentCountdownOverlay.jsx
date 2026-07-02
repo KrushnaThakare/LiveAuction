@@ -66,7 +66,7 @@ export default function TournamentCountdownOverlay({
       <div className={styles.particles} />
       <div className={styles.zoom} />
 
-      {(phase === 'welcome' || phase === 'logo' || phase === 'begin' || phase === 'count' || goVisible) && (
+      {(phase === 'intro' || phase === 'welcome' || phase === 'logo' || phase === 'begin' || phase === 'count' || goVisible) && (
         <div className={styles.welcomeBlock}>
           <div className={styles.welcomeKicker}>WELCOME TO</div>
           <div className={styles.tournamentName}>{tournamentName}</div>
