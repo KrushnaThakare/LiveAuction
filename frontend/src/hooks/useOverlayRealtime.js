@@ -7,7 +7,7 @@ const WS_BASE = API_BASE.replace(/^http/i, 'ws');
 const POLL_MS_DISCONNECTED = 1500;
 const SUMMARY_REFRESH_MS = 12000;
 const SQUAD_REFRESH_MS = 20000;
-const WS_STALE_MS = 15000;
+const WS_STALE_MS = 45000;
 
 function getBidRevision(auction) {
   const revision = Number(auction?.bidRevision);
@@ -243,17 +243,19 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       }
     };
 
+    const isSocketOpen = () => wsRef.current?.readyState === WebSocket.OPEN;
+
     const startPolling = () => {
       clearTimers();
 
       timersRef.current.poll = setInterval(() => {
-        if (stoppedRef.current || connectedRef.current) return;
+        if (stoppedRef.current || isSocketOpen()) return;
         fetchSnapshot('poll-snapshot', false);
       }, POLL_MS_DISCONNECTED);
 
       timersRef.current.summary = setInterval(() => {
         if (stoppedRef.current) return;
-        if (connectedRef.current) {
+        if (isSocketOpen()) {
           fetchSnapshot('summary-refresh', includePlayers);
         }
       }, SUMMARY_REFRESH_MS);
@@ -261,16 +263,20 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       if (includePlayers) {
         timersRef.current.squad = setInterval(() => {
           if (stoppedRef.current) return;
-          fetchSnapshot('squad-refresh', true);
+          if (isSocketOpen()) {
+            fetchSnapshot('squad-refresh', true);
+          }
         }, SQUAD_REFRESH_MS);
       }
 
       timersRef.current.staleCheck = setInterval(() => {
-        if (stoppedRef.current || !connectedRef.current) return;
-        if (lastWsMessageAtRef.current && Date.now() - lastWsMessageAtRef.current > WS_STALE_MS) {
-          logTransport('polling', '(websocket stale — no messages)');
-          setTransportMode('polling');
-        }
+        if (stoppedRef.current || !isSocketOpen() || !connectedRef.current) return;
+        if (!lastWsMessageAtRef.current) return;
+        if (Date.now() - lastWsMessageAtRef.current <= WS_STALE_MS) return;
+        logTransport('reconnecting', '(websocket stale — no overlay messages)');
+        lastWsMessageAtRef.current = Date.now();
+        closeWebSocket();
+        connectWebSocket();
       }, 5000);
     };
 
@@ -338,6 +344,10 @@ export function useOverlayRealtime(tournamentId, token, options = {}) {
       };
 
       ws.onerror = () => {
+        if (ws.readyState === WebSocket.OPEN) {
+          logTransport('websocket', '(transient error — socket still open)');
+          return;
+        }
         logTransport('polling', '(websocket error)');
         setTransportMode('polling');
       };
