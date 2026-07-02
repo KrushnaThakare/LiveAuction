@@ -40,6 +40,12 @@ export default function TournamentCountdownOverlay({
   }, [numbers]);
 
   useEffect(() => {
+    const maxMs = INTRO_MS + numbers.length * 1000 + GO_MS + 2500;
+    const failSafe = setTimeout(() => onComplete?.(), maxMs);
+    return () => clearTimeout(failSafe);
+  }, [numbers.length, onComplete]);
+
+  useEffect(() => {
     if (phase !== 'count') return undefined;
     if (count <= 0) {
       setGoVisible(true);

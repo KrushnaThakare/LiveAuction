@@ -26,6 +26,26 @@ import { resolveSquadSize } from '../utils/squadFormation';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
+const FALLBACK_DETAIL_SLOT = { label: 'Detail', value: '—' };
+
+function safeDetailSlots(player, configuredFields) {
+  try {
+    const slots = resolvePlayerDetailSlots(
+      player,
+      buildDetailSlotDefs(configuredFields, AUDIENCE_DETAIL_SLOTS),
+    );
+    return [
+      slots?.[0] || FALLBACK_DETAIL_SLOT,
+      slots?.[1] || { label: 'Age', value: '—' },
+    ];
+  } catch (error) {
+    console.error('[Audience Display] detail slot resolution failed', error);
+    return [
+      { label: 'Category', value: player?.category || player?.teamName || 'Open Pool' },
+      { label: 'Age', value: player?.age || 'Auction Pool' },
+    ];
+  }
+}
 
 function PlayerStatsPanel({ player }) {
   if (!hasPlayerStats(player)) return null;
@@ -120,7 +140,7 @@ export default function AuctionDisplayPage() {
     setRecordBreakDone(true);
   }, []);
 
-  const { active: countdownActive, dismiss: dismissCountdown } = useAudienceCountdown(auction);
+  const { active: countdownActive, dismiss: dismissCountdown } = useAudienceCountdown(auction, tid);
   const [introForceKey, setIntroForceKey] = useState(0);
 
   const handleCountdownComplete = useCallback(() => {
@@ -142,21 +162,25 @@ export default function AuctionDisplayPage() {
     CINEMATIC_INTRO_MS,
     introForceKey,
   );
+  const showCinematicLayer = cinematicPlaying && Boolean(auction?.sessionId);
   const showStatsIntro = useTimedPlayerStatsOverlay(
     player,
     auction?.sessionId,
     config?.overlayShowPlayerStatsIntro !== false && sessionReady,
     config?.overlayPlayerStatsIntroMs || 5500
   );
-  const [categorySlot, ageSlot] = resolvePlayerDetailSlots(
-    player,
-    buildDetailSlotDefs(config?.overlayAudienceDetailFields, AUDIENCE_DETAIL_SLOTS),
-  );
+  const [categorySlot, ageSlot] = safeDetailSlots(player, config?.overlayAudienceDetailFields);
 
   return (
-    <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''} ${cinematicPlaying ? styles.cinematicMode : ''}`}>
+    <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''} ${showCinematicLayer ? styles.cinematicMode : ''}`}>
       <OverlayFullscreenButton />
-      <div className={`${styles.shell} ${cinematicPlaying ? styles.shellDuringCinematic : ''}`}>
+      {!data && transport === 'connecting' && (
+        <div className={styles.bootState}>
+          <div className={styles.bootPulse} />
+          <div>Connecting Audience Display…</div>
+        </div>
+      )}
+      <div className={`${styles.shell} ${showCinematicLayer ? styles.shellDuringCinematic : ''}`}>
         <header className={styles.topBar}>
           <div>
             <div className={styles.brandKicker}>
@@ -325,7 +349,7 @@ export default function AuctionDisplayPage() {
         />
       )}
 
-      {cinematicPlaying && (
+      {showCinematicLayer && (
         <CinematicPlayerIntro
           player={player}
           playerRoles={config?.playerRoles}
