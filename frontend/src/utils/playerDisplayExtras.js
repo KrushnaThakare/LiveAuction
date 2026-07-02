@@ -2,8 +2,42 @@ function normalizeHeader(label) {
   return String(label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+export function normalizeConfiguredHeaders(configuredHeaders) {
+  if (Array.isArray(configuredHeaders)) {
+    return configuredHeaders
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+      .slice(0, 2);
+  }
+  if (typeof configuredHeaders === 'string' && configuredHeaders.trim()) {
+    try {
+      const parsed = JSON.parse(configuredHeaders);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((value) => String(value || '').trim())
+          .filter(Boolean)
+          .slice(0, 2);
+      }
+    } catch {
+      return configuredHeaders
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .slice(0, 2);
+    }
+  }
+  return [];
+}
+
 export function parsePlayerExtraEntries(player) {
-  const raw = player?.extraData;
+  let raw = player?.extraData;
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
   if (!raw || typeof raw !== 'object') return [];
   return Object.entries(raw)
     .filter(([, value]) => value != null && String(value).trim() !== '')
@@ -22,16 +56,24 @@ function findExtraValue(entries, headerName) {
 }
 
 export function buildDetailSlotDefs(configuredHeaders = [], defaultSlotDefs = []) {
-  const headers = (configuredHeaders || []).map((header) => String(header || '').trim()).filter(Boolean).slice(0, 2);
-  if (!headers.length) return defaultSlotDefs;
+  const defaults = defaultSlotDefs.length
+    ? defaultSlotDefs
+    : [{ key: 'detail', defaultLabel: 'Detail', headerAliases: [], fallback: () => '—' }];
+  const headers = normalizeConfiguredHeaders(configuredHeaders);
+  if (!headers.length) return defaults;
 
-  return headers.map((header, index) => ({
+  const slots = headers.map((header, index) => ({
     key: normalizeHeader(header),
     defaultLabel: header,
     headerAliases: [normalizeHeader(header)],
     configuredHeader: header,
-    fallback: defaultSlotDefs[index]?.fallback || (() => '—'),
+    fallback: defaults[index]?.fallback || defaults[defaults.length - 1]?.fallback || (() => '—'),
   }));
+
+  while (slots.length < defaults.length) {
+    slots.push(defaults[slots.length]);
+  }
+  return slots;
 }
 
 /**
@@ -40,10 +82,11 @@ export function buildDetailSlotDefs(configuredHeaders = [], defaultSlotDefs = []
  * Slots without data keep their existing fallback label/value.
  */
 export function resolvePlayerDetailSlots(player, slotDefs) {
+  const safeDefs = Array.isArray(slotDefs) && slotDefs.length ? slotDefs : AUDIENCE_DETAIL_SLOTS;
   const entries = parsePlayerExtraEntries(player);
   const used = new Set();
 
-  return slotDefs.map((slot) => {
+  return safeDefs.map((slot) => {
     if (slot.configuredHeader) {
       const configured = findExtraValue(entries, slot.configuredHeader);
       if (configured) {
