@@ -20,7 +20,7 @@ import toast from 'react-hot-toast';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
-  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X, Clapperboard,
+  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X, Clapperboard, Timer,
 } from 'lucide-react';
 
 function getDynamicIncrement(rules, amount, fallbackNextBid) {
@@ -126,6 +126,8 @@ export default function AuctionPage() {
   const [showKeyHelp, setShowKeyHelp]           = useState(false);
   const [cinematicIntroSetting, setCinematicIntroSetting] = useState(false);
   const [cinematicIntroLive, setCinematicIntroLive] = useState(true);
+  const [countdownSeconds, setCountdownSeconds] = useState(5);
+  const [countdownLoading, setCountdownLoading] = useState(false);
   const containerRef = useRef(null);
   const bidUpdateSeq = useRef(0);
   const callingBidInFlightRef = useRef(false);
@@ -208,6 +210,7 @@ export default function AuctionPage() {
       ]);
       applyServerAuctionState(sRes.data.data, 'fetch-all-state');
       setCinematicIntroSetting(bRes.data.data?.overlayShowCinematicIntro === true);
+      setCountdownSeconds(bRes.data.data?.overlayCountdownSeconds || 5);
       if (sRes.data.data?.cinematicIntroLive != null) {
         setCinematicIntroLive(sRes.data.data.cinematicIntroLive !== false);
       } else if (bRes.data.data?.overlayCinematicIntroLive != null) {
@@ -239,6 +242,19 @@ export default function AuctionPage() {
       toast.error('Could not update intro setting');
     }
   }, [activeTournament, auctionState, cinematicIntroLive]);
+
+  const triggerAudienceCountdown = useCallback(async () => {
+    if (!activeTournament || countdownLoading) return;
+    setCountdownLoading(true);
+    try {
+      await broadcastApi.triggerCountdown(activeTournament.id, countdownSeconds);
+      toast.success('Audience countdown started');
+    } catch {
+      toast.error('Could not start countdown');
+    } finally {
+      setCountdownLoading(false);
+    }
+  }, [activeTournament, countdownLoading, countdownSeconds]);
 
   useEffect(() => {
     if (auctionState?.cinematicIntroLive != null) {
@@ -727,6 +743,15 @@ export default function AuctionPage() {
               Intro: {cinematicIntroLive ? 'ON' : 'OFF'}
             </button>
           )}
+          <button
+            className="btn-secondary !px-3 !py-2 text-xs font-bold"
+            title={`Start Audience Display countdown (${countdownSeconds}s)`}
+            onClick={triggerAudienceCountdown}
+            disabled={countdownLoading}
+          >
+            <Timer size={14} className="inline mr-1.5" />
+            Countdown
+          </button>
           <button className="btn-secondary !p-2" onClick={toggleFullscreen} title="F=Fullscreen">
             {fullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
           </button>

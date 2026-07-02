@@ -6,4 +6,7 @@ export const broadcastApi = {
   setCinematicIntroLive: (tid, enabled) => api.patch(`/tournaments/${tid}/broadcast/cinematic-intro-live`, {
     overlayCinematicIntroLive: enabled,
   }),
+  triggerCountdown: (tid, seconds) => api.post(`/tournaments/${tid}/broadcast/countdown`, {
+    overlayCountdownSeconds: seconds,
+  }),
 };

@@ -14,10 +14,13 @@ import { getAuctionDisplayName, getRoleShortLabel, formatSquadPickLabel } from '
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
 import GavelOverlay from '../components/common/GavelOverlay';
 import CinematicPlayerIntro from '../components/overlay/CinematicPlayerIntro';
+import RecordBreakOverlay from '../components/overlay/RecordBreakOverlay';
+import TournamentCountdownOverlay from '../components/overlay/TournamentCountdownOverlay';
 import SquadFormationCeremony from '../components/overlay/SquadFormationCeremony';
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import { useAuctionVerdictOverlay } from '../hooks/useAuctionVerdictOverlay';
-import { useSquadFormationCeremony } from '../hooks/useSquadFormationCeremony';
+import { useAudienceCountdown } from '../hooks/useAudienceCountdown';
+import { CINEMATIC_INTRO_MS } from '../constants/cinematicIntroTiming';
 import { resolveSquadSize } from '../utils/squadFormation';
 import styles from './AuctionDisplay.module.css';
 
@@ -75,7 +78,20 @@ export default function AuctionDisplayPage() {
   const isResult = status === 'SOLD' || status === 'UNSOLD';
   const isSold = status === 'SOLD';
   const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
-  const soldOverlay = useAuctionVerdictOverlay(auction, teams);
+  const { soldOverlay, dismissOverlay } = useAuctionVerdictOverlay(auction, teams);
+  const recordBreakEnabled = config?.overlayShowRecordBreak !== false;
+  const [recordBreakDone, setRecordBreakDone] = useState(false);
+  const needsRecordBreak = soldOverlay?.verdict === 'SOLD'
+    && soldOverlay?.isRecord
+    && recordBreakEnabled;
+
+  useEffect(() => {
+    setRecordBreakDone(false);
+  }, [soldOverlay?.sessionKey]);
+
+  const showRecordBreak = Boolean(soldOverlay && needsRecordBreak && !recordBreakDone);
+  const showGavel = Boolean(soldOverlay && !showRecordBreak);
+
   const {
     active: ceremonyActive,
     phase: ceremonyPhase,
@@ -93,9 +109,25 @@ export default function AuctionDisplayPage() {
   } = useSquadFormationCeremony(ceremonyEnabled, teams, config?.playerRoles, squadSize);
 
   const handleGavelComplete = useCallback(() => {
-    if (!ceremonyEnabled || soldOverlay?.verdict !== 'SOLD') return;
-    beginCeremony(soldOverlay);
-  }, [beginCeremony, ceremonyEnabled, soldOverlay]);
+    if (ceremonyEnabled && soldOverlay?.verdict === 'SOLD') {
+      beginCeremony(soldOverlay);
+    }
+    dismissOverlay();
+  }, [beginCeremony, ceremonyEnabled, dismissOverlay, soldOverlay]);
+
+  const handleRecordBreakComplete = useCallback(() => {
+    setRecordBreakDone(true);
+  }, []);
+
+  const { active: countdownActive, dismiss: dismissCountdown } = useAudienceCountdown(auction);
+  const [introForceKey, setIntroForceKey] = useState(0);
+
+  const handleCountdownComplete = useCallback(() => {
+    dismissCountdown();
+    if (config?.overlayShowCinematicIntro === true && auction?.cinematicIntroLive !== false && player) {
+      setIntroForceKey((k) => k + 1);
+    }
+  }, [auction?.cinematicIntroLive, config?.overlayShowCinematicIntro, dismissCountdown, player]);
 
   const showResultLayer = isResult && !soldOverlay && !ceremonyActive;
   const ceremonyTeam = teams.find((t) => t.id === activeTeamId);
@@ -105,7 +137,9 @@ export default function AuctionDisplayPage() {
   const { isPlaying: cinematicPlaying, sessionReady } = useCinematicPlayerIntro(
     auction?.sessionId,
     status,
-    cinematicEnabled
+    cinematicEnabled,
+    CINEMATIC_INTRO_MS,
+    introForceKey,
   );
   const showStatsIntro = useTimedPlayerStatsOverlay(
     player,
@@ -236,7 +270,20 @@ export default function AuctionDisplayPage() {
         </section>
       )}
 
-      {soldOverlay && (
+      {showRecordBreak && (
+        <RecordBreakOverlay
+          key={`record-${soldOverlay.sessionKey}`}
+          name={soldOverlay.name}
+          team={soldOverlay.team}
+          teamLogo={soldOverlay.teamLogo}
+          amount={soldOverlay.amount}
+          previousRecord={soldOverlay.previousRecord}
+          playerImageUrl={soldOverlay.playerImageUrl}
+          onComplete={handleRecordBreakComplete}
+        />
+      )}
+
+      {showGavel && (
         <GavelOverlay
           key={soldOverlay.sessionKey}
           verdict={soldOverlay.verdict}
@@ -246,7 +293,7 @@ export default function AuctionDisplayPage() {
           amount={soldOverlay.amount}
           squadPick={soldOverlay.squadPick}
           duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
-          onComplete={ceremonyEnabled && soldOverlay.verdict === 'SOLD' ? handleGavelComplete : undefined}
+          onComplete={soldOverlay.verdict === 'SOLD' ? handleGavelComplete : dismissOverlay}
         />
       )}
 
@@ -264,6 +311,16 @@ export default function AuctionDisplayPage() {
           registerNextSlot={registerNextSlot}
           sourceRef={sourceRef}
           onFlyComplete={completeFly}
+        />
+      )}
+
+      {countdownActive && (
+        <TournamentCountdownOverlay
+          key={countdownActive.id}
+          tournamentName={config?.auctionDisplayName || config?.tournamentName || title}
+          logoUrl={config?.logoUrl}
+          countdownSeconds={countdownActive.seconds}
+          onComplete={handleCountdownComplete}
         />
       )}
 
