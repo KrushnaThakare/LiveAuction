@@ -28,7 +28,7 @@ export function useCinematicPlayerIntro(sessionId, status, enabled, durationMs =
 
     if (forcePlayKey !== lastForceRef.current) {
       lastForceRef.current = forcePlayKey;
-      if (!enabled) return undefined;
+      if (!enabled || forcePlayKey === 0) return undefined;
       const timer = startIntro();
       return () => clearTimeout(timer);
     }

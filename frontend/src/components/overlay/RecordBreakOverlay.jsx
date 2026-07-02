@@ -34,7 +34,11 @@ export default function RecordBreakOverlay({
       setTimeout(() => setPhase(5), 4200),
       setTimeout(() => onComplete?.(), DURATION_MS),
     ];
-    return () => timers.forEach(clearTimeout);
+    const failSafe = setTimeout(() => onComplete?.(), DURATION_MS + 500);
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(failSafe);
+    };
   }, [onComplete]);
 
   useEffect(() => {
