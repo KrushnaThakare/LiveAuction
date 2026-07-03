@@ -16,7 +16,9 @@ public class AuctionConstraintService {
             return false;
         }
         int playersLeft = maxSquadSize - playerCount;
-        double minReserve = playersLeft * Math.max(0.0, basePrice);
+        // Reserve base price only for slots still to fill after this purchase.
+        int slotsAfterPurchase = Math.max(0, playersLeft - 1);
+        double minReserve = slotsAfterPurchase * Math.max(0.0, basePrice);
         double maxAllowedBid = remainingBudget - minReserve;
         return bidAmount <= maxAllowedBid;
     }
@@ -26,7 +28,8 @@ public class AuctionConstraintService {
             return 0.0;
         }
         int playersLeft = maxSquadSize - playerCount;
-        double minReserve = playersLeft * Math.max(0.0, basePrice);
+        int slotsAfterPurchase = Math.max(0, playersLeft - 1);
+        double minReserve = slotsAfterPurchase * Math.max(0.0, basePrice);
         return Math.max(0.0, remainingBudget - minReserve);
     }
 

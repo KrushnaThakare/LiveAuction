@@ -15,7 +15,8 @@ export function maxAllowedBid(team, maxSquadSize, basePrice) {
   const purse = Number(team?.remainingBudget) || 0;
   if (playerCount >= squadSize) return 0;
   const playersLeft = squadSize - playerCount;
-  const minReserve = playersLeft * Math.max(0, basePrice);
+  const slotsAfterPurchase = Math.max(0, playersLeft - 1);
+  const minReserve = slotsAfterPurchase * Math.max(0, basePrice);
   return Math.max(0, purse - minReserve);
 }
 
