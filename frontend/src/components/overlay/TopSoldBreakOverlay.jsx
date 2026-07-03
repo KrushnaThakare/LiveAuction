@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Crown, UserRound } from 'lucide-react';
 import { resolveUrl } from '../../utils/resolveUrl';
-import { playBassHit, playCelebration } from '../../utils/overlayAudio';
+import { playBassHit } from '../../utils/overlayAudio';
 import styles from './TopSoldBreakOverlay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -12,34 +12,18 @@ export default function TopSoldBreakOverlay({
   players = [],
   tournamentName,
   logoUrl,
-  onRevealComplete,
 }) {
   const [phase, setPhase] = useState(0);
-  const [visibleCount, setVisibleCount] = useState(0);
   const list = players.slice(0, 5);
 
   useEffect(() => {
     setPhase(0);
-    setVisibleCount(0);
     const timers = [
-      setTimeout(() => { setPhase(1); playBassHit(); }, 400),
-      setTimeout(() => setPhase(2), 1200),
+      setTimeout(() => { setPhase(1); playBassHit(); }, 80),
+      setTimeout(() => setPhase(2), 280),
     ];
     return () => timers.forEach(clearTimeout);
   }, [players]);
-
-  useEffect(() => {
-    if (phase < 2 || !list.length) return undefined;
-    const timers = [];
-    list.forEach((_, index) => {
-      timers.push(setTimeout(() => {
-        setVisibleCount(index + 1);
-        if (index === 0) playCelebration();
-        if (index === list.length - 1) onRevealComplete?.();
-      }, index * 650));
-    });
-    return () => timers.forEach(clearTimeout);
-  }, [phase, list, onRevealComplete]);
 
   return (
     <div className={`${styles.overlay} ${styles[`phase${phase}`]}`} aria-hidden="true">
@@ -59,17 +43,16 @@ export default function TopSoldBreakOverlay({
         </header>
       )}
 
-      {phase >= 2 && (
+      {phase >= 2 && list.length > 0 && (
         <div className={styles.grid}>
           {list.map((player, index) => {
             const rank = player.rank || index + 1;
             const isTop = rank === 1;
-            const shown = index < visibleCount;
             return (
               <article
                 key={player.playerId || `${player.playerName}-${index}`}
-                className={`${styles.card} ${shown ? styles.cardIn : ''} ${isTop ? styles.cardTop : ''}`}
-                style={{ animationDelay: `${index * 0.08}s` }}
+                className={`${styles.card} ${styles.cardIn} ${isTop ? styles.cardTop : ''}`}
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className={styles.rankBadge}>
                   {isTop ? <Crown size={22} /> : RANK_LABELS[index] || `#${rank}`}
@@ -100,7 +83,7 @@ export default function TopSoldBreakOverlay({
         </div>
       )}
 
-      {!list.length && phase >= 2 && (
+      {phase >= 2 && !list.length && (
         <div className={styles.empty}>No sold players yet</div>
       )}
     </div>

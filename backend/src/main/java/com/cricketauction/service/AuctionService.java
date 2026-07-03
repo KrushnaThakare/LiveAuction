@@ -30,6 +30,7 @@ public class AuctionService {
     private final BidRuleService           bidRuleService;
     private final AuditLogService          auditLogService;
     private final OverlayAudienceSignalService overlayAudienceSignalService;
+    private final TopSoldCacheService      topSoldCacheService;
 
     public AuctionService(AuctionSessionRepository auctionSessionRepository,
                           PlayerRepository playerRepository,
@@ -38,7 +39,8 @@ public class AuctionService {
                           PlayerService playerService,
                           BidRuleService bidRuleService,
                           AuditLogService auditLogService,
-                          OverlayAudienceSignalService overlayAudienceSignalService) {
+                          OverlayAudienceSignalService overlayAudienceSignalService,
+                          TopSoldCacheService topSoldCacheService) {
         this.auctionSessionRepository = auctionSessionRepository;
         this.playerRepository         = playerRepository;
         this.teamRepository           = teamRepository;
@@ -47,6 +49,7 @@ public class AuctionService {
         this.bidRuleService           = bidRuleService;
         this.auditLogService          = auditLogService;
         this.overlayAudienceSignalService = overlayAudienceSignalService;
+        this.topSoldCacheService      = topSoldCacheService;
     }
 
     /* ── start auction for a specific player ── */
@@ -214,6 +217,7 @@ public class AuctionService {
             tournament.setHighestSoldBid(closedBid);
             tournamentService.saveTournament(tournament);
         }
+        topSoldCacheService.refresh(tournamentId);
         return mapToResponse(session, isRecord, isRecord ? previousHighest : null);
     }
 
@@ -306,6 +310,7 @@ public class AuctionService {
             Tournament tournament = tournamentService.findById(tournamentId);
             refreshHighestSoldBid(tournament);
             tournamentService.saveTournament(tournament);
+            topSoldCacheService.refresh(tournamentId);
         }
 
         // Return current auction state (idle, ready for next player)
@@ -344,7 +349,6 @@ public class AuctionService {
 
     private AuctionStateResponse buildIdleState(Tournament tournament) {
         var countdown = overlayAudienceSignalService.latestCountdown(tournament.getId());
-        var topSold = overlayAudienceSignalService.latestTopSold(tournament.getId());
         return AuctionStateResponse.builder()
                 .status(AuctionSession.AuctionStatus.IDLE)
                 .tournamentId(tournament.getId())
@@ -355,7 +359,6 @@ public class AuctionService {
                 .tournamentHighestSoldBid(safeHighestSoldBid(tournament))
                 .audienceCountdownId(countdown != null ? countdown.id() : null)
                 .audienceCountdownSeconds(countdown != null ? countdown.seconds() : null)
-                .audienceTopSoldId(topSold != null ? topSold.id() : null)
                 .build();
     }
 
@@ -440,7 +443,6 @@ public class AuctionService {
         Team highestBidderTeam = resolveSessionTeam(session);
         Tournament tournament = session.getTournament();
         var countdown = overlayAudienceSignalService.latestCountdown(tournament.getId());
-        var topSold = overlayAudienceSignalService.latestTopSold(tournament.getId());
 
         // A session is undoable if it is SOLD or UNSOLD and has undo metadata
         boolean undoable = (session.getStatus() == AuctionSession.AuctionStatus.SOLD
@@ -466,7 +468,6 @@ public class AuctionService {
                 .tournamentHighestSoldBid(safeHighestSoldBid(tournament))
                 .audienceCountdownId(countdown != null ? countdown.id() : null)
                 .audienceCountdownSeconds(countdown != null ? countdown.seconds() : null)
-                .audienceTopSoldId(topSold != null ? topSold.id() : null)
                 .build();
     }
 

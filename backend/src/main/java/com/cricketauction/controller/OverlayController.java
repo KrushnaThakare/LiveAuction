@@ -6,7 +6,7 @@ import com.cricketauction.dto.BroadcastSettingsDto;
 import com.cricketauction.dto.TeamResponse;
 import com.cricketauction.dto.TopSoldPlayerResponse;
 import com.cricketauction.service.AuctionService;
-import com.cricketauction.service.PlayerService;
+import com.cricketauction.service.TopSoldCacheService;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.exception.AuctionException;
 import com.cricketauction.service.TeamService;
@@ -27,14 +27,14 @@ public class OverlayController {
     private final TeamService teamService;
     private final TournamentService tournamentService;
     private final PlayerRoleService playerRoleService;
-    private final PlayerService playerService;
+    private final TopSoldCacheService topSoldCacheService;
 
-    public OverlayController(AuctionService auctionService, TeamService teamService, TournamentService tournamentService, PlayerRoleService playerRoleService, PlayerService playerService) {
+    public OverlayController(AuctionService auctionService, TeamService teamService, TournamentService tournamentService, PlayerRoleService playerRoleService, TopSoldCacheService topSoldCacheService) {
         this.auctionService = auctionService;
         this.teamService = teamService;
         this.tournamentService = tournamentService;
         this.playerRoleService = playerRoleService;
-        this.playerService = playerService;
+        this.topSoldCacheService = topSoldCacheService;
     }
 
     @GetMapping("/{tournamentId}/snapshot")
@@ -62,7 +62,7 @@ public class OverlayController {
             @RequestParam(value = "limit", defaultValue = "5") int limit) {
         Tournament t = tournamentService.findById(tournamentId);
         validateOverlayAccess(t, token, true);
-        List<TopSoldPlayerResponse> players = playerService.getTopSoldPlayers(tournamentId, limit);
+        List<TopSoldPlayerResponse> players = topSoldCacheService.getOrRefresh(tournamentId);
         return ResponseEntity.ok(ApiResponse.success(players != null ? players : Collections.emptyList()));
     }
 

@@ -20,7 +20,7 @@ import toast from 'react-hot-toast';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
-  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X, Clapperboard, Timer, Trophy,
+  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X, Clapperboard, Timer,
 } from 'lucide-react';
 
 function getDynamicIncrement(rules, amount, fallbackNextBid) {
@@ -134,7 +134,6 @@ export default function AuctionPage() {
   const [cinematicIntroLive, setCinematicIntroLive] = useState(true);
   const [countdownSeconds, setCountdownSeconds] = useState(5);
   const [countdownLoading, setCountdownLoading] = useState(false);
-  const [topSoldLoading, setTopSoldLoading] = useState(false);
   const containerRef = useRef(null);
   const bidUpdateSeq = useRef(0);
   const callingBidInFlightRef = useRef(false);
@@ -262,19 +261,6 @@ export default function AuctionPage() {
       setCountdownLoading(false);
     }
   }, [activeTournament, countdownLoading, countdownSeconds]);
-
-  const triggerTopSoldReveal = useCallback(async () => {
-    if (!activeTournament || topSoldLoading) return;
-    setTopSoldLoading(true);
-    try {
-      await broadcastApi.triggerTopSold(activeTournament.id);
-      toast.success('Top 5 sold overlay triggered — switch OBS to Top 5 Sold scene');
-    } catch {
-      toast.error('Could not trigger top sold overlay');
-    } finally {
-      setTopSoldLoading(false);
-    }
-  }, [activeTournament, topSoldLoading]);
 
   useEffect(() => {
     if (auctionState?.cinematicIntroLive != null) {
@@ -771,15 +757,6 @@ export default function AuctionPage() {
           >
             <Timer size={14} className="inline mr-1.5" />
             Countdown
-          </button>
-          <button
-            className="btn-secondary !px-3 !py-2 text-xs font-bold"
-            title="Show top 5 highest sold on break overlay (OBS Top 5 Sold scene)"
-            onClick={triggerTopSoldReveal}
-            disabled={topSoldLoading}
-          >
-            <Trophy size={14} className="inline mr-1.5" />
-            Top 5
           </button>
           <button className="btn-secondary !p-2" onClick={toggleFullscreen} title="F=Fullscreen">
             {fullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}

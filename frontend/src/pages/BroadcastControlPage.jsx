@@ -201,9 +201,6 @@ export default function BroadcastControlPage() {
           <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
             Used when the auction admin triggers Countdown from the live auction screen. Audience Display only.
           </p>
-          <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
-            Top 5 Sold overlay: add the &quot;Top 5 Sold&quot; OBS scene from links below. Trigger from the auction desk during breaks — does not run during live bidding.
-          </p>
         </div>
 
         <label className='block'>
@@ -256,6 +253,9 @@ export default function BroadcastControlPage() {
         </div>)}
         <button className='btn-secondary' onClick={addRule}>Add Rule</button>
       </div>
+      <p className='text-xs mb-3' style={{ color: 'var(--color-text-secondary)' }}>
+        Top 5 Sold is a break-only scene — open the link in OBS when needed. The list is pre-stored and fetched once on load (no live auction load).
+      </p>
       {links.map(([name, url]) => <div key={name} className='card mb-3 p-3'>
         <p className='font-semibold'>{name}</p>
         <input readOnly className='input w-full' value={url} />
