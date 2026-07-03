@@ -16,6 +16,7 @@ public interface PlayerRepository extends JpaRepository<Player, Long> {
     List<Player> findByTournamentIdAndStatus(Long tournamentId, Player.PlayerStatus status);
     List<Player> findByTournamentIdAndTeamId(Long tournamentId, Long teamId);
     long countByTournamentIdAndStatus(Long tournamentId, Player.PlayerStatus status);
+    long countByTournamentIdAndTeamId(Long tournamentId, Long teamId);
 
     @Query(value = "SELECT id FROM players WHERE tournament_id = :tournamentId AND status = :status ORDER BY RAND() LIMIT 1",
             nativeQuery = true)
