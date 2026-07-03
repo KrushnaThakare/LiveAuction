@@ -22,6 +22,7 @@ import { useAuctionVerdictOverlay } from '../hooks/useAuctionVerdictOverlay';
 import { useAudienceCountdown } from '../hooks/useAudienceCountdown';
 import { useSquadFormationCeremony } from '../hooks/useSquadFormationCeremony';
 import { CINEMATIC_INTRO_MS } from '../constants/cinematicIntroTiming';
+import { GAVEL_SOLD_MS, GAVEL_UNSOLD_MS } from '../constants/gavelTiming';
 import { resolveSquadSize } from '../utils/squadFormation';
 import styles from './AuctionDisplay.module.css';
 
@@ -122,7 +123,7 @@ export default function AuctionDisplayPage() {
     prevRecordFlagRef.current = isRecord;
   }, [recordBreakEnabled, soldOverlay?.isRecord]);
 
-  const showGavel = Boolean(soldOverlay && !gavelDone);
+  const showGavel = Boolean(soldOverlay && !(gavelDone && needsRecordBreak));
   const showRecordBreak = Boolean(soldOverlay && needsRecordBreak && gavelDone && !recordBreakDone);
   const soldOverlayRef = useRef(soldOverlay);
   soldOverlayRef.current = soldOverlay;
@@ -333,7 +334,7 @@ export default function AuctionDisplayPage() {
           teamLogo={soldOverlay.teamLogo}
           amount={soldOverlay.amount}
           squadPick={soldOverlay.squadPick}
-          duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
+          duration={soldOverlay.verdict === 'SOLD' ? GAVEL_SOLD_MS : GAVEL_UNSOLD_MS}
           onComplete={soldOverlay.verdict === 'SOLD' ? handleGavelComplete : dismissOverlay}
         />
       )}

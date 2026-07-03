@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { formatSquadPickLabel } from '../utils/formatters';
+import { GAVEL_UNSOLD_MS } from '../constants/gavelTiming';
 
-const UNSOLD_DURATION_MS = 4200;
+const UNSOLD_DURATION_MS = GAVEL_UNSOLD_MS;
 
 function resolveSoldRecord(current, previous) {
   if (current?.highestSoldRecord === true) {
@@ -43,13 +44,14 @@ export function useAuctionVerdictOverlay(auction, teams) {
 
     const sameSession = previous?.sessionId != null && previous.sessionId === current.sessionId;
 
-    // New auction started — drop any stale sold gavel from the previous session
-    if (current.status === 'ACTIVE' && previous?.status !== 'ACTIVE') {
-      if (gavelTimerRef.current) {
-        clearTimeout(gavelTimerRef.current);
-        gavelTimerRef.current = null;
-      }
-      setSoldOverlay((prev) => (prev ? null : prev));
+    // Drop stale sold gavel only when a NEW active session starts (not on random ACTIVE frames)
+    if (current.status === 'ACTIVE') {
+      const activeSessionId = String(current.sessionId);
+      setSoldOverlay((prev) => {
+        if (!prev) return prev;
+        if (prev.sessionKey === activeSessionId) return prev;
+        return null;
+      });
     }
 
     if (previous?.status === 'ACTIVE' && sameSession) {
