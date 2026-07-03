@@ -33,6 +33,4 @@ public class AuctionStateResponse {
     private Long audienceCountdownId;
     /** Audience countdown seconds (5, 10, or 15) */
     private Integer audienceCountdownSeconds;
-    /** Audience top-sold reveal signal id */
-    private Long audienceTopSoldId;
 }

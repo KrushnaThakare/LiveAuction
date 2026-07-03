@@ -34,8 +34,8 @@ public interface PlayerRepository extends JpaRepository<Player, Long> {
             nativeQuery = true)
     Double findMaxSoldBidByTournament(@Param("tournamentId") Long tournamentId);
 
-    @Query("SELECT p FROM Player p LEFT JOIN FETCH p.team WHERE p.tournament.id = :tournamentId AND p.status = :status ORDER BY p.currentBid DESC")
-    java.util.List<Player> findTopSoldWithTeam(@Param("tournamentId") Long tournamentId, @Param("status") Player.PlayerStatus status, org.springframework.data.domain.Pageable pageable);
+    @Query("SELECT p FROM Player p WHERE p.tournament.id = :tournamentId AND p.status = :status ORDER BY p.currentBid DESC")
+    java.util.List<Player> findTopSoldByPrice(@Param("tournamentId") Long tournamentId, @Param("status") Player.PlayerStatus status, org.springframework.data.domain.Pageable pageable);
 
     void deleteByTournamentId(Long tournamentId);
 }

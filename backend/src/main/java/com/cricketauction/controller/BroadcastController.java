@@ -103,15 +103,6 @@ public class BroadcastController {
         return ResponseEntity.ok(ApiResponse.success("Countdown triggered", map(t, false)));
     }
 
-    /** Break overlay — triggers top-5 highest sold reveal on /overlay/top-sold OBS scene */
-    @PostMapping("/top-sold")
-    public ResponseEntity<ApiResponse<BroadcastSettingsDto>> triggerTopSold(@PathVariable Long tournamentId) {
-        Tournament t = tournamentService.findById(tournamentId);
-        overlayAudienceSignalService.triggerTopSold(tournamentId);
-        overlayPushService.pushStudioSnapshot(tournamentId);
-        return ResponseEntity.ok(ApiResponse.success("Top sold reveal triggered", map(t, false)));
-    }
-
     private BroadcastSettingsDto map(Tournament t, boolean includeSecret) {
         return BroadcastSettingsDto.builder()
                 .overlayEnabled(t.getOverlayEnabled())

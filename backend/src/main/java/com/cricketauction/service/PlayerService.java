@@ -354,7 +354,7 @@ public class PlayerService {
     public List<TopSoldPlayerResponse> getTopSoldPlayers(Long tournamentId, int limit) {
         int safeLimit = Math.max(1, Math.min(5, limit));
         tournamentService.findById(tournamentId);
-        List<Player> players = playerRepository.findTopSoldWithTeam(
+        List<Player> players = playerRepository.findTopSoldByPrice(
                 tournamentId, Player.PlayerStatus.SOLD, PageRequest.of(0, safeLimit));
         List<TopSoldPlayerResponse> result = new java.util.ArrayList<>();
         int rank = 1;
