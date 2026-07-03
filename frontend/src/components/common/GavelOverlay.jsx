@@ -20,9 +20,10 @@ import { formatCurrency } from '../../utils/formatters';
  *   amount    final bid amount (SOLD only)
  *   squadPick squad position label e.g. "10th Player" (SOLD only)
  *   duration  total display time in ms (default 5500)
+ *   onRevealResult optional callback when fade begins (reveal sold stamp underneath)
  *   onComplete optional callback when overlay finishes
  */
-export default function GavelOverlay({ verdict, name, team, teamLogo, amount, squadPick, duration = 5500, onComplete }) {
+export default function GavelOverlay({ verdict, name, team, teamLogo, amount, squadPick, duration = 5500, onRevealResult, onComplete }) {
   const isSold = verdict === 'SOLD';
 
   // Colour scheme
@@ -39,7 +40,9 @@ export default function GavelOverlay({ verdict, name, team, teamLogo, amount, sq
   const [showDetails, setDetails] = useState(false);
   const [exiting, setExiting]     = useState(false);
   const onCompleteRef = useRef(onComplete);
+  const onRevealResultRef = useRef(onRevealResult);
   onCompleteRef.current = onComplete;
+  onRevealResultRef.current = onRevealResult;
 
   useEffect(() => {
     // 100ms: gavel swings down
@@ -50,9 +53,12 @@ export default function GavelOverlay({ verdict, name, team, teamLogo, amount, sq
     const t3 = setTimeout(() => setVerdict(true), 850);
     // 1200ms: player name + details
     const t4 = setTimeout(() => setDetails(true), 1200);
-    // near end: start fade
+    // Reveal sold stamp under gavel as fade begins
     const fadeMs = Math.max(400, duration - 600);
-    const t5 = setTimeout(() => setExiting(true), fadeMs);
+    const t5 = setTimeout(() => {
+      onRevealResultRef.current?.();
+      setExiting(true);
+    }, fadeMs);
     const finish = () => onCompleteRef.current?.();
     const t6 = setTimeout(finish, duration);
     const failSafe = setTimeout(finish, duration + 500);

@@ -103,6 +103,7 @@ export default function AuctionDisplayPage() {
   const recordBreakEnabled = config?.overlayShowRecordBreak !== false;
   const [gavelDone, setGavelDone] = useState(false);
   const [recordBreakDone, setRecordBreakDone] = useState(false);
+  const [resultRevealed, setResultRevealed] = useState(false);
   const prevRecordFlagRef = useRef(false);
   const needsRecordBreak = soldOverlay?.verdict === 'SOLD'
     && soldOverlay?.isRecord
@@ -111,8 +112,17 @@ export default function AuctionDisplayPage() {
   useEffect(() => {
     setGavelDone(false);
     setRecordBreakDone(false);
+    setResultRevealed(false);
     prevRecordFlagRef.current = false;
   }, [soldOverlay?.sessionKey]);
+
+  useEffect(() => {
+    if (status === 'ACTIVE' || status === 'IDLE') {
+      setResultRevealed(false);
+      setGavelDone(false);
+      setRecordBreakDone(false);
+    }
+  }, [status, auction?.sessionId]);
 
   useEffect(() => {
     const isRecord = soldOverlay?.isRecord === true;
@@ -150,6 +160,18 @@ export default function AuctionDisplayPage() {
     exitDurationMs,
   } = useSquadFormationCeremony(ceremonyEnabled, teams, config?.playerRoles, squadSize);
 
+  const soldSequenceBlocking = Boolean(soldOverlay) || showRecordBreak || (ceremonyEnabled && ceremonyActive);
+
+  const handleGavelRevealResult = useCallback(() => {
+    const overlay = soldOverlayRef.current;
+    const willPlayRecord = overlay?.verdict === 'SOLD'
+      && overlay?.isRecord
+      && recordBreakEnabled;
+    if (!willPlayRecord) {
+      setResultRevealed(true);
+    }
+  }, [recordBreakEnabled]);
+
   const handleGavelComplete = useCallback(() => {
     setGavelDone(true);
     const overlay = soldOverlayRef.current;
@@ -165,6 +187,7 @@ export default function AuctionDisplayPage() {
 
   const handleRecordBreakComplete = useCallback(() => {
     setRecordBreakDone(true);
+    setResultRevealed(true);
     const overlay = soldOverlayRef.current;
     if (ceremonyEnabled && overlay?.verdict === 'SOLD') {
       beginCeremony(overlay);
@@ -182,9 +205,11 @@ export default function AuctionDisplayPage() {
     }
   }, [auction?.cinematicIntroLive, config?.overlayShowCinematicIntro, dismissCountdown, player]);
 
-  const showResultLayer = isResult && !soldOverlay && !ceremonyActive;
+  const showResultLayer = isResult && resultRevealed && !ceremonyActive && !showRecordBreak;
   const ceremonyTeam = teams.find((t) => t.id === activeTeamId);
-  const cinematicEnabled = config?.overlayShowCinematicIntro === true && auction?.cinematicIntroLive !== false;
+  const cinematicEnabled = config?.overlayShowCinematicIntro === true
+    && auction?.cinematicIntroLive !== false
+    && !soldSequenceBlocking;
   const bidPopEnabled = config?.overlayShowBidPop !== false;
   const bidPopToken = useOverlayBidPop(auction?.currentBid, auction?.sessionId, bidPopEnabled && status === 'ACTIVE');
   const { isPlaying: cinematicPlaying, sessionReady } = useCinematicPlayerIntro(
@@ -337,6 +362,7 @@ export default function AuctionDisplayPage() {
           amount={soldOverlay.amount}
           squadPick={soldOverlay.squadPick}
           duration={gavelDuration}
+          onRevealResult={handleGavelRevealResult}
           onComplete={soldOverlay.verdict === 'SOLD' ? handleGavelComplete : dismissOverlay}
         />
       )}
