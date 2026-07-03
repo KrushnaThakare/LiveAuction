@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
@@ -103,7 +103,6 @@ export default function AuctionDisplayPage() {
   const recordBreakEnabled = config?.overlayShowRecordBreak !== false;
   const [gavelDone, setGavelDone] = useState(false);
   const [recordBreakDone, setRecordBreakDone] = useState(false);
-  const [resultRevealed, setResultRevealed] = useState(false);
   const prevRecordFlagRef = useRef(false);
   const needsRecordBreak = soldOverlay?.verdict === 'SOLD'
     && soldOverlay?.isRecord
@@ -112,17 +111,8 @@ export default function AuctionDisplayPage() {
   useEffect(() => {
     setGavelDone(false);
     setRecordBreakDone(false);
-    setResultRevealed(false);
     prevRecordFlagRef.current = false;
   }, [soldOverlay?.sessionKey]);
-
-  useEffect(() => {
-    if (status === 'ACTIVE' || status === 'IDLE') {
-      setResultRevealed(false);
-      setGavelDone(false);
-      setRecordBreakDone(false);
-    }
-  }, [status, auction?.sessionId]);
 
   useEffect(() => {
     const isRecord = soldOverlay?.isRecord === true;
@@ -136,13 +126,6 @@ export default function AuctionDisplayPage() {
   const showRecordBreak = Boolean(soldOverlay && needsRecordBreak && gavelDone && !recordBreakDone);
   const soldOverlayRef = useRef(soldOverlay);
   soldOverlayRef.current = soldOverlay;
-
-  const gavelDuration = useMemo(() => {
-    if (soldOverlay?.verdict !== 'SOLD') return 4000;
-    const hasFollowUp = ceremonyEnabled
-      || (soldOverlay?.isRecord && recordBreakEnabled);
-    return hasFollowUp ? 5500 : 3200;
-  }, [soldOverlay?.verdict, soldOverlay?.isRecord, ceremonyEnabled, recordBreakEnabled]);
 
   const {
     active: ceremonyActive,
@@ -160,17 +143,7 @@ export default function AuctionDisplayPage() {
     exitDurationMs,
   } = useSquadFormationCeremony(ceremonyEnabled, teams, config?.playerRoles, squadSize);
 
-  const soldSequenceBlocking = Boolean(soldOverlay) || showRecordBreak || (ceremonyEnabled && ceremonyActive);
-
-  const handleGavelRevealResult = useCallback(() => {
-    const overlay = soldOverlayRef.current;
-    const willPlayRecord = overlay?.verdict === 'SOLD'
-      && overlay?.isRecord
-      && recordBreakEnabled;
-    if (!willPlayRecord) {
-      setResultRevealed(true);
-    }
-  }, [recordBreakEnabled]);
+  const soldSequenceActive = Boolean(soldOverlay) || showRecordBreak || (ceremonyEnabled && ceremonyActive);
 
   const handleGavelComplete = useCallback(() => {
     setGavelDone(true);
@@ -187,7 +160,6 @@ export default function AuctionDisplayPage() {
 
   const handleRecordBreakComplete = useCallback(() => {
     setRecordBreakDone(true);
-    setResultRevealed(true);
     const overlay = soldOverlayRef.current;
     if (ceremonyEnabled && overlay?.verdict === 'SOLD') {
       beginCeremony(overlay);
@@ -205,11 +177,11 @@ export default function AuctionDisplayPage() {
     }
   }, [auction?.cinematicIntroLive, config?.overlayShowCinematicIntro, dismissCountdown, player]);
 
-  const showResultLayer = isResult && resultRevealed && !ceremonyActive && !showRecordBreak;
+  const showResultLayer = isResult && !soldOverlay && !ceremonyActive;
   const ceremonyTeam = teams.find((t) => t.id === activeTeamId);
   const cinematicEnabled = config?.overlayShowCinematicIntro === true
     && auction?.cinematicIntroLive !== false
-    && !soldSequenceBlocking;
+    && !soldSequenceActive;
   const bidPopEnabled = config?.overlayShowBidPop !== false;
   const bidPopToken = useOverlayBidPop(auction?.currentBid, auction?.sessionId, bidPopEnabled && status === 'ACTIVE');
   const { isPlaying: cinematicPlaying, sessionReady } = useCinematicPlayerIntro(
@@ -361,8 +333,7 @@ export default function AuctionDisplayPage() {
           teamLogo={soldOverlay.teamLogo}
           amount={soldOverlay.amount}
           squadPick={soldOverlay.squadPick}
-          duration={gavelDuration}
-          onRevealResult={handleGavelRevealResult}
+          duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
           onComplete={soldOverlay.verdict === 'SOLD' ? handleGavelComplete : dismissOverlay}
         />
       )}
