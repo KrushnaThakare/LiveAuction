@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatCurrency } from '../../utils/formatters';
 
 /**
@@ -38,6 +38,8 @@ export default function GavelOverlay({ verdict, name, team, teamLogo, amount, sq
   const [showVerdict, setVerdict] = useState(false);
   const [showDetails, setDetails] = useState(false);
   const [exiting, setExiting]     = useState(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     // 100ms: gavel swings down
@@ -49,11 +51,14 @@ export default function GavelOverlay({ verdict, name, team, teamLogo, amount, sq
     // 1200ms: player name + details
     const t4 = setTimeout(() => setDetails(true), 1200);
     // near end: start fade
-    const t5 = setTimeout(() => setExiting(true), duration - 600);
-    const t6 = setTimeout(() => onComplete?.(), duration);
+    const fadeMs = Math.max(400, duration - 600);
+    const t5 = setTimeout(() => setExiting(true), fadeMs);
+    const finish = () => onCompleteRef.current?.();
+    const t6 = setTimeout(finish, duration);
+    const failSafe = setTimeout(finish, duration + 500);
 
-    return () => [t1, t2, t3, t4, t5, t6].forEach(clearTimeout);
-  }, [duration, onComplete]);
+    return () => [t1, t2, t3, t4, t5, t6, failSafe].forEach(clearTimeout);
+  }, [duration]);
 
   return (
     <div
