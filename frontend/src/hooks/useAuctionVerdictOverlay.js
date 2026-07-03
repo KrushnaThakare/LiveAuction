@@ -43,6 +43,15 @@ export function useAuctionVerdictOverlay(auction, teams) {
 
     const sameSession = previous?.sessionId != null && previous.sessionId === current.sessionId;
 
+    // New auction started — drop any stale sold gavel from the previous session
+    if (current.status === 'ACTIVE' && previous?.status !== 'ACTIVE') {
+      if (gavelTimerRef.current) {
+        clearTimeout(gavelTimerRef.current);
+        gavelTimerRef.current = null;
+      }
+      setSoldOverlay(null);
+    }
+
     if (previous?.status === 'ACTIVE' && sameSession) {
       if (current.status === 'SOLD') {
         const sessionKey = String(current.sessionId);
