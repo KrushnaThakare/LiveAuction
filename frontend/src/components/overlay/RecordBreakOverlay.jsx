@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { UserRound } from 'lucide-react';
+import { RECORD_BREAK_MS } from '../../constants/recordBreakTiming';
 import { playBassHit, playCelebration } from '../../utils/overlayAudio';
 import styles from './RecordBreakOverlay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
-
-const DURATION_MS = 4800;
 
 export default function RecordBreakOverlay({
   name,
@@ -21,20 +20,22 @@ export default function RecordBreakOverlay({
 
   const increment = useMemo(() => {
     const diff = Math.max(0, amount - previousRecord);
-    const steps = Math.min(40, Math.max(8, Math.round(diff / 1000)));
+    const steps = Math.min(50, Math.max(10, Math.round(diff / 500)));
     return diff / steps;
   }, [amount, previousRecord]);
 
   useEffect(() => {
+    const { freeze, title, hero, sale, recordBar, celebration, complete } = RECORD_BREAK_MS;
     const timers = [
-      setTimeout(() => { setPhase(1); playBassHit(); }, 300),
-      setTimeout(() => setPhase(2), 1100),
-      setTimeout(() => setPhase(3), 2200),
-      setTimeout(() => { setPhase(4); playCelebration(); }, 3600),
-      setTimeout(() => setPhase(5), 4200),
-      setTimeout(() => onComplete?.(), DURATION_MS),
+      setTimeout(() => { setPhase(1); playBassHit(); }, freeze),
+      setTimeout(() => setPhase(2), title),
+      setTimeout(() => setPhase(3), hero),
+      setTimeout(() => setPhase(4), sale),
+      setTimeout(() => { setPhase(5); playCelebration(); }, recordBar),
+      setTimeout(() => setPhase(6), celebration),
+      setTimeout(() => onComplete?.(), complete),
     ];
-    const failSafe = setTimeout(() => onComplete?.(), DURATION_MS + 500);
+    const failSafe = setTimeout(() => onComplete?.(), complete + 800);
     return () => {
       timers.forEach(clearTimeout);
       clearTimeout(failSafe);
@@ -42,13 +43,15 @@ export default function RecordBreakOverlay({
   }, [onComplete]);
 
   useEffect(() => {
-    if (phase < 3) {
+    if (phase < 4) {
       setDisplayAmount(previousRecord);
       return undefined;
     }
     let current = previousRecord;
     const target = amount;
-    const stepMs = Math.max(40, Math.floor(1100 / Math.max(8, Math.round((target - previousRecord) / Math.max(increment, 1)))));
+    const countWindowMs = RECORD_BREAK_MS.recordBar - RECORD_BREAK_MS.sale;
+    const steps = Math.max(10, Math.round((target - previousRecord) / Math.max(increment, 1)));
+    const stepMs = Math.max(55, Math.floor(countWindowMs / steps));
     const id = setInterval(() => {
       current = Math.min(target, current + increment);
       setDisplayAmount(current);
@@ -96,7 +99,7 @@ export default function RecordBreakOverlay({
         <div className={styles.sparkles} />
       </div>
 
-      {phase >= 3 && (
+      {phase >= 4 && (
         <div className={styles.saleBlock}>
           <div className={styles.playerName}>{name}</div>
           <div className={styles.soldTo}>SOLD TO</div>
@@ -112,7 +115,7 @@ export default function RecordBreakOverlay({
         </div>
       )}
 
-      {phase >= 4 && (
+      {phase >= 5 && (
         <div className={styles.recordBar}>
           <div className={styles.prevRecord}>
             <span>Previous Record</span>
@@ -125,7 +128,7 @@ export default function RecordBreakOverlay({
         </div>
       )}
 
-      {phase >= 5 && (
+      {phase >= 6 && (
         <>
           <div className={styles.flashBurst} />
           <div className={styles.fireworks}>

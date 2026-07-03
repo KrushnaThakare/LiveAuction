@@ -20,7 +20,8 @@
 .phase2 .freeze,
 .phase3 .freeze,
 .phase4 .freeze,
-.phase5 .freeze {
+.phase5 .freeze,
+.phase6 .freeze {
   opacity: 1;
 }
 
@@ -43,7 +44,8 @@
 .phase2 .rays,
 .phase3 .rays,
 .phase4 .rays,
-.phase5 .rays {
+.phase5 .rays,
+.phase6 .rays {
   opacity: 1;
 }
 
@@ -88,7 +90,9 @@
   animation: recordParticlesDrift 3s linear infinite, recordFadeIn 0.6s ease forwards;
 }
 
-.phase4 .particles::after {
+.phase4 .particles::after,
+.phase5 .particles::after,
+.phase6 .particles::after {
   animation: recordParticlesDrift 2.2s linear infinite reverse, recordFadeIn 0.4s ease forwards;
 }
 
@@ -101,11 +105,14 @@
   opacity: 0;
 }
 
-.phase4 .confetti span {
+.phase4 .confetti span,
+.phase5 .confetti span,
+.phase6 .confetti span {
   animation: recordConfetti 1.4s ease-out forwards;
 }
 
-.phase5 .fireworks span {
+.phase5 .fireworks span,
+.phase6 .fireworks span {
   animation: recordFirework 1.1s ease-out forwards;
 }
 
@@ -155,7 +162,8 @@
 .phase2 .heroZone,
 .phase3 .heroZone,
 .phase4 .heroZone,
-.phase5 .heroZone {
+.phase5 .heroZone,
+.phase6 .heroZone {
   animation: recordHeroIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
@@ -213,7 +221,8 @@
 .phase2 .sparkles::before,
 .phase3 .sparkles::before,
 .phase4 .sparkles::before,
-.phase5 .sparkles::before {
+.phase5 .sparkles::before,
+.phase6 .sparkles::before {
   opacity: 1;
 }
 
