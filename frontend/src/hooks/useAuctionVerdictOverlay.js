@@ -49,7 +49,7 @@ export function useAuctionVerdictOverlay(auction, teams) {
         clearTimeout(gavelTimerRef.current);
         gavelTimerRef.current = null;
       }
-      setSoldOverlay(null);
+      setSoldOverlay((prev) => (prev ? null : prev));
     }
 
     if (previous?.status === 'ACTIVE' && sameSession) {
