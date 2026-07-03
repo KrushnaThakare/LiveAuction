@@ -9,4 +9,5 @@ export const broadcastApi = {
   triggerCountdown: (tid, seconds) => api.post(`/tournaments/${tid}/broadcast/countdown`, {
     overlayCountdownSeconds: seconds,
   }),
+  triggerTopSold: (tid) => api.post(`/tournaments/${tid}/broadcast/top-sold`),
 };

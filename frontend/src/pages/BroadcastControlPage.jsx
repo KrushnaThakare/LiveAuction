@@ -113,6 +113,7 @@ export default function BroadcastControlPage() {
     ['Sold Screen', `${base}/overlay/sold?tournamentId=${tid}${tokenQ}`],
     ['Unsold Screen', `${base}/overlay/unsold?tournamentId=${tid}${tokenQ}`],
     ['Break Screen', `${base}/overlay/break-screen?tournamentId=${tid}${tokenQ}`],
+    ['Top 5 Sold', `${base}/overlay/top-sold?tournamentId=${tid}${tokenQ}`],
   ];
 
   return <div className='max-w-4xl mx-auto px-4 py-8'>
@@ -199,6 +200,9 @@ export default function BroadcastControlPage() {
           </label>
           <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
             Used when the auction admin triggers Countdown from the live auction screen. Audience Display only.
+          </p>
+          <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+            Top 5 Sold overlay: add the &quot;Top 5 Sold&quot; OBS scene from links below. Trigger from the auction desk during breaks — does not run during live bidding.
           </p>
         </div>
 

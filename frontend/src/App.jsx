@@ -26,6 +26,7 @@ import OverlayTickerPage from './pages/OverlayTickerPage';
 import OverlaySoldPage from './pages/OverlaySoldPage';
 import OverlayUnsoldPage from './pages/OverlayUnsoldPage';
 import OverlayBreakScreenPage from './pages/OverlayBreakScreenPage';
+import OverlayTopSoldPage from './pages/OverlayTopSoldPage';
 import AuctionDisplayPage from './pages/AuctionDisplayPage';
 import AuctionDisplayErrorBoundary from './components/overlay/AuctionDisplayErrorBoundary';
 import BroadcastControlPage from './pages/BroadcastControlPage';
@@ -89,6 +90,7 @@ function AppRoutes() {
       <Route path="/overlay/sold" element={<OverlaySoldPage />} />
       <Route path="/overlay/unsold" element={<OverlayUnsoldPage />} />
       <Route path="/overlay/break-screen" element={<OverlayBreakScreenPage />} />
+      <Route path="/overlay/top-sold" element={<OverlayTopSoldPage />} />
       <Route path="/auction-display" element={<AuctionDisplayErrorBoundary><AuctionDisplayPage /></AuctionDisplayErrorBoundary>} />
       <Route path="/display-screen" element={<AuctionDisplayErrorBoundary><AuctionDisplayPage /></AuctionDisplayErrorBoundary>} />
 

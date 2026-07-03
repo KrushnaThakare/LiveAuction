@@ -16,13 +16,7 @@ export default function RecordBreakOverlay({
   onComplete,
 }) {
   const [phase, setPhase] = useState(0);
-  const [displayAmount, setDisplayAmount] = useState(previousRecord);
-
-  const increment = useMemo(() => {
-    const diff = Math.max(0, amount - previousRecord);
-    const steps = Math.min(50, Math.max(10, Math.round(diff / 500)));
-    return diff / steps;
-  }, [amount, previousRecord]);
+  const finalAmount = useMemo(() => money(amount), [amount]);
 
   useEffect(() => {
     const { freeze, title, hero, sale, recordBar, celebration, complete } = RECORD_BREAK_MS;
@@ -32,33 +26,14 @@ export default function RecordBreakOverlay({
       setTimeout(() => setPhase(3), hero),
       setTimeout(() => setPhase(4), sale),
       setTimeout(() => { setPhase(5); playCelebration(); }, recordBar),
-      setTimeout(() => setPhase(6), celebration),
       setTimeout(() => onComplete?.(), complete),
     ];
-    const failSafe = setTimeout(() => onComplete?.(), complete + 800);
+    const failSafe = setTimeout(() => onComplete?.(), complete + 500);
     return () => {
       timers.forEach(clearTimeout);
       clearTimeout(failSafe);
     };
   }, [onComplete]);
-
-  useEffect(() => {
-    if (phase < 4) {
-      setDisplayAmount(previousRecord);
-      return undefined;
-    }
-    let current = previousRecord;
-    const target = amount;
-    const countWindowMs = RECORD_BREAK_MS.recordBar - RECORD_BREAK_MS.sale;
-    const steps = Math.max(10, Math.round((target - previousRecord) / Math.max(increment, 1)));
-    const stepMs = Math.max(55, Math.floor(countWindowMs / steps));
-    const id = setInterval(() => {
-      current = Math.min(target, current + increment);
-      setDisplayAmount(current);
-      if (current >= target) clearInterval(id);
-    }, stepMs);
-    return () => clearInterval(id);
-  }, [amount, increment, phase, previousRecord]);
 
   return (
     <div className={`${styles.overlay} ${styles[`phase${phase}`]}`} aria-hidden="true">
@@ -111,25 +86,22 @@ export default function RecordBreakOverlay({
             )}
             <span className={styles.teamName}>{team}</span>
           </div>
-          <div className={styles.amount}>{money(displayAmount)}</div>
+          <div key={phase} className={`${styles.amount} ${styles.amountZoom}`}>{finalAmount}</div>
         </div>
       )}
 
       {phase >= 5 && (
-        <div className={styles.recordBar}>
-          <div className={styles.prevRecord}>
-            <span>Previous Record</span>
-            <strong>{money(previousRecord)}</strong>
-          </div>
-          <div className={styles.newRecord}>
-            <span>NEW RECORD</span>
-            <strong>{money(amount)}</strong>
-          </div>
-        </div>
-      )}
-
-      {phase >= 6 && (
         <>
+          <div className={styles.recordBar}>
+            <div className={styles.prevRecord}>
+              <span>Previous Record</span>
+              <strong>{money(previousRecord)}</strong>
+            </div>
+            <div className={styles.newRecord}>
+              <span>NEW RECORD</span>
+              <strong>{money(amount)}</strong>
+            </div>
+          </div>
           <div className={styles.flashBurst} />
           <div className={styles.fireworks}>
             {Array.from({ length: 12 }, (_, i) => (
