@@ -344,6 +344,7 @@ public class AuctionService {
 
     private AuctionStateResponse buildIdleState(Tournament tournament) {
         var countdown = overlayAudienceSignalService.latestCountdown(tournament.getId());
+        var topSold = overlayAudienceSignalService.latestTopSold(tournament.getId());
         return AuctionStateResponse.builder()
                 .status(AuctionSession.AuctionStatus.IDLE)
                 .tournamentId(tournament.getId())
@@ -354,6 +355,7 @@ public class AuctionService {
                 .tournamentHighestSoldBid(safeHighestSoldBid(tournament))
                 .audienceCountdownId(countdown != null ? countdown.id() : null)
                 .audienceCountdownSeconds(countdown != null ? countdown.seconds() : null)
+                .audienceTopSoldId(topSold != null ? topSold.id() : null)
                 .build();
     }
 
@@ -438,6 +440,7 @@ public class AuctionService {
         Team highestBidderTeam = resolveSessionTeam(session);
         Tournament tournament = session.getTournament();
         var countdown = overlayAudienceSignalService.latestCountdown(tournament.getId());
+        var topSold = overlayAudienceSignalService.latestTopSold(tournament.getId());
 
         // A session is undoable if it is SOLD or UNSOLD and has undo metadata
         boolean undoable = (session.getStatus() == AuctionSession.AuctionStatus.SOLD
@@ -463,6 +466,7 @@ public class AuctionService {
                 .tournamentHighestSoldBid(safeHighestSoldBid(tournament))
                 .audienceCountdownId(countdown != null ? countdown.id() : null)
                 .audienceCountdownSeconds(countdown != null ? countdown.seconds() : null)
+                .audienceTopSoldId(topSold != null ? topSold.id() : null)
                 .build();
     }
 

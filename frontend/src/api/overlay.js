@@ -9,4 +9,10 @@ export const overlayApi = {
     },
   }),
   getConfig: (tournamentId, token) => api.get(`/overlay/${tournamentId}/config`, { params: token ? { token } : {} }),
+  getTopSold: (tournamentId, token, limit = 5) => api.get(`/overlay/${tournamentId}/top-sold`, {
+    params: {
+      limit,
+      ...(token ? { token } : {}),
+    },
+  }),
 };

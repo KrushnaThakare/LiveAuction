@@ -2,6 +2,7 @@ package com.cricketauction.service;
 
 import com.cricketauction.dto.PlayerRequest;
 import com.cricketauction.dto.PlayerResponse;
+import com.cricketauction.dto.TopSoldPlayerResponse;
 import com.cricketauction.entity.Player;
 import com.cricketauction.entity.Team;
 import com.cricketauction.entity.Tournament;
@@ -15,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -346,5 +348,28 @@ public class PlayerService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TopSoldPlayerResponse> getTopSoldPlayers(Long tournamentId, int limit) {
+        int safeLimit = Math.max(1, Math.min(5, limit));
+        tournamentService.findById(tournamentId);
+        List<Player> players = playerRepository.findTopSoldWithTeam(
+                tournamentId, Player.PlayerStatus.SOLD, PageRequest.of(0, safeLimit));
+        List<TopSoldPlayerResponse> result = new java.util.ArrayList<>();
+        int rank = 1;
+        for (Player player : players) {
+            Team team = player.getTeam();
+            result.add(TopSoldPlayerResponse.builder()
+                    .rank(rank++)
+                    .playerId(player.getId())
+                    .playerName(player.getName())
+                    .imageUrl(player.getImageUrl())
+                    .soldPrice(player.getCurrentBid())
+                    .teamName(team != null ? team.getName() : null)
+                    .teamLogoUrl(team != null ? team.getLogoUrl() : null)
+                    .build());
+        }
+        return result;
     }
 }

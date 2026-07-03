@@ -4,7 +4,9 @@ import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.dto.AuctionStateResponse;
 import com.cricketauction.dto.BroadcastSettingsDto;
 import com.cricketauction.dto.TeamResponse;
+import com.cricketauction.dto.TopSoldPlayerResponse;
 import com.cricketauction.service.AuctionService;
+import com.cricketauction.service.PlayerService;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.exception.AuctionException;
 import com.cricketauction.service.TeamService;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 
 @RestController
 @RequestMapping("/api/overlay")
@@ -24,12 +27,14 @@ public class OverlayController {
     private final TeamService teamService;
     private final TournamentService tournamentService;
     private final PlayerRoleService playerRoleService;
+    private final PlayerService playerService;
 
-    public OverlayController(AuctionService auctionService, TeamService teamService, TournamentService tournamentService, PlayerRoleService playerRoleService) {
+    public OverlayController(AuctionService auctionService, TeamService teamService, TournamentService tournamentService, PlayerRoleService playerRoleService, PlayerService playerService) {
         this.auctionService = auctionService;
         this.teamService = teamService;
         this.tournamentService = tournamentService;
         this.playerRoleService = playerRoleService;
+        this.playerService = playerService;
     }
 
     @GetMapping("/{tournamentId}/snapshot")
@@ -48,6 +53,17 @@ public class OverlayController {
                 "auction", auction,
                 "teams", teams
         )));
+    }
+
+    @GetMapping("/{tournamentId}/top-sold")
+    public ResponseEntity<ApiResponse<List<TopSoldPlayerResponse>>> topSold(
+            @PathVariable Long tournamentId,
+            @RequestParam(value = "token", required = false) String token,
+            @RequestParam(value = "limit", defaultValue = "5") int limit) {
+        Tournament t = tournamentService.findById(tournamentId);
+        validateOverlayAccess(t, token, true);
+        List<TopSoldPlayerResponse> players = playerService.getTopSoldPlayers(tournamentId, limit);
+        return ResponseEntity.ok(ApiResponse.success(players != null ? players : Collections.emptyList()));
     }
 
     @GetMapping("/{tournamentId}/config")
