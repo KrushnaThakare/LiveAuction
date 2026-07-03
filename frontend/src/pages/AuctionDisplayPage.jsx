@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
@@ -124,6 +124,15 @@ export default function AuctionDisplayPage() {
 
   const showGavel = Boolean(soldOverlay && !gavelDone);
   const showRecordBreak = Boolean(soldOverlay && needsRecordBreak && gavelDone && !recordBreakDone);
+  const soldOverlayRef = useRef(soldOverlay);
+  soldOverlayRef.current = soldOverlay;
+
+  const gavelDuration = useMemo(() => {
+    if (soldOverlay?.verdict !== 'SOLD') return 4000;
+    const hasFollowUp = ceremonyEnabled
+      || (soldOverlay?.isRecord && recordBreakEnabled);
+    return hasFollowUp ? 5500 : 3200;
+  }, [soldOverlay?.verdict, soldOverlay?.isRecord, ceremonyEnabled, recordBreakEnabled]);
 
   const {
     active: ceremonyActive,
@@ -143,23 +152,25 @@ export default function AuctionDisplayPage() {
 
   const handleGavelComplete = useCallback(() => {
     setGavelDone(true);
-    const playRecord = soldOverlay?.verdict === 'SOLD'
-      && soldOverlay?.isRecord
+    const overlay = soldOverlayRef.current;
+    const playRecord = overlay?.verdict === 'SOLD'
+      && overlay?.isRecord
       && recordBreakEnabled;
     if (playRecord) return;
-    if (ceremonyEnabled && soldOverlay?.verdict === 'SOLD') {
-      beginCeremony(soldOverlay);
+    if (ceremonyEnabled && overlay?.verdict === 'SOLD') {
+      beginCeremony(overlay);
     }
     dismissOverlay();
-  }, [beginCeremony, ceremonyEnabled, dismissOverlay, recordBreakEnabled, soldOverlay]);
+  }, [beginCeremony, ceremonyEnabled, dismissOverlay, recordBreakEnabled]);
 
   const handleRecordBreakComplete = useCallback(() => {
     setRecordBreakDone(true);
-    if (ceremonyEnabled && soldOverlay?.verdict === 'SOLD') {
-      beginCeremony(soldOverlay);
+    const overlay = soldOverlayRef.current;
+    if (ceremonyEnabled && overlay?.verdict === 'SOLD') {
+      beginCeremony(overlay);
     }
     dismissOverlay();
-  }, [beginCeremony, ceremonyEnabled, dismissOverlay, soldOverlay]);
+  }, [beginCeremony, ceremonyEnabled, dismissOverlay]);
 
   const { active: countdownActive, dismiss: dismissCountdown } = useAudienceCountdown(auction, tid);
   const [introForceKey, setIntroForceKey] = useState(0);
@@ -325,7 +336,7 @@ export default function AuctionDisplayPage() {
           teamLogo={soldOverlay.teamLogo}
           amount={soldOverlay.amount}
           squadPick={soldOverlay.squadPick}
-          duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
+          duration={gavelDuration}
           onComplete={soldOverlay.verdict === 'SOLD' ? handleGavelComplete : dismissOverlay}
         />
       )}

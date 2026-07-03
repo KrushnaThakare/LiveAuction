@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { formatSquadPickLabel } from '../utils/formatters';
@@ -30,7 +30,7 @@ export function useAuctionVerdictOverlay(auction, teams) {
   const gavelShownForSessionRef = useRef(null);
   const gavelTimerRef = useRef(null);
 
-  const dismissOverlay = () => setSoldOverlay(null);
+  const dismissOverlay = useCallback(() => setSoldOverlay(null), []);
 
   useEffect(() => () => {
     if (gavelTimerRef.current) clearTimeout(gavelTimerRef.current);
