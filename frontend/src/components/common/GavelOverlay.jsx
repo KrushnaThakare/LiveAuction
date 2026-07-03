@@ -53,10 +53,9 @@ export default function GavelOverlay({ verdict, name, team, teamLogo, amount, sq
     const t3 = setTimeout(() => setVerdict(true), 850);
     // 1200ms: player name + details
     const t4 = setTimeout(() => setDetails(true), 1200);
-    // Reveal sold stamp under gavel as fade begins
-    const fadeMs = Math.max(400, duration - 600);
+    // Hold full celebration, then brief fade at the end
+    const fadeMs = Math.max(900, duration - 500);
     const t5 = setTimeout(() => {
-      onRevealResultRef.current?.();
       setExiting(true);
     }, fadeMs);
     const finish = () => onCompleteRef.current?.();
