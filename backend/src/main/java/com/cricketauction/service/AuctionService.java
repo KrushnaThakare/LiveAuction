@@ -31,6 +31,7 @@ public class AuctionService {
     private final AuditLogService          auditLogService;
     private final OverlayAudienceSignalService overlayAudienceSignalService;
     private final TopSoldCacheService      topSoldCacheService;
+    private final AuctionConstraintService auctionConstraintService;
 
     public AuctionService(AuctionSessionRepository auctionSessionRepository,
                           PlayerRepository playerRepository,
@@ -40,7 +41,8 @@ public class AuctionService {
                           BidRuleService bidRuleService,
                           AuditLogService auditLogService,
                           OverlayAudienceSignalService overlayAudienceSignalService,
-                          TopSoldCacheService topSoldCacheService) {
+                          TopSoldCacheService topSoldCacheService,
+                          AuctionConstraintService auctionConstraintService) {
         this.auctionSessionRepository = auctionSessionRepository;
         this.playerRepository         = playerRepository;
         this.teamRepository           = teamRepository;
@@ -50,6 +52,7 @@ public class AuctionService {
         this.auditLogService          = auditLogService;
         this.overlayAudienceSignalService = overlayAudienceSignalService;
         this.topSoldCacheService      = topSoldCacheService;
+        this.auctionConstraintService = auctionConstraintService;
     }
 
     /* ── start auction for a specific player ── */
@@ -115,11 +118,13 @@ public class AuctionService {
             newBid = currentBid;
         }
 
-        if (team.getRemainingBudget() < newBid) {
-            throw new AuctionException(
-                    "Team '" + team.getName() + "' has insufficient budget (" +
-                    team.getRemainingBudget().longValue() + " < " + (long) newBid + ")");
-        }
+        Player currentPlayer = session.getCurrentPlayer();
+        double basePrice = currentPlayer != null && currentPlayer.getBasePrice() != null
+                ? currentPlayer.getBasePrice() : 0.0;
+        int playerCount = (int) playerRepository.countByTournamentIdAndTeamId(tournamentId, team.getId());
+        auctionConstraintService.validateTeamBid(
+                team.getName(), session.getTournament(), playerCount,
+                team.getRemainingBudget(), newBid, basePrice);
 
         session.setCurrentBid(newBid);
         session.setHighestBidderTeam(team);
@@ -127,7 +132,6 @@ public class AuctionService {
         playerRepository.save(session.getCurrentPlayer());
         bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
-        Player currentPlayer = session.getCurrentPlayer();
         auditLogService.record("BID_ASSIGNED", "Player", currentPlayer.getId(), tournamentId,
                 "Player #" + currentPlayer.getId() + " " + currentPlayer.getName()
                         + " assigned to " + team.getName() + " at " + (long) newBid);
@@ -172,11 +176,14 @@ public class AuctionService {
         Player player    = session.getCurrentPlayer();
         Team winningTeam = session.getHighestBidderTeam();
 
-        if (winningTeam.getRemainingBudget() < session.getCurrentBid()) {
-            throw new AuctionException("Winning team does not have sufficient budget");
-        }
+        double saleBid = session.getCurrentBid();
+        double basePrice = player != null && player.getBasePrice() != null ? player.getBasePrice() : 0.0;
+        int playerCount = (int) playerRepository.countByTournamentIdAndTeamId(tournamentId, winningTeam.getId());
+        auctionConstraintService.validateTeamBid(
+                winningTeam.getName(), session.getTournament(), playerCount,
+                winningTeam.getRemainingBudget(), saleBid, basePrice);
 
-        winningTeam.setRemainingBudget(winningTeam.getRemainingBudget() - session.getCurrentBid());
+        winningTeam.setRemainingBudget(winningTeam.getRemainingBudget() - saleBid);
         teamRepository.save(winningTeam);
 
         player.setStatus(Player.PlayerStatus.SOLD);

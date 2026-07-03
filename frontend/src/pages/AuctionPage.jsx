@@ -13,6 +13,7 @@ import { formatCurrency, formatRole, getRoleColor, getRoleBg, getRoleIcon, getPl
 import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
 import { matchesPlayerIdOrName, playerIdLabel } from '../utils/playerSearch';
+import { canTeamBid, isSquadFull } from '../utils/auctionConstraints';
 import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
@@ -357,6 +358,8 @@ export default function AuctionPage() {
     const team = teams.find(t => t.id === teamId);
     const currentBid = auctionState?.currentBid ?? 0;
     const optimisticBid = proposedBid ?? currentBid;
+    const basePrice = auctionState?.currentPlayer?.basePrice ?? 0;
+    if (!team || !canTeamBid(team, optimisticBid, activeTournament.maxSquadSize, basePrice)) return;
     const previousState = auctionState;
     const optimisticAuction = auctionState ? {
       ...auctionState,
@@ -677,12 +680,16 @@ export default function AuctionPage() {
       const num = parseInt(e.key, 10);
       if (!isNaN(num) && num >= 1 && num <= 9 && isActive) {
         const team = teams[num - 1];
-        if (team) handleAssignBid(team.id);
+        const basePrice = auctionState?.currentPlayer?.basePrice ?? 0;
+        const bidAmount = proposedBid ?? auctionState?.currentBid ?? 0;
+        if (team && canTeamBid(team, bidAmount, activeTournament?.maxSquadSize, basePrice)) {
+          handleAssignBid(team.id);
+        }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [auctionState, teams, handleSell, handleUnsold, handleStartRandom, handleAssignBid, stepUp, stepDown, toggleFullscreen]);
+  }, [auctionState, teams, proposedBid, activeTournament, handleSell, handleUnsold, handleStartRandom, handleAssignBid, stepUp, stepDown, toggleFullscreen]);
 
   useEffect(() => {
     const h = () => setFullscreen(!!document.fullscreenElement);
@@ -833,6 +840,8 @@ export default function AuctionPage() {
                 auctionState={auctionState}
                 displayBid={displayBid}
                 proposedBid={proposedBid}
+                maxSquadSize={activeTournament.maxSquadSize}
+                basePrice={auctionState?.currentPlayer?.basePrice ?? 0}
                 onAssign={handleAssignBid}
                 disabled={actionLoading || Boolean(assigningTeamId)}
               />
@@ -1125,7 +1134,7 @@ function BidStrip({ proposedBid, setProposedBid, setBidKey, committedBid, nextBi
    Clicking a team ONLY records "this team bids at displayBid".
    It never auto-increments on its own.
 ═══════════════════════════════════════════════════════════ */
-function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign, disabled }) {
+function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, maxSquadSize, basePrice, onAssign, disabled }) {
   return (
     <div className="px-4 pb-4">
       <p className="text-xs font-semibold mb-2 flex items-center gap-2"
@@ -1140,7 +1149,8 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
         {teams.map((team, idx) => {
           const isHighest = team.id === auctionState?.highestBidderTeamId;
-          const canBid    = team.remainingBudget >= displayBid;
+          const squadFull = isSquadFull(team, maxSquadSize);
+          const canBid    = !squadFull && canTeamBid(team, displayBid, maxSquadSize, basePrice);
           const pct       = team.budget ? ((team.budget - team.remainingBudget) / team.budget) * 100 : 0;
 
           return (
@@ -1163,6 +1173,9 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
                 </span>
               )}
               {isHighest && <span className="text-xs font-bold opacity-90">● Highest Bid</span>}
+              {squadFull && !isHighest && (
+                <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Squad full</span>
+              )}
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center font-bold text-sm flex-shrink-0"
                   style={{ backgroundColor: isHighest ? 'rgba(255,255,255,0.2)' : 'var(--color-surface-2)',
