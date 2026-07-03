@@ -101,6 +101,7 @@ export default function AuctionDisplayPage() {
   const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
   const { soldOverlay, dismissOverlay } = useAuctionVerdictOverlay(auction, teams);
   const recordBreakEnabled = config?.overlayShowRecordBreak !== false;
+  const [gavelDone, setGavelDone] = useState(false);
   const [recordBreakDone, setRecordBreakDone] = useState(false);
   const prevRecordFlagRef = useRef(false);
   const needsRecordBreak = soldOverlay?.verdict === 'SOLD'
@@ -108,6 +109,7 @@ export default function AuctionDisplayPage() {
     && recordBreakEnabled;
 
   useEffect(() => {
+    setGavelDone(false);
     setRecordBreakDone(false);
     prevRecordFlagRef.current = false;
   }, [soldOverlay?.sessionKey]);
@@ -120,8 +122,8 @@ export default function AuctionDisplayPage() {
     prevRecordFlagRef.current = isRecord;
   }, [recordBreakEnabled, soldOverlay?.isRecord]);
 
-  const showRecordBreak = Boolean(soldOverlay && needsRecordBreak && !recordBreakDone);
-  const showGavel = Boolean(soldOverlay && !showRecordBreak);
+  const showGavel = Boolean(soldOverlay && !gavelDone);
+  const showRecordBreak = Boolean(soldOverlay && needsRecordBreak && gavelDone && !recordBreakDone);
 
   const {
     active: ceremonyActive,
@@ -140,15 +142,24 @@ export default function AuctionDisplayPage() {
   } = useSquadFormationCeremony(ceremonyEnabled, teams, config?.playerRoles, squadSize);
 
   const handleGavelComplete = useCallback(() => {
+    setGavelDone(true);
+    const playRecord = soldOverlay?.verdict === 'SOLD'
+      && soldOverlay?.isRecord
+      && recordBreakEnabled;
+    if (playRecord) return;
+    if (ceremonyEnabled && soldOverlay?.verdict === 'SOLD') {
+      beginCeremony(soldOverlay);
+    }
+    dismissOverlay();
+  }, [beginCeremony, ceremonyEnabled, dismissOverlay, recordBreakEnabled, soldOverlay]);
+
+  const handleRecordBreakComplete = useCallback(() => {
+    setRecordBreakDone(true);
     if (ceremonyEnabled && soldOverlay?.verdict === 'SOLD') {
       beginCeremony(soldOverlay);
     }
     dismissOverlay();
   }, [beginCeremony, ceremonyEnabled, dismissOverlay, soldOverlay]);
-
-  const handleRecordBreakComplete = useCallback(() => {
-    setRecordBreakDone(true);
-  }, []);
 
   const { active: countdownActive, dismiss: dismissCountdown } = useAudienceCountdown(auction, tid);
   const [introForceKey, setIntroForceKey] = useState(0);
@@ -305,19 +316,6 @@ export default function AuctionDisplayPage() {
         </section>
       )}
 
-      {showRecordBreak && (
-        <RecordBreakOverlay
-          key={`record-${soldOverlay.sessionKey}`}
-          name={soldOverlay.name}
-          team={soldOverlay.team}
-          teamLogo={soldOverlay.teamLogo}
-          amount={soldOverlay.amount}
-          previousRecord={soldOverlay.previousRecord}
-          playerImageUrl={soldOverlay.playerImageUrl}
-          onComplete={handleRecordBreakComplete}
-        />
-      )}
-
       {showGavel && (
         <GavelOverlay
           key={soldOverlay.sessionKey}
@@ -329,6 +327,19 @@ export default function AuctionDisplayPage() {
           squadPick={soldOverlay.squadPick}
           duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
           onComplete={soldOverlay.verdict === 'SOLD' ? handleGavelComplete : dismissOverlay}
+        />
+      )}
+
+      {showRecordBreak && (
+        <RecordBreakOverlay
+          key={`record-${soldOverlay.sessionKey}`}
+          name={soldOverlay.name}
+          team={soldOverlay.team}
+          teamLogo={soldOverlay.teamLogo}
+          amount={soldOverlay.amount}
+          previousRecord={soldOverlay.previousRecord}
+          playerImageUrl={soldOverlay.playerImageUrl}
+          onComplete={handleRecordBreakComplete}
         />
       )}
 
