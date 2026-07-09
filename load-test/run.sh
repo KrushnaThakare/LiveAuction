@@ -24,10 +24,12 @@ shift || true
 case "$SCENARIO" in
   smoke)   SCRIPT="${ROOT}/scripts/smoke.js" ;;
   viewers) SCRIPT="${ROOT}/scripts/overlay-viewers.js" ;;
+  tabs)    SCRIPT="${ROOT}/scripts/broadcast-tab-switcher.js" ;;
+  live)    SCRIPT="${ROOT}/scripts/broadcast-live-only.js" ;;
   poll)    SCRIPT="${ROOT}/scripts/overlay-poll-only.js" ;;
   bids)    SCRIPT="${ROOT}/scripts/auction-bids.js" ;;
   *)
-    echo "Usage: $0 smoke|viewers|poll|bids [extra k6 args...]"
+    echo "Usage: $0 smoke|viewers|tabs|live|poll|bids [extra k6 args...]"
     exit 1
     ;;
 esac
@@ -45,5 +47,8 @@ exec k6 run "$SCRIPT" \
   -e "STAGES=${STAGES:-}" \
   -e "POLL_INTERVAL_SEC=${POLL_INTERVAL_SEC:-3}" \
   -e "BID_INTERVAL_SEC=${BID_INTERVAL_SEC:-4}" \
+  -e "TAB_SWITCH_MIN_SEC=${TAB_SWITCH_MIN_SEC:-2}" \
+  -e "TAB_SWITCH_MAX_SEC=${TAB_SWITCH_MAX_SEC:-3}" \
+  -e "LIVE_REFRESH_SEC=${LIVE_REFRESH_SEC:-5}" \
   -e "DURATION=${DURATION:-15m}" \
   "$@"

@@ -18,9 +18,11 @@ Each virtual viewer (like opening `/view/{tournamentId}`) does:
 | Script | Purpose |
 |--------|---------|
 | `scripts/smoke.js` | 5 users, 2 min — sanity check |
-| `scripts/overlay-viewers.js` | Main test — ramp to 100–500 viewers |
+| `scripts/overlay-viewers.js` | Main test — ramp to 100–500 viewers (WS only) |
+| `scripts/broadcast-tab-switcher.js` | **Scenario A** — `/view` + tab switching every 2–3s |
+| `scripts/broadcast-live-only.js` | **Scenario B** — `/view` Live Auction tab only, snapshot every 5s |
 | `scripts/overlay-poll-only.js` | Stress test — HTTP poll every 3s (no WebSocket) |
-| `scripts/auction-bids.js` | 1 admin VU placing bids during viewer test |
+| `scripts/auction-bids.js` | Optional — 1 admin VU placing bids during viewer test |
 
 ---
 
@@ -43,6 +45,106 @@ sudo apt update && sudo apt install k6
 **Windows:** [k6 installer](https://grafana.com/docs/k6/latest/set-up/install-k6/)
 
 Verify: `k6 version`
+
+---
+
+## Broadcast load test — two scenarios (recommended)
+
+Use this when **you** run the auction on your laptop while simulating many people on the **public `/view` link**.
+
+### Before you start (both days)
+
+1. Use **staging** (not production). See Part 1 below.
+2. In admin → **Broadcast**:
+   - Enable public broadcast (`/view` link).
+   - Enable **all tabs**: Teams, Sold, Unsold (for Scenario A).
+3. Configure load test:
+
+```bash
+cd load-test
+cp .env.example .env
+# Edit .env: API_URL, TOURNAMENT_ID, ADMIN_PASSWORD (staging only)
+chmod +x run.sh
+```
+
+4. Install k6 if needed (`k6 version`).
+
+5. Smoke test:
+
+```bash
+./load-test/run.sh smoke
+```
+
+6. On staging admin → **Auction** → start a player so status is **ACTIVE**.
+
+7. Open `/view/{tournamentId}` on **one real phone** — confirm bids update live.
+
+---
+
+### Day 1 — Scenario A: frequent tab switching (heavy)
+
+Simulates viewers switching **Live Auction → Teams → Sold → Unsold** every **2–3 seconds**, with gradual ramp-up.
+
+**Terminal 1** — run the load (from repo root):
+
+```bash
+# Start small, then increase across days
+VUS_MAX=30 ./load-test/run.sh tabs
+
+# When stable, try more viewers
+VUS_MAX=50 TAB_SWITCH_MIN_SEC=2 TAB_SWITCH_MAX_SEC=3 ./load-test/run.sh tabs
+
+# Custom ramp: 10 users → 30 → 50 → hold → ramp down
+VUS_MAX=50 STAGES="1m:10,2m:30,3m:50,8m:50,2m:0" ./load-test/run.sh tabs
+```
+
+**Terminal 2** — you operate the auction normally:
+
+- Raise bids, assign teams, SOLD / UNSOLD, pick next player.
+- Do **not** run `auction-bids.js` unless you also want automated bids.
+
+**What to watch**
+
+| Signal | OK | Problem |
+|--------|-----|---------|
+| Your auction desk | Responsive | Slow clicks, errors |
+| Real phone on `/view` | Updates in 1–2s | Stuck / reconnecting |
+| k6 `http_req_failed` | &lt; 3% | &gt; 5% |
+| k6 `view_tab_teams` / `sold` / `unsold` p(95) | &lt; 1.5s | &gt; 3s |
+| `broadcast_tab_switches` | Growing | Flat (script issue) |
+| `overlay_ws_messages` | Grows when you bid | Flat while bidding |
+
+---
+
+### Day 2 — Scenario B: Live Auction tab only (lighter)
+
+Same ramp idea, but viewers **stay on Live Auction** — WebSocket + snapshot refresh every **5 seconds** (no Teams/Sold/Unsold API calls).
+
+```bash
+# Baseline
+VUS_MAX=50 LIVE_REFRESH_SEC=5 ./load-test/run.sh live
+
+# Higher scale once Day 1 passed
+VUS_MAX=100 STAGES="1m:20,2m:60,3m:100,10m:100,2m:0" ./load-test/run.sh live
+```
+
+You still run the auction manually in another browser tab.
+
+**Compare Day 1 vs Day 2:** Day 2 should show lower `http_req_duration` and fewer HTTP requests — if Day 1 fails but Day 2 passes, tab APIs (teams/sold/unsold) are the bottleneck.
+
+---
+
+### Suggested progression
+
+| Step | Scenario | Users | Goal |
+|------|----------|-------|------|
+| 1 | smoke | 5 | Scripts + staging OK |
+| 2 | live | 30 | Baseline with Live tab only |
+| 3 | tabs | 30 | Tab switching at small scale |
+| 4 | live | 80–100 | Higher viewer count |
+| 5 | tabs | 50–80 | Heavy realistic load |
+
+Increase `VUS_MAX` only if the previous step had &lt; 3% errors and your auction desk still felt snappy.
 
 ---
 
@@ -239,9 +341,11 @@ Increase `VUS_MAX` only if previous step had &lt; 1% errors and no pool timeouts
 | `OVERLAY_TOKEN` | Optional; leave empty for `/view` |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | For `auction-bids.js` |
 | `TEAM_ID` | Team used in bid script |
-| `VUS_MAX` | Peak virtual users (`overlay-viewers.js`) |
+| `VUS_MAX` | Peak virtual users |
 | `STAGES` | Custom ramp, e.g. `1m:50,5m:200,1m:0` |
 | `VIEWER_DURATION_SEC` | How long each VU stays connected (default 600) |
+| `TAB_SWITCH_MIN_SEC` / `TAB_SWITCH_MAX_SEC` | Scenario A tab switch delay (default 2–3s) |
+| `LIVE_REFRESH_SEC` | Scenario B snapshot refresh interval (default 5s) |
 
 ---
 
@@ -267,10 +371,13 @@ load-test/
 ├── run.sh                    ← helper: loads .env and runs k6
 ├── lib/
 │   ├── config.js
+│   ├── broadcastView.js      ← /view tab HTTP helpers
 │   └── stomp.js
 └── scripts/
     ├── smoke.js
     ├── overlay-viewers.js
+    ├── broadcast-tab-switcher.js   ← Scenario A
+    ├── broadcast-live-only.js      ← Scenario B
     ├── overlay-poll-only.js
     └── auction-bids.js
 ```
