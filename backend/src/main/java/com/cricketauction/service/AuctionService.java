@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @Transactional
@@ -30,6 +29,9 @@ public class AuctionService {
     private final PlayerService            playerService;
     private final BidRuleService           bidRuleService;
     private final AuditLogService          auditLogService;
+    private final OverlayAudienceSignalService overlayAudienceSignalService;
+    private final TopSoldCacheService      topSoldCacheService;
+    private final AuctionConstraintService auctionConstraintService;
 
     public AuctionService(AuctionSessionRepository auctionSessionRepository,
                           PlayerRepository playerRepository,
@@ -37,7 +39,10 @@ public class AuctionService {
                           TournamentService tournamentService,
                           PlayerService playerService,
                           BidRuleService bidRuleService,
-                          AuditLogService auditLogService) {
+                          AuditLogService auditLogService,
+                          OverlayAudienceSignalService overlayAudienceSignalService,
+                          TopSoldCacheService topSoldCacheService,
+                          AuctionConstraintService auctionConstraintService) {
         this.auctionSessionRepository = auctionSessionRepository;
         this.playerRepository         = playerRepository;
         this.teamRepository           = teamRepository;
@@ -45,6 +50,9 @@ public class AuctionService {
         this.playerService            = playerService;
         this.bidRuleService           = bidRuleService;
         this.auditLogService          = auditLogService;
+        this.overlayAudienceSignalService = overlayAudienceSignalService;
+        this.topSoldCacheService      = topSoldCacheService;
+        this.auctionConstraintService = auctionConstraintService;
     }
 
     /* ── start auction for a specific player ── */
@@ -63,28 +71,24 @@ public class AuctionService {
         Tournament tournament = tournamentService.findById(tournamentId);
         ensureNoActiveSession(tournamentId);
 
-        List<Player> available = playerRepository.findByTournamentIdAndStatus(
-                tournamentId, Player.PlayerStatus.AVAILABLE);
+        Optional<Long> randomId = playerRepository.findRandomIdByTournamentIdAndStatus(
+                tournamentId, Player.PlayerStatus.AVAILABLE.name());
 
-        if (available.isEmpty()) {
-            // fall back to unsold players for re-auction round
-            available = playerRepository.findByTournamentIdAndStatus(
+        if (randomId.isEmpty()) {
+            long unsoldCount = playerRepository.countByTournamentIdAndStatus(
                     tournamentId, Player.PlayerStatus.UNSOLD);
-            if (available.isEmpty()) {
+            if (unsoldCount == 0) {
                 throw new AuctionException("No available or unsold players left for this tournament");
             }
-            // reset unsold → available so the auction can proceed
-            for (Player p : available) {
-                p.setStatus(Player.PlayerStatus.AVAILABLE);
-                p.setCurrentBid(0.0);
+            playerRepository.resetUnsoldToAvailable(tournamentId);
+            randomId = playerRepository.findRandomIdByTournamentIdAndStatus(
+                    tournamentId, Player.PlayerStatus.AVAILABLE.name());
+            if (randomId.isEmpty()) {
+                throw new AuctionException("No available or unsold players left for this tournament");
             }
-            playerRepository.saveAll(available);
         }
 
-        int idx = ThreadLocalRandom.current().nextInt(available.size());
-        Player player = available.get(idx);
-        // reload in case we just updated status
-        player = playerRepository.findById(player.getId()).orElseThrow();
+        Player player = playerService.findById(randomId.get());
         validatePlayerForAuction(player, tournamentId);
 
         return createAndSaveSession(tournament, player);
@@ -114,11 +118,13 @@ public class AuctionService {
             newBid = currentBid;
         }
 
-        if (team.getRemainingBudget() < newBid) {
-            throw new AuctionException(
-                    "Team '" + team.getName() + "' has insufficient budget (" +
-                    team.getRemainingBudget().longValue() + " < " + (long) newBid + ")");
-        }
+        Player currentPlayer = session.getCurrentPlayer();
+        double basePrice = currentPlayer != null && currentPlayer.getBasePrice() != null
+                ? currentPlayer.getBasePrice() : 0.0;
+        int playerCount = (int) playerRepository.countByTournamentIdAndTeamId(tournamentId, team.getId());
+        auctionConstraintService.validateTeamBid(
+                team.getName(), session.getTournament(), playerCount,
+                team.getRemainingBudget(), newBid, basePrice);
 
         session.setCurrentBid(newBid);
         session.setHighestBidderTeam(team);
@@ -126,7 +132,6 @@ public class AuctionService {
         playerRepository.save(session.getCurrentPlayer());
         bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
-        Player currentPlayer = session.getCurrentPlayer();
         auditLogService.record("BID_ASSIGNED", "Player", currentPlayer.getId(), tournamentId,
                 "Player #" + currentPlayer.getId() + " " + currentPlayer.getName()
                         + " assigned to " + team.getName() + " at " + (long) newBid);
@@ -171,11 +176,14 @@ public class AuctionService {
         Player player    = session.getCurrentPlayer();
         Team winningTeam = session.getHighestBidderTeam();
 
-        if (winningTeam.getRemainingBudget() < session.getCurrentBid()) {
-            throw new AuctionException("Winning team does not have sufficient budget");
-        }
+        double saleBid = session.getCurrentBid();
+        double basePrice = player != null && player.getBasePrice() != null ? player.getBasePrice() : 0.0;
+        int playerCount = (int) playerRepository.countByTournamentIdAndTeamId(tournamentId, winningTeam.getId());
+        auctionConstraintService.validateTeamBid(
+                winningTeam.getName(), session.getTournament(), playerCount,
+                winningTeam.getRemainingBudget(), saleBid, basePrice);
 
-        winningTeam.setRemainingBudget(winningTeam.getRemainingBudget() - session.getCurrentBid());
+        winningTeam.setRemainingBudget(winningTeam.getRemainingBudget() - saleBid);
         teamRepository.save(winningTeam);
 
         player.setStatus(Player.PlayerStatus.SOLD);
@@ -208,7 +216,16 @@ public class AuctionService {
         auditLogService.record("PLAYER_SOLD", "Player", closedPlayer.getId(), tournamentId,
                 "Player #" + closedPlayer.getId() + " " + closedPlayer.getName()
                         + " sold to " + closedWinnerTeam.getName() + " for " + (long) closedBid);
-        return mapToResponse(session);
+
+        Tournament tournament = session.getTournament();
+        double previousHighest = tournament.getHighestSoldBid() == null ? 0.0 : tournament.getHighestSoldBid();
+        boolean isRecord = closedBid > previousHighest;
+        if (isRecord) {
+            tournament.setHighestSoldBid(closedBid);
+            tournamentService.saveTournament(tournament);
+        }
+        topSoldCacheService.refresh(tournamentId);
+        return mapToResponse(session, isRecord, isRecord ? previousHighest : null);
     }
 
     /* ── mark unsold ── */
@@ -296,6 +313,13 @@ public class AuctionService {
         bumpStateRevision(session);
         auctionSessionRepository.save(session);
 
+        if (wasSold) {
+            Tournament tournament = tournamentService.findById(tournamentId);
+            refreshHighestSoldBid(tournament);
+            tournamentService.saveTournament(tournament);
+            topSoldCacheService.refresh(tournamentId);
+        }
+
         // Return current auction state (idle, ready for next player)
         return getAuctionState(tournamentId);
     }
@@ -324,20 +348,40 @@ public class AuctionService {
 
         Optional<AuctionSession> last = auctionSessionRepository
                 .findTopByTournamentIdOrderByIdDesc(tournamentId);
-        return last.map(this::mapToResponse).orElse(
-                AuctionStateResponse.builder()
-                        .status(AuctionSession.AuctionStatus.IDLE)
-                        .tournamentId(tournamentId)
-                        .bidRevision(0L)
-                        .currentBid(0.0)
-                        .build());
+        return last.map(this::mapToResponse).orElseGet(() -> {
+                Tournament tournament = tournamentService.findById(tournamentId);
+                return buildIdleState(tournament);
+        });
+    }
+
+    private AuctionStateResponse buildIdleState(Tournament tournament) {
+        var countdown = overlayAudienceSignalService.latestCountdown(tournament.getId());
+        return AuctionStateResponse.builder()
+                .status(AuctionSession.AuctionStatus.IDLE)
+                .tournamentId(tournament.getId())
+                .bidRevision(0L)
+                .currentBid(0.0)
+                .cinematicIntroLive(cinematicIntroLive(tournament))
+                .whatsappAutoEnabled(tournament.getWhatsappAutoEnabled())
+                .tournamentHighestSoldBid(safeHighestSoldBid(tournament))
+                .audienceCountdownId(countdown != null ? countdown.id() : null)
+                .audienceCountdownSeconds(countdown != null ? countdown.seconds() : null)
+                .build();
+    }
+
+    private void refreshHighestSoldBid(Tournament tournament) {
+        Double max = playerRepository.findMaxSoldBidByTournament(tournament.getId());
+        tournament.setHighestSoldBid(max != null ? max : 0.0);
+    }
+
+    private double safeHighestSoldBid(Tournament tournament) {
+        return tournament.getHighestSoldBid() == null ? 0.0 : tournament.getHighestSoldBid();
     }
 
     /* ── history ── */
     @Transactional(readOnly = true)
     public List<AuctionStateResponse> getAuctionHistory(Long tournamentId) {
-        return auctionSessionRepository.findAll().stream()
-                .filter(s -> s.getTournament().getId().equals(tournamentId))
+        return auctionSessionRepository.findByTournamentId(tournamentId).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -396,8 +440,16 @@ public class AuctionService {
     }
 
     private AuctionStateResponse mapToResponse(AuctionSession session) {
+        return mapToResponse(session, null, null);
+    }
+
+    private AuctionStateResponse mapToResponse(AuctionSession session, Boolean highestSoldRecord, Double previousHighestSoldBid) {
         double current = session.getCurrentBid();
         double next = current + bidRuleService.getIncrement(session.getTournament().getId(), current);
+        Player currentPlayer = resolveSessionPlayer(session);
+        Team highestBidderTeam = resolveSessionTeam(session);
+        Tournament tournament = session.getTournament();
+        var countdown = overlayAudienceSignalService.latestCountdown(tournament.getId());
 
         // A session is undoable if it is SOLD or UNSOLD and has undo metadata
         boolean undoable = (session.getStatus() == AuctionSession.AuctionStatus.SOLD
@@ -408,18 +460,42 @@ public class AuctionService {
                 .sessionId(session.getId())
                 .bidRevision(session.getStateRevision() == null ? 0L : session.getStateRevision())
                 .status(session.getStatus())
-                .currentPlayer(session.getCurrentPlayer() != null
-                        ? playerService.mapToResponse(session.getCurrentPlayer()) : null)
+                .currentPlayer(currentPlayer != null ? playerService.mapToResponse(currentPlayer) : null)
                 .currentBid(current)
-                .highestBidderTeamId(session.getHighestBidderTeam() != null
-                        ? session.getHighestBidderTeam().getId() : null)
-                .highestBidderTeamName(session.getHighestBidderTeam() != null
-                        ? session.getHighestBidderTeam().getName() : null)
+                .highestBidderTeamId(highestBidderTeam != null ? highestBidderTeam.getId() : null)
+                .highestBidderTeamName(highestBidderTeam != null ? highestBidderTeam.getName() : null)
                 .nextBidAmount(next)
-                .tournamentId(session.getTournament().getId())
+                .tournamentId(tournament.getId())
                 .undoable(undoable)
                 .undoSessionId(undoable ? session.getId() : null)
+                .cinematicIntroLive(cinematicIntroLive(tournament))
+                .whatsappAutoEnabled(tournament.getWhatsappAutoEnabled())
+                .highestSoldRecord(highestSoldRecord)
+                .previousHighestSoldBid(previousHighestSoldBid)
+                .tournamentHighestSoldBid(safeHighestSoldBid(tournament))
+                .audienceCountdownId(countdown != null ? countdown.id() : null)
+                .audienceCountdownSeconds(countdown != null ? countdown.seconds() : null)
                 .build();
+    }
+
+    private boolean cinematicIntroLive(Tournament tournament) {
+        return !Boolean.FALSE.equals(tournament.getOverlayCinematicIntroLive());
+    }
+
+    private Player resolveSessionPlayer(AuctionSession session) {
+        if (session.getCurrentPlayer() != null) return session.getCurrentPlayer();
+        if (session.getUndoPlayerId() == null) return null;
+        if (session.getStatus() != AuctionSession.AuctionStatus.SOLD
+                && session.getStatus() != AuctionSession.AuctionStatus.UNSOLD) {
+            return null;
+        }
+        return playerRepository.findById(session.getUndoPlayerId()).orElse(null);
+    }
+
+    private Team resolveSessionTeam(AuctionSession session) {
+        if (session.getHighestBidderTeam() != null) return session.getHighestBidderTeam();
+        if (session.getUndoTeamId() == null || session.getStatus() != AuctionSession.AuctionStatus.SOLD) return null;
+        return teamRepository.findById(session.getUndoTeamId()).orElse(null);
     }
 
     private void bumpStateRevision(AuctionSession session) {

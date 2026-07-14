@@ -1,0 +1,35 @@
+/* Shared overlay motion utilities — CSS only, no server load */
+
+@keyframes overlayBidPop {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  42% {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 14px rgba(0, 210, 106, 0.5));
+  }
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+}
+
+.overlay-bid-pop {
+  display: inline-block;
+  transform-origin: center center;
+  animation: overlayBidPop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.overlay-ticker-pop {
+  display: inline-block;
+  transform-origin: center center;
+  animation: overlayBidPop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-bid-pop,
+  .overlay-ticker-pop {
+    animation: none !important;
+  }
+}

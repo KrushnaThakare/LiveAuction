@@ -1,34 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Activity, BarChart3, Calendar, IndianRupee, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
+import { BarChart3, Activity, Radio, Shield, Target, TrendingUp, Trophy } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
+import { useTimedPlayerStatsOverlay } from '../hooks/useTimedPlayerStatsOverlay';
+import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
 import { resolveUrl } from '../utils/resolveUrl';
-import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { hasPlayerStats, statValue } from '../utils/playerStats';
+import { formatSquadPickLabel } from '../utils/formatters';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
+import OverlayMainPlayerPanel from '../components/overlay/OverlayMainPlayerPanel';
+import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
-
-const roleLabel = (role) => ({
-  BATSMAN: 'BATSMAN',
-  BOWLER: 'BOWLER',
-  ALL_ROUNDER: 'ALL ROUNDER',
-  WICKET_KEEPER: 'WK',
-}[role] || role || 'ROLE');
-
-function Stat({ icon: Icon, label, value }) {
-  return (
-    <div className={`${styles.glassCard} ${styles.statCard}`}>
-      <span className={styles.statIcon}><Icon size={17} /></span>
-      <span>
-        <span className={styles.statLabel}>{label}</span>
-        <span className={styles.statValue}>{value}</span>
-      </span>
-    </div>
-  );
-}
 
 function PlayerStatsOverlay({ player }) {
   if (!hasPlayerStats(player)) return null;
@@ -102,7 +87,7 @@ export default function OverlayMainPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const { data, config, connected } = useOverlayRealtime(tid, token);
+  const { data, config, connected } = useOverlayRealtime(tid, token, { studioOverlay: true });
   const auction = data?.auction;
   const player = auction?.currentPlayer;
   const teams = data?.teams || [];
@@ -128,7 +113,16 @@ export default function OverlayMainPage() {
     };
   }, [player?.id, status, config?.overlayShowPlayerIntro]);
 
-  if (config && config.overlayEnabled === false) return null;
+  if (!data && !config) {
+    return (
+      <div className={styles.stage}>
+        <div className={styles.boardTitle}>Connecting main overlay…</div>
+      </div>
+    );
+  }
+
+  const showVerdict = isSold || isUnsold;
+  const verdictStampKey = showVerdict ? `${auction?.sessionId || 'session'}-${status}` : 'idle';
 
   return (
     <div className={styles.stage}>
@@ -142,47 +136,40 @@ export default function OverlayMainPage() {
               <span className={styles.liveDot} />
               {player?.id ? playerIdLabel(player) : 'Player Name'} {connected ? 'Live' : 'Syncing'}
             </div>
-            <h1 className={styles.playerName}>{player?.name || 'Waiting for Player'}</h1>
-          </div>
-
-          <div className={styles.statsGrid}>
-            <Stat icon={Shield} label="Role" value={roleLabel(player?.role)} />
-            <Stat icon={IndianRupee} label="Base Price" value={money(player?.basePrice)} />
-            <Stat icon={Calendar} label="Age" value={player?.age || 'Auction Pool'} />
-            <Stat icon={Trophy} label="History" value={player?.teamName || player?.stats || 'Fresh pick'} />
+            <div className={styles.verdictStampImpact} aria-hidden />
           </div>
         </div>
+      )}
+      <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
+        <OverlayMainPlayerPanel
+          player={player}
+          sessionId={auction?.sessionId}
+          transitionEnabled={config?.overlayShowPlayerTransition !== false}
+          connected={connected}
+          playerRoles={config?.playerRoles}
+          detailFields={config?.overlayMainDetailFields}
+        />
 
-        <div className={styles.imageWrap}>
-          {player?.imageUrl ? (
-            <img className={styles.playerImage} src={driveImg(player.imageUrl) || resolveUrl(player.imageUrl)} alt={player.name} />
-          ) : (
-            <div className={styles.imageFallback}><UserRound size={96} /></div>
+        <div className={`${styles.bidPanel} ${showVerdict ? styles.bidPanelSoldLayout : ''}`}>
+          {!showVerdict && (
+            <div className={styles.liveBadge}>
+              <Radio size={15} />
+              LIVE BID
+            </div>
           )}
-        </div>
-
-        <div className={styles.bidPanel}>
-          <div className={styles.liveBadge}>
-            <Radio size={15} />
-            LIVE BID
-          </div>
 
           <div className={`${styles.glassCard} ${styles.amountCard}`}>
             <div className={styles.bidLabel}>Current Bid</div>
-            <div className={styles.bidAmount}>
-              {money(auction?.currentBid)}
-            </div>
+            <BidAmountDisplay
+              className={styles.bidAmount}
+              amount={auction?.currentBid}
+              formatAmount={money}
+              popToken={bidPopToken}
+            />
             <div className={styles.status}>{status === 'ACTIVE' ? 'Auction Active' : status}</div>
           </div>
 
-          {(isSold || isUnsold) && (
-            <div className={`${styles.glassCard} ${styles.resultStamp}`}>
-              {isSold && <img src="/gavel.png" alt="" />}
-              <span>{isSold ? 'SOLD' : 'UNSOLD'}</span>
-            </div>
-          )}
-
-          <div className={`${styles.glassCard} ${styles.teamBid}`}>
+          <div className={`${styles.glassCard} ${styles.teamBid} ${isSold ? styles.teamBidSold : ''}`}>
             {team?.logoUrl ? (
               <img className={styles.teamLogo} src={resolveUrl(team.logoUrl)} alt={team.name} />
             ) : (
@@ -191,13 +178,23 @@ export default function OverlayMainPage() {
               </div>
             )}
             <div>
-              <div className={styles.teamLabel}>Currently Bidding</div>
-              <div className={styles.teamName}>{auction?.highestBidderTeamName || 'Awaiting Bidder'}</div>
+              <div className={styles.teamLabel}>{isSold ? 'Winning Team' : 'Currently Bidding'}</div>
+              <div className={styles.teamName}>
+                {auction?.highestBidderTeamName || 'Awaiting Bidder'}
+                {squadPickLabel && <span className={styles.squadPickBadge}>{squadPickLabel}</span>}
+              </div>
             </div>
-            <div className={styles.increment}>
-              <TrendingUp size={18} />
-              +{money(increment)}
-            </div>
+            {!isSold && (
+              <div className={styles.increment}>
+                <TrendingUp size={18} />
+                +{money(increment)}
+              </div>
+            )}
+            {isSold && (
+              <div className={styles.soldAmount}>
+                {money(auction?.currentBid)}
+              </div>
+            )}
           </div>
         </div>
       </section>

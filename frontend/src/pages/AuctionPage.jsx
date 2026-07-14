@@ -4,15 +4,16 @@ import { auctionApi } from '../api/auction';
 import { playerApi } from '../api/players';
 import { teamApi } from '../api/teams';
 import { bidRuleApi } from '../api/bidRules';
+import { broadcastApi } from '../api/broadcast';
 import {
   announceAuctionStart, announceBid,
   announcePlayerSold, announcePlayerUnsold, stopSpeaking,
 } from '../utils/voiceAnnouncement';
-import { formatCurrency, formatRole, getRoleColor, getRoleBg } from '../utils/formatters';
+import { formatCurrency, formatRole, getRoleColor, getRoleBg, getRoleIcon, getPlayerRoles, getAuctionDisplayName } from '../utils/formatters';
 import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
 import { matchesPlayerIdOrName, playerIdLabel } from '../utils/playerSearch';
-import GavelOverlay from '../components/common/GavelOverlay';
+import { canTeamBid, isSquadFull } from '../utils/auctionConstraints';
 import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
@@ -20,7 +21,7 @@ import toast from 'react-hot-toast';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
-  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X,
+  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X, Clapperboard, Timer,
 } from 'lucide-react';
 
 function getDynamicIncrement(rules, amount, fallbackNextBid) {
@@ -54,7 +55,25 @@ function hasDifferentLiveAuctionValue(a, b) {
   );
 }
 
-function publishOverlayAuctionUpdate(tournamentId, auction) {
+const CALLING_BID_DEBOUNCE_MS = 300;
+
+function buildClosedAuctionState(active, status) {
+  if (!active) return null;
+  const amount = Number(active.currentBid) || 0;
+  const previousHighest = Number(active.tournamentHighestSoldBid) || 0;
+  const isRecord = status === 'SOLD' && amount > previousHighest;
+  return {
+    ...active,
+    status,
+    undoable: true,
+    undoSessionId: active.sessionId,
+    highestSoldRecord: isRecord,
+    previousHighestSoldBid: isRecord ? previousHighest : null,
+    tournamentHighestSoldBid: isRecord ? amount : previousHighest,
+  };
+}
+
+function publishOverlayAuctionUpdate(tournamentId, auction, teams) {
   if (!tournamentId || !auction) return;
   const payload = {
     type: 'auction-state-updated',
@@ -62,6 +81,9 @@ function publishOverlayAuctionUpdate(tournamentId, auction) {
     auction,
     sentAt: Date.now(),
   };
+  if (Array.isArray(teams) && teams.length > 0) {
+    payload.teams = teams;
+  }
   try {
     const channel = new BroadcastChannel('auction-overlay-state');
     channel.postMessage(payload);
@@ -101,20 +123,26 @@ export default function AuctionPage() {
   const [bidRules, setBidRules]                 = useState([]);
   const [loading, setLoading]                   = useState(true);
   const [actionLoading, setActionLoading]       = useState(false);
+  const [assigningTeamId, setAssigningTeamId]   = useState(null);
   const [fullscreen, setFullscreen]             = useState(false);
-  const [voiceEnabled, setVoiceEnabled]         = useState(true);
+  const [voiceEnabled, setVoiceEnabled]         = useState(false);
   const [bidFlash, setBidFlash]                 = useState(false);
   const [bidKey, setBidKey]                     = useState(0);
   /* proposedBid = number the host has typed/arrowed; null means "not set" */
   const [proposedBid, setProposedBid]           = useState(null);
   const [showKeyHelp, setShowKeyHelp]           = useState(false);
-  const [soldOverlay, setSoldOverlay]           = useState(null); // { verdict, name, team, teamLogo, amount }
+  const [cinematicIntroSetting, setCinematicIntroSetting] = useState(false);
+  const [cinematicIntroLive, setCinematicIntroLive] = useState(true);
+  const [countdownSeconds, setCountdownSeconds] = useState(5);
+  const [countdownLoading, setCountdownLoading] = useState(false);
   const containerRef = useRef(null);
   const bidUpdateSeq = useRef(0);
   const callingBidInFlightRef = useRef(false);
+  const callingBidTimerRef = useRef(null);
   const pendingCallingBidRef = useRef(null);
   const latestCallingBidRef = useRef(null);
   const pendingCallingBidAuctionRef = useRef(null);
+  const assignPromiseRef = useRef(null);
   const debugBidRef = useRef(false);
 
   useEffect(() => {
@@ -179,14 +207,22 @@ export default function AuctionPage() {
   const fetchAll = useCallback(async () => {
     if (!activeTournament) return;
     try {
-      const [sRes, pRes, uRes, tRes, rRes] = await Promise.all([
+      const [sRes, pRes, uRes, tRes, rRes, bRes] = await Promise.all([
         auctionApi.getState(activeTournament.id),
         playerApi.getAll(activeTournament.id, 'AVAILABLE'),
         playerApi.getAll(activeTournament.id, 'UNSOLD'),
-        teamApi.getAll(activeTournament.id),
+        teamApi.getSummary(activeTournament.id),
         bidRuleApi.getRules(activeTournament.id),
+        broadcastApi.getSettings(activeTournament.id),
       ]);
       applyServerAuctionState(sRes.data.data, 'fetch-all-state');
+      setCinematicIntroSetting(bRes.data.data?.overlayShowCinematicIntro === true);
+      setCountdownSeconds(bRes.data.data?.overlayCountdownSeconds || 5);
+      if (sRes.data.data?.cinematicIntroLive != null) {
+        setCinematicIntroLive(sRes.data.data.cinematicIntroLive !== false);
+      } else if (bRes.data.data?.overlayCinematicIntroLive != null) {
+        setCinematicIntroLive(bRes.data.data.overlayCinematicIntroLive !== false);
+      }
       setAvailablePlayers(pRes.data.data || []);
       setUnsoldPlayers(uRes.data.data || []);
       setTeams(tRes.data.data || []);
@@ -195,6 +231,43 @@ export default function AuctionPage() {
       setLoading(false);
     }
   }, [activeTournament, applyServerAuctionState]);
+
+  const toggleCinematicIntroLive = useCallback(async () => {
+    if (!activeTournament) return;
+    const next = !cinematicIntroLive;
+    setCinematicIntroLive(next);
+    setAuctionState(state => state ? { ...state, cinematicIntroLive: next } : state);
+    if (auctionState) {
+      publishOverlayAuctionUpdate(activeTournament.id, { ...auctionState, cinematicIntroLive: next });
+    }
+    try {
+      await broadcastApi.setCinematicIntroLive(activeTournament.id, next);
+      toast.success(next ? 'Audience intro enabled' : 'Audience intro skipped');
+    } catch {
+      setCinematicIntroLive(!next);
+      setAuctionState(state => state ? { ...state, cinematicIntroLive: !next } : state);
+      toast.error('Could not update intro setting');
+    }
+  }, [activeTournament, auctionState, cinematicIntroLive]);
+
+  const triggerAudienceCountdown = useCallback(async () => {
+    if (!activeTournament || countdownLoading) return;
+    setCountdownLoading(true);
+    try {
+      await broadcastApi.triggerCountdown(activeTournament.id, countdownSeconds);
+      toast.success('Audience countdown started');
+    } catch {
+      toast.error('Could not start countdown');
+    } finally {
+      setCountdownLoading(false);
+    }
+  }, [activeTournament, countdownLoading, countdownSeconds]);
+
+  useEffect(() => {
+    if (auctionState?.cinematicIntroLive != null) {
+      setCinematicIntroLive(auctionState.cinematicIntroLive !== false);
+    }
+  }, [auctionState?.cinematicIntroLive]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -240,6 +313,7 @@ export default function AuctionPage() {
     try {
       const res = await auctionApi.startAuction(activeTournament.id, player.id);
       setAuctionState(res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
       setProposedBid(null);
       setBidKey(k => k + 1);
       setAvailablePlayers(p => p.filter(pl => pl.id !== player.id));
@@ -258,6 +332,7 @@ export default function AuctionPage() {
       const res = await auctionApi.startRandom(activeTournament.id);
       const state = res.data.data;
       setAuctionState(state);
+      publishOverlayAuctionUpdate(activeTournament.id, state);
       setProposedBid(null);
       setBidKey(k => k + 1);
       if (state.currentPlayer) {
@@ -279,10 +354,12 @@ export default function AuctionPage() {
    * is bidding at the visible price.
    */
   const handleAssignBid = useCallback(async (teamId) => {
-    if (!activeTournament || actionLoading) return;
+    if (!activeTournament || actionLoading || assigningTeamId) return;
     const team = teams.find(t => t.id === teamId);
     const currentBid = auctionState?.currentBid ?? 0;
     const optimisticBid = proposedBid ?? currentBid;
+    const basePrice = auctionState?.currentPlayer?.basePrice ?? 0;
+    if (!team || !canTeamBid(team, optimisticBid, activeTournament.maxSquadSize, basePrice)) return;
     const previousState = auctionState;
     const optimisticAuction = auctionState ? {
       ...auctionState,
@@ -293,7 +370,7 @@ export default function AuctionPage() {
         ? { ...auctionState.currentPlayer, currentBid: optimisticBid }
         : auctionState.currentPlayer,
     } : null;
-    setActionLoading(true);
+    setAssigningTeamId(teamId);
     if (optimisticAuction) {
       pendingCallingBidAuctionRef.current = optimisticAuction;
     }
@@ -305,7 +382,7 @@ export default function AuctionPage() {
       currentPlayer: state.currentPlayer ? { ...state.currentPlayer, currentBid: optimisticBid } : state.currentPlayer,
     }) : state);
     if (optimisticAuction) {
-      publishOverlayAuctionUpdate(activeTournament.id, optimisticAuction);
+      publishOverlayAuctionUpdate(activeTournament.id, optimisticAuction, teams);
     }
     setProposedBid(null);
     setBidFlash(true);
@@ -313,10 +390,12 @@ export default function AuctionPage() {
     setTimeout(() => setBidFlash(false), 800);
     try {
       const amount = proposedBid ?? currentBid;
-      const res = await auctionApi.assignBid(activeTournament.id, teamId, amount);
+      const request = auctionApi.assignBid(activeTournament.id, teamId, amount);
+      assignPromiseRef.current = request;
+      const res = await request;
       pendingCallingBidAuctionRef.current = null;
       setAuctionState(res.data.data);
-      publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
       setBidKey(k => k + 1);
       if (voiceEnabled && team) announceBid(team.name, res.data.data.currentBid);
     } catch (error) {
@@ -326,55 +405,152 @@ export default function AuctionPage() {
       setProposedBid(proposedBid ?? null);
       throw error;
     } finally {
-      setActionLoading(false);
+      assignPromiseRef.current = null;
+      setAssigningTeamId(null);
     }
-  }, [activeTournament, actionLoading, proposedBid, voiceEnabled, teams, auctionState]);
+  }, [activeTournament, actionLoading, assigningTeamId, proposedBid, voiceEnabled, teams, auctionState]);
 
   /* ── sell ── */
+  const syncCallingBidToServer = useCallback(async () => {
+    if (!activeTournament || callingBidInFlightRef.current) return;
+    const amount = latestCallingBidRef.current;
+    if (amount == null) return;
+
+    callingBidInFlightRef.current = true;
+    const previousState = auctionState;
+    try {
+      let amountToSend = amount;
+      while (amountToSend != null) {
+        pendingCallingBidRef.current = null;
+        logBidSync('request', { currentBid: amountToSend });
+        const res = await auctionApi.updateCallingBid(activeTournament.id, amountToSend);
+        logBidSync('response', res.data.data);
+        const returnedBid = Number(res.data.data?.currentBid);
+        if (
+          Number(latestCallingBidRef.current) === returnedBid &&
+          pendingCallingBidRef.current == null
+        ) {
+          pendingCallingBidAuctionRef.current = null;
+          setAuctionState(res.data.data);
+          publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
+        }
+        amountToSend = pendingCallingBidRef.current;
+      }
+    } catch (error) {
+      if (pendingCallingBidRef.current == null) {
+        pendingCallingBidAuctionRef.current = null;
+        if (previousState) setAuctionState(previousState);
+      }
+      throw error;
+    } finally {
+      callingBidInFlightRef.current = false;
+    }
+  }, [activeTournament, auctionState, logBidSync, teams]);
+
+  const scheduleCallingBidSync = useCallback(() => {
+    if (callingBidTimerRef.current) clearTimeout(callingBidTimerRef.current);
+    callingBidTimerRef.current = setTimeout(() => {
+      callingBidTimerRef.current = null;
+      syncCallingBidToServer().catch(() => {
+        toast.error('Could not update live overlay bid. Restart backend if this began after the latest update.');
+      });
+    }, CALLING_BID_DEBOUNCE_MS);
+  }, [syncCallingBidToServer]);
+
+  const ensureAuctionWritesSettled = useCallback(async () => {
+    if (assignPromiseRef.current) {
+      await assignPromiseRef.current;
+    }
+    if (callingBidTimerRef.current) {
+      clearTimeout(callingBidTimerRef.current);
+      callingBidTimerRef.current = null;
+      await syncCallingBidToServer();
+    }
+    while (callingBidInFlightRef.current) {
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+  }, [syncCallingBidToServer]);
+
   const handleSell = useCallback(async () => {
     if (!activeTournament || actionLoading || !auctionState?.highestBidderTeamId) return;
+    const prev = auctionState;
     setActionLoading(true);
     try {
-      const prev = auctionState;
+      await ensureAuctionWritesSettled();
+
+      const winningTeamId = prev.highestBidderTeamId;
+      const soldAmount = prev.currentBid ?? 0;
+      const soldState = buildClosedAuctionState(prev, 'SOLD');
+      const updatedTeams = teams.map(team => team.id === winningTeamId
+        ? {
+            ...team,
+            remainingBudget: Math.max(0, Number(team.remainingBudget || 0) - Number(soldAmount)),
+            playerCount: Number(team.playerCount || 0) + 1,
+          }
+        : team);
+
+      setAuctionState(soldState);
+      setTeams(updatedTeams);
+      publishOverlayAuctionUpdate(activeTournament.id, soldState, updatedTeams);
+      setProposedBid(null);
+      toast.success(
+        `SOLD — ${prev?.currentPlayer?.name || 'Player'} → ${prev.highestBidderTeamName} (${formatCurrency(soldAmount)})`,
+        { duration: 2000 }
+      );
+      if (voiceEnabled) announcePlayerSold(prev?.currentPlayer?.name, prev.highestBidderTeamName, soldAmount);
+      setActionLoading(false);
+
       const res = await auctionApi.sellPlayer(activeTournament.id);
       setAuctionState(res.data.data);
-      setProposedBid(null);
-      // Find winning team from local state BEFORE refreshing
-      const winningTeamId = res.data.data.highestBidderTeamId;
-      const winningTeam   = teams.find(t => t.id === winningTeamId);
-      setSoldOverlay({
-        verdict:  'SOLD',
-        name:     prev?.currentPlayer?.name,
-        team:     res.data.data.highestBidderTeamName,
-        teamLogo: resolveUrl(winningTeam?.logoUrl) || null,
-        amount:   res.data.data.currentBid,
-      });
-      setTimeout(() => setSoldOverlay(null), 5000);
-      if (voiceEnabled) announcePlayerSold(prev?.currentPlayer?.name, res.data.data.highestBidderTeamName, res.data.data.currentBid);
-      const tRes = await teamApi.getAll(activeTournament.id);
-      setTeams(tRes.data.data || []);
-    } finally {
+      teamApi.getSummary(activeTournament.id)
+        .then(tRes => {
+          const freshTeams = tRes.data.data || [];
+          setTeams(freshTeams);
+          publishOverlayAuctionUpdate(activeTournament.id, res.data.data, freshTeams);
+        })
+        .catch(() => {
+          publishOverlayAuctionUpdate(activeTournament.id, res.data.data, updatedTeams);
+        });
+    } catch {
+      setAuctionState(prev);
+      if (prev) publishOverlayAuctionUpdate(activeTournament.id, prev);
+      teamApi.getSummary(activeTournament.id)
+        .then(tRes => setTeams(tRes.data.data || []))
+        .catch(() => {});
       setActionLoading(false);
     }
-  }, [activeTournament, actionLoading, auctionState, voiceEnabled, teams]);
+  }, [activeTournament, actionLoading, auctionState, voiceEnabled, teams, ensureAuctionWritesSettled]);
 
   /* ── unsold ── */
   const handleUnsold = useCallback(async () => {
     if (!activeTournament || actionLoading) return;
+    const prev = auctionState;
     setActionLoading(true);
     try {
-      const prev = auctionState;
+      await ensureAuctionWritesSettled();
+
+      const unsoldState = buildClosedAuctionState(prev, 'UNSOLD');
+      setAuctionState(unsoldState);
+      publishOverlayAuctionUpdate(activeTournament.id, unsoldState);
+      setProposedBid(null);
+      if (prev?.currentPlayer) {
+        const unsoldPlayer = { ...prev.currentPlayer, status: 'UNSOLD', currentBid: 0 };
+        setUnsoldPlayers(list => list.some(p => p.id === unsoldPlayer.id) ? list : [unsoldPlayer, ...list]);
+        setAvailablePlayers(list => list.filter(p => p.id !== unsoldPlayer.id));
+      }
+      if (voiceEnabled && prev?.currentPlayer?.name) announcePlayerUnsold(prev.currentPlayer.name);
+      toast(`UNSOLD — ${prev?.currentPlayer?.name || 'Player'}`, { icon: '⛔', duration: 2000 });
+      setActionLoading(false);
+
       const res = await auctionApi.markUnsold(activeTournament.id);
       setAuctionState(res.data.data);
-      setProposedBid(null);
-      if (voiceEnabled && prev?.currentPlayer?.name) announcePlayerUnsold(prev.currentPlayer.name);
-      setSoldOverlay({ verdict: 'UNSOLD', name: prev?.currentPlayer?.name });
-      setTimeout(() => setSoldOverlay(null), 4000);
-      fetchAll();
-    } finally {
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
+    } catch {
+      setAuctionState(prev);
+      if (prev) publishOverlayAuctionUpdate(activeTournament.id, prev);
       setActionLoading(false);
     }
-  }, [activeTournament, actionLoading, auctionState, voiceEnabled, fetchAll]);
+  }, [activeTournament, actionLoading, auctionState, voiceEnabled, ensureAuctionWritesSettled]);
 
   /* ── stop auction ── */
   const handleStop = useCallback(async () => {
@@ -382,13 +558,19 @@ export default function AuctionPage() {
     if (!confirm('Stop the current auction? The player will go back to Available.')) return;
     setActionLoading(true);
     try {
-      await auctionApi.stopAuction(activeTournament.id);
+      const prev = auctionState;
+      const res = await auctionApi.stopAuction(activeTournament.id);
+      setAuctionState(res.data.data);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
+      if (prev?.currentPlayer) {
+        const returnedPlayer = { ...prev.currentPlayer, status: 'AVAILABLE', currentBid: 0 };
+        setAvailablePlayers(list => list.some(p => p.id === returnedPlayer.id) ? list : [returnedPlayer, ...list]);
+      }
       toast('Auction stopped — player returned to Available', { icon: '⏹' });
-      fetchAll();
     } finally {
       setActionLoading(false);
     }
-  }, [activeTournament, actionLoading, fetchAll]);
+  }, [activeTournament, actionLoading, auctionState]);
 
   /* ── undo last sold/unsold decision ── */
   const handleUndo = useCallback(async () => {
@@ -398,10 +580,11 @@ export default function AuctionPage() {
     try {
       const res = await auctionApi.undo(activeTournament.id);
       setAuctionState(res.data.data);
-      setSoldOverlay(null);
+      publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
       toast.success('Decision undone — player returned to Available');
-      const tRes = await teamApi.getAll(activeTournament.id);
-      setTeams(tRes.data.data || []);
+      teamApi.getSummary(activeTournament.id)
+        .then(tRes => setTeams(tRes.data.data || []))
+        .catch(() => {});
       fetchAll();
     } catch { /* handled */ }
     finally { setActionLoading(false); }
@@ -420,9 +603,8 @@ export default function AuctionPage() {
     }
   }, [activeTournament, actionLoading, fetchAll]);
 
-  const updateCallingBid = useCallback(async (amount) => {
+  const updateCallingBid = useCallback((amount) => {
     if (!activeTournament || !auctionState || auctionState.status !== 'ACTIVE') return;
-    const previousState = auctionState;
     const seq = bidUpdateSeq.current + 1;
     bidUpdateSeq.current = seq;
     latestCallingBidRef.current = amount;
@@ -446,7 +628,7 @@ export default function AuctionPage() {
       currentPlayer: state.currentPlayer ? { ...state.currentPlayer, currentBid: amount } : state.currentPlayer,
     }) : state);
     logBidSync('optimistic-paint', optimisticAuction, { seq });
-    publishOverlayAuctionUpdate(activeTournament.id, optimisticAuction);
+    publishOverlayAuctionUpdate(activeTournament.id, optimisticAuction, teams);
     setProposedBid(null);
     setBidKey(k => k + 1);
 
@@ -455,38 +637,8 @@ export default function AuctionPage() {
       logBidSync('queued', optimisticAuction, { seq });
       return;
     }
-
-    callingBidInFlightRef.current = true;
-    let amountToSend = amount;
-
-    try {
-      while (amountToSend != null) {
-        pendingCallingBidRef.current = null;
-        logBidSync('request', { ...auctionState, currentBid: amountToSend }, { seq });
-        const res = await auctionApi.updateCallingBid(activeTournament.id, amountToSend);
-        logBidSync('response', res.data.data, { seq });
-        const returnedBid = Number(res.data.data?.currentBid);
-        if (
-          Number(latestCallingBidRef.current) === returnedBid &&
-          pendingCallingBidRef.current == null
-        ) {
-          pendingCallingBidAuctionRef.current = null;
-          setAuctionState(res.data.data);
-          publishOverlayAuctionUpdate(activeTournament.id, res.data.data);
-        }
-        amountToSend = pendingCallingBidRef.current;
-      }
-    } catch (error) {
-      if (bidUpdateSeq.current === seq && Number(latestCallingBidRef.current) === Number(amountToSend)) {
-        pendingCallingBidAuctionRef.current = null;
-        setAuctionState(previousState);
-      }
-      toast.error('Could not update live overlay bid. Restart backend if this began after the latest update.');
-      throw error;
-    } finally {
-      callingBidInFlightRef.current = false;
-    }
-  }, [activeTournament, auctionState, bidRules, logBidSync]);
+    scheduleCallingBidSync();
+  }, [activeTournament, auctionState, bidRules, logBidSync, scheduleCallingBidSync, teams]);
 
   /* ── bid step helpers ── */
   const stepUp = useCallback(() => {
@@ -528,12 +680,16 @@ export default function AuctionPage() {
       const num = parseInt(e.key, 10);
       if (!isNaN(num) && num >= 1 && num <= 9 && isActive) {
         const team = teams[num - 1];
-        if (team) handleAssignBid(team.id);
+        const basePrice = auctionState?.currentPlayer?.basePrice ?? 0;
+        const bidAmount = proposedBid ?? auctionState?.currentBid ?? 0;
+        if (team && canTeamBid(team, bidAmount, activeTournament?.maxSquadSize, basePrice)) {
+          handleAssignBid(team.id);
+        }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [auctionState, teams, handleSell, handleUnsold, handleStartRandom, handleAssignBid, stepUp, stepDown, toggleFullscreen]);
+  }, [auctionState, teams, proposedBid, activeTournament, handleSell, handleUnsold, handleStartRandom, handleAssignBid, stepUp, stepDown, toggleFullscreen]);
 
   useEffect(() => {
     const h = () => setFullscreen(!!document.fullscreenElement);
@@ -555,6 +711,8 @@ export default function AuctionPage() {
   const isActive   = auctionState?.status === 'ACTIVE';
   const displayBid = proposedBid ?? auctionState?.currentBid ?? 0;
   const allDone    = availablePlayers.length === 0 && !isActive && unsoldPlayers.length > 0;
+  const playerRoles = getPlayerRoles(activeTournament);
+  const auctionTitle = getAuctionDisplayName(activeTournament, activeTournament.name);
 
   return (
     <div ref={containerRef} className="flex flex-col"
@@ -566,7 +724,7 @@ export default function AuctionPage() {
         <div className="flex items-center gap-3">
           <Gavel size={18} style={{ color: 'var(--color-primary)' }} />
           <span className="font-bold" style={{ color: 'var(--color-text-primary)' }}>Live Auction</span>
-          <span className="hidden sm:inline text-sm" style={{ color: 'var(--color-text-secondary)' }}>— {activeTournament.name}</span>
+          <span className="hidden sm:inline text-sm" style={{ color: 'var(--color-text-secondary)' }}>— {auctionTitle}</span>
           {isActive && <span className="badge-in-auction">● LIVE</span>}
         </div>
         <div className="flex items-center gap-2">
@@ -581,8 +739,31 @@ export default function AuctionPage() {
               <Share2 size={15} />
             </button>
           )}
-          <button className="btn-secondary !p-2" onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}>
+          <button
+            className="btn-secondary !p-2"
+            title={voiceEnabled ? 'Turn voice announcements off' : 'Turn voice announcements on'}
+            onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}
+          >
             {voiceEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+          </button>
+          {cinematicIntroSetting && (
+            <button
+              className={`btn-secondary !px-3 !py-2 text-xs font-bold ${cinematicIntroLive ? '' : 'opacity-70'}`}
+              title="Toggle Audience Display cinematic intro"
+              onClick={toggleCinematicIntroLive}
+            >
+              <Clapperboard size={14} className="inline mr-1.5" />
+              Intro: {cinematicIntroLive ? 'ON' : 'OFF'}
+            </button>
+          )}
+          <button
+            className="btn-secondary !px-3 !py-2 text-xs font-bold"
+            title={`Start Audience Display countdown (${countdownSeconds}s)`}
+            onClick={triggerAudienceCountdown}
+            disabled={countdownLoading}
+          >
+            <Timer size={14} className="inline mr-1.5" />
+            Countdown
           </button>
           <button className="btn-secondary !p-2" onClick={toggleFullscreen} title="F=Fullscreen">
             {fullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
@@ -594,7 +775,7 @@ export default function AuctionPage() {
       {showKeyHelp && (
         <div className="flex-shrink-0 px-4 py-2 flex flex-wrap gap-4 text-xs items-center"
           style={{ backgroundColor: 'var(--color-surface-2)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-          {[['↑↓','Set bid'],['1–9','Assign to team'],['S','Sell'],['U','Unsold'],['R','Random player'],['M','Mute/Unmute'],['F','Fullscreen']].map(([k,v]) => (
+          {[['↑↓','Set bid'],['1–9','Assign to team'],['S','Sell'],['U','Unsold'],['R','Random player'],['M','Toggle voice'],['F','Fullscreen']].map(([k,v]) => (
             <span key={k}>
               <kbd className="px-1.5 py-0.5 rounded font-mono font-bold mr-1"
                 style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>{k}</kbd>
@@ -618,6 +799,7 @@ export default function AuctionPage() {
                 highestBidderTeamName={auctionState.highestBidderTeamName}
                 bidFlash={bidFlash}
                 bidKey={bidKey}
+                roles={playerRoles}
               />
 
               {/* SOLD / UNSOLD / STOP */}
@@ -658,8 +840,10 @@ export default function AuctionPage() {
                 auctionState={auctionState}
                 displayBid={displayBid}
                 proposedBid={proposedBid}
+                maxSquadSize={activeTournament.maxSquadSize}
+                basePrice={auctionState?.currentPlayer?.basePrice ?? 0}
                 onAssign={handleAssignBid}
-                disabled={actionLoading}
+                disabled={actionLoading || Boolean(assigningTeamId)}
               />
             </>
           ) : (
@@ -669,6 +853,7 @@ export default function AuctionPage() {
               unsoldPlayers={unsoldPlayers}
               allDone={allDone}
               actionLoading={actionLoading}
+              roles={playerRoles}
               onStart={handleStartAuction}
               onRandom={handleStartRandom}
               onReAuction={handleReAuction}
@@ -681,7 +866,6 @@ export default function AuctionPage() {
         <TeamsSidebar teams={teams} auctionState={auctionState} />
       </div>
 
-      {soldOverlay && <GavelOverlay {...soldOverlay} duration={soldOverlay.verdict === 'SOLD' ? 5000 : 4000} />}
     </div>
   );
 }
@@ -689,9 +873,9 @@ export default function AuctionPage() {
 /* ═══════════════════════════════════════════════════════════
    STAGE CARD
 ═══════════════════════════════════════════════════════════ */
-function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, bidFlash, bidKey }) {
-  const roleColor = getRoleColor(player.role);
-  const roleBg    = getRoleBg(player.role);
+function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, bidFlash, bidKey, roles }) {
+  const roleColor = getRoleColor(player.role, roles);
+  const roleBg    = getRoleBg(player.role, roles);
   const imgUrl    = driveImg(player.imageUrl);
 
   return (
@@ -790,7 +974,7 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
           </h1>
 
           <div className="flex items-center justify-center gap-2 mt-2">
-            <RoleBadge role={player.role} roleColor={roleColor} roleBg={roleBg} />
+            <RoleBadge role={player.role} roleColor={roleColor} roleBg={roleBg} roles={roles} />
           </div>
 
           <p className="text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
@@ -814,16 +998,9 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
 /* ═══════════════════════════════════════════════════════════
    ROLE BADGE — sport-style pill displayed below player name
 ═══════════════════════════════════════════════════════════ */
-const ROLE_ICONS = {
-  BATSMAN:       '🏏',
-  BOWLER:        '🎳',
-  ALL_ROUNDER:   '⭐',
-  WICKET_KEEPER: '🧤',
-};
-
-function RoleBadge({ role, roleColor, roleBg }) {
-  const icon  = ROLE_ICONS[role] || '🏏';
-  const label = formatRole(role);
+function RoleBadge({ role, roleColor, roleBg, roles }) {
+  const icon  = getRoleIcon(role, roles);
+  const label = formatRole(role, roles);
 
   return (
     <div
@@ -957,7 +1134,7 @@ function BidStrip({ proposedBid, setProposedBid, setBidKey, committedBid, nextBi
    Clicking a team ONLY records "this team bids at displayBid".
    It never auto-increments on its own.
 ═══════════════════════════════════════════════════════════ */
-function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign, disabled }) {
+function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, maxSquadSize, basePrice, onAssign, disabled }) {
   return (
     <div className="px-4 pb-4">
       <p className="text-xs font-semibold mb-2 flex items-center gap-2"
@@ -972,7 +1149,8 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
         {teams.map((team, idx) => {
           const isHighest = team.id === auctionState?.highestBidderTeamId;
-          const canBid    = team.remainingBudget >= displayBid;
+          const squadFull = isSquadFull(team, maxSquadSize);
+          const canBid    = !squadFull && canTeamBid(team, displayBid, maxSquadSize, basePrice);
           const pct       = team.budget ? ((team.budget - team.remainingBudget) / team.budget) * 100 : 0;
 
           return (
@@ -995,6 +1173,9 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
                 </span>
               )}
               {isHighest && <span className="text-xs font-bold opacity-90">● Highest Bid</span>}
+              {squadFull && !isHighest && (
+                <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Squad full</span>
+              )}
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center font-bold text-sm flex-shrink-0"
                   style={{ backgroundColor: isHighest ? 'rgba(255,255,255,0.2)' : 'var(--color-surface-2)',
@@ -1026,7 +1207,7 @@ function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, onAssign
    IDLE STAGE — between players
 ═══════════════════════════════════════════════════════════ */
 function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
-                     actionLoading, onStart, onRandom, onReAuction, onUndo }) {
+                     actionLoading, roles, onStart, onRandom, onReAuction, onUndo }) {
   const canUndo = auctionState?.undoable;
   const [playerSearch, setPlayerSearch] = useState('');
   const filteredAvailablePlayers = availablePlayers.filter(player => matchesPlayerIdOrName(player, playerSearch));
@@ -1122,8 +1303,8 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
                   onMouseEnter={e => e.currentTarget.style.borderColor='var(--color-primary)'}
                   onMouseLeave={e => e.currentTarget.style.borderColor='var(--color-border)'}>
                   <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 relative flex items-center justify-center"
-                    style={{ backgroundColor: getRoleBg(player.role) }}>
-                    <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={getRoleColor(player.role)} />
+                    style={{ backgroundColor: getRoleBg(player.role, roles) }}>
+                    <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={getRoleColor(player.role, roles)} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>{player.name}</p>
@@ -1131,7 +1312,7 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
                       {playerIdLabel(player)}
                     </p>
                     <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                      {formatRole(player.role)} · {formatCurrency(player.basePrice)}
+                      {formatRole(player.role, roles)} · {formatCurrency(player.basePrice)}
                     </p>
                   </div>
                   <ChevronRight size={15} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />

@@ -1,24 +1,61 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { broadcastApi } from '../api/broadcast';
 import { bidRuleApi } from '../api/bidRules';
 import toast from 'react-hot-toast';
+import SquadSizeInput from '../components/common/SquadSizeInput';
+import { clampSquadSize } from '../utils/squadFormation';
 
 export default function BroadcastControlPage() {
   const { activeTournament } = useTournament();
   const tid = activeTournament?.id;
   const [settings, setSettings] = useState({ overlayEnabled:true, overlayTheme:'classic', overlayShowTeamBudget:true, overlayShowTeamList:true, overlayShowTicker:true, overlayShowPlayerIntro:true, tokenEnabled:false, overlaySecretToken:'' });
   const [bidRules, setBidRules] = useState([]);
+  const squadSizeInputRef = useRef(null);
 
   useEffect(() => {
     if (!tid) return;
-    broadcastApi.getSettings(tid).then(r => setSettings(s => ({ ...s, ...r.data.data, overlaySecretToken: r.data.data.overlaySecretToken || '' })));
+    broadcastApi.getSettings(tid).then((r) => {
+      const loaded = r.data.data || {};
+      setSettings((s) => ({
+        ...s,
+        ...loaded,
+        overlayEnabled: loaded.overlayEnabled !== false,
+        maxSquadSize: clampSquadSize(loaded.maxSquadSize),
+        overlaySecretToken: loaded.overlaySecretToken || '',
+        publicViewShowTeams: loaded.publicViewShowTeams !== false,
+        publicViewShowSold: loaded.publicViewShowSold !== false,
+        publicViewShowUnsold: loaded.publicViewShowUnsold !== false,
+        overlayAudienceDetailFields: [
+          loaded.overlayAudienceDetailFields?.[0] || '',
+          loaded.overlayAudienceDetailFields?.[1] || '',
+        ],
+        overlayMainDetailFields: [
+          loaded.overlayMainDetailFields?.[0] || '',
+          loaded.overlayMainDetailFields?.[1] || '',
+        ],
+      }));
+    });
     bidRuleApi.getRules(tid).then(r => setBidRules(r.data.data || []));
   }, [tid]);
 
   const save = async () => {
     if (!tid) return;
-    await broadcastApi.updateSettings(tid, settings);
+    const committedSquadSize = squadSizeInputRef.current?.commit?.() ?? clampSquadSize(settings.maxSquadSize);
+    const payload = {
+      ...settings,
+      maxSquadSize: clampSquadSize(committedSquadSize),
+      overlayAudienceDetailFields: (settings.overlayAudienceDetailFields || [])
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+        .slice(0, 2),
+      overlayMainDetailFields: (settings.overlayMainDetailFields || [])
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+        .slice(0, 2),
+    };
+    await broadcastApi.updateSettings(tid, payload);
+    setSettings(payload);
     await bidRuleApi.updateRules(tid, bidRules);
     try {
       const channel = new BroadcastChannel('auction-bid-rules');
@@ -34,30 +71,60 @@ export default function BroadcastControlPage() {
   const addRule = () => setBidRules(rules => [...rules, { minAmount: 0, maxAmount: 0, incrementAmount: 1000, position: rules.length }]);
   const removeRule = (idx) => setBidRules(rules => rules.filter((_, i) => i !== idx));
 
+  const setAudienceField = (index, value) => setSettings((s) => {
+    const next = [...(s.overlayAudienceDetailFields || ['', ''])];
+    next[index] = value;
+    return { ...s, overlayAudienceDetailFields: next };
+  });
+  const setMainField = (index, value) => setSettings((s) => {
+    const next = [...(s.overlayMainDetailFields || ['', ''])];
+    next[index] = value;
+    return { ...s, overlayMainDetailFields: next };
+  });
+
   const base = window.location.origin;
   const tokenQ = settings.tokenEnabled && settings.overlaySecretToken ? `&token=${encodeURIComponent(settings.overlaySecretToken)}` : '';
   const links = [
     ['Main', `${base}/overlay/main?tournamentId=${tid}${tokenQ}`],
     ['Team Budget', `${base}/overlay/team-budget?tournamentId=${tid}${tokenQ}`],
     ['Team Squad', `${base}/overlay/team-squad?tournamentId=${tid}${tokenQ}`],
+    ['Team Squad Board', `${base}/overlay/team-squad-board?tournamentId=${tid}${tokenQ}`],
     ['Audience Display', `${base}/auction-display?tournamentId=${tid}${tokenQ}`],
     ['Ticker', `${base}/overlay/ticker?tournamentId=${tid}${tokenQ}`],
     ['Sold Screen', `${base}/overlay/sold?tournamentId=${tid}${tokenQ}`],
     ['Unsold Screen', `${base}/overlay/unsold?tournamentId=${tid}${tokenQ}`],
     ['Break Screen', `${base}/overlay/break-screen?tournamentId=${tid}${tokenQ}`],
+    ['Top 5 Sold', `${base}/overlay/top-sold?tournamentId=${tid}${tokenQ}`],
   ];
 
   return <div className='max-w-4xl mx-auto px-4 py-8'>
     <h1 className='text-2xl font-bold mb-4'>Broadcast Control</h1>
     {!tid ? <p>Select tournament first.</p> : <>
       <div className='card p-4 mb-4 space-y-2'>
-        <label><input type='checkbox' checked={!!settings.overlayEnabled} onChange={e=>setSettings(s=>({...s,overlayEnabled:e.target.checked}))} /> Overlay enabled</label>
+        <label><input type='checkbox' checked={settings.overlayEnabled !== false} onChange={e=>setSettings(s=>({...s,overlayEnabled:e.target.checked}))} /> Broadcaster mode enabled</label>
+        <p className='text-xs' style={{ color: 'var(--color-text-secondary)' }}>
+          Turn this off to stop the public home-viewer link (/view) and reduce WebSocket fan-out. Studio overlay screens (Main, Audience Display, etc.) keep working for your auction desk and OBS.
+        </p>
         <label><input type='checkbox' checked={!!settings.overlayShowTeamBudget} onChange={e=>setSettings(s=>({...s,overlayShowTeamBudget:e.target.checked}))} /> Show Team Budget</label>
         <label><input type='checkbox' checked={!!settings.overlayShowTeamList} onChange={e=>setSettings(s=>({...s,overlayShowTeamList:e.target.checked}))} /> Show Team List</label>
         <label><input type='checkbox' checked={!!settings.overlayShowTicker} onChange={e=>setSettings(s=>({...s,overlayShowTicker:e.target.checked}))} /> Show Ticker</label>
         <label><input type='checkbox' checked={settings.overlayShowPlayerIntro !== false} onChange={e=>setSettings(s=>({...s,overlayShowPlayerIntro:e.target.checked}))} /> Player details on Main screen</label>
         <label><input type='checkbox' checked={!!settings.tokenEnabled} onChange={e=>setSettings(s=>({...s,tokenEnabled:e.target.checked}))} /> Enable token</label>
         {settings.tokenEnabled && <input className='input' value={settings.overlaySecretToken||''} onChange={e=>setSettings(s=>({...s,overlaySecretToken:e.target.value}))} placeholder='secret token'/>}
+
+        <div className='pt-3 mt-2' style={{ borderTop: '1px solid var(--color-border)' }}>
+          <h3 className='text-sm font-bold mb-1'>Public broadcast view (/view link)</h3>
+          <p className='text-xs mb-2' style={{ color: 'var(--color-text-secondary)' }}>
+            Home viewers use the share link. Disable tabs to avoid extra API calls when people browse Teams / Sold / Unsold. Live Auction tab is always shown.
+          </p>
+          <label><input type='checkbox' checked={settings.publicViewShowTeams !== false} onChange={e=>setSettings(s=>({...s,publicViewShowTeams:e.target.checked}))} /> Show Teams tab</label>
+          <label><input type='checkbox' checked={settings.publicViewShowSold !== false} onChange={e=>setSettings(s=>({...s,publicViewShowSold:e.target.checked}))} /> Show Sold tab</label>
+          <label><input type='checkbox' checked={settings.publicViewShowUnsold !== false} onChange={e=>setSettings(s=>({...s,publicViewShowUnsold:e.target.checked}))} /> Show Unsold tab</label>
+          <p className='text-xs mt-1' style={{ color: 'var(--color-text-secondary)' }}>
+            Share link: <code className='text-xs'>{tid ? `${base}/view/${tid}` : '—'}</code>
+          </p>
+        </div>
+
         <button className='btn-primary' onClick={save}>Save</button>
       </div>
 
@@ -74,6 +141,9 @@ export default function BroadcastControlPage() {
         </div>)}
         <button className='btn-secondary' onClick={addRule}>Add Rule</button>
       </div>
+      <p className='text-xs mb-3' style={{ color: 'var(--color-text-secondary)' }}>
+        Top 5 Sold is a break-only scene — open the link in OBS when needed. The list is pre-stored and fetched once on load (no live auction load).
+      </p>
       {links.map(([name, url]) => <div key={name} className='card mb-3 p-3'>
         <p className='font-semibold'>{name}</p>
         <input readOnly className='input w-full' value={url} />

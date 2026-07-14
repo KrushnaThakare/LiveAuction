@@ -7,4 +7,5 @@ public class TournamentRegistrationSettings {
     private Boolean registrationEnabled;
     private String registrationMessage;
     private String registrationRedirectLink;
+    private Boolean whatsappAutoEnabled;
 }

@@ -1,21 +1,52 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
+import { useTimedPlayerStatsOverlay } from '../hooks/useTimedPlayerStatsOverlay';
+import { useCinematicPlayerIntro } from '../hooks/useCinematicPlayerIntro';
+import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
 import { resolveUrl } from '../utils/resolveUrl';
 import { driveImg } from '../utils/driveImage';
 import { playerIdLabel } from '../utils/playerSearch';
 import { hasPlayerStats, statValue } from '../utils/playerStats';
+import { AUDIENCE_DETAIL_SLOTS, buildDetailSlotDefs, resolvePlayerDetailSlots } from '../utils/playerDisplayExtras';
+import { getAuctionDisplayName, getRoleShortLabel, formatSquadPickLabel } from '../utils/formatters';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
+import GavelOverlay from '../components/common/GavelOverlay';
+import CinematicPlayerIntro from '../components/overlay/CinematicPlayerIntro';
+import RecordBreakOverlay from '../components/overlay/RecordBreakOverlay';
+import TournamentCountdownOverlay from '../components/overlay/TournamentCountdownOverlay';
+import SquadFormationCeremony from '../components/overlay/SquadFormationCeremony';
+import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
+import { useAuctionVerdictOverlay } from '../hooks/useAuctionVerdictOverlay';
+import { useAudienceCountdown } from '../hooks/useAudienceCountdown';
+import { useSquadFormationCeremony } from '../hooks/useSquadFormationCeremony';
+import { CINEMATIC_INTRO_MS } from '../constants/cinematicIntroTiming';
+import { GAVEL_SOLD_MS, GAVEL_UNSOLD_MS } from '../constants/gavelTiming';
+import { resolveSquadSize } from '../utils/squadFormation';
 import styles from './AuctionDisplay.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
+const FALLBACK_DETAIL_SLOT = { label: 'Detail', value: '—' };
 
-const roleLabel = (role) => ({
-  BATSMAN: 'BAT',
-  BOWLER: 'BOWL',
-  ALL_ROUNDER: 'AR',
-  WICKET_KEEPER: 'WK',
-}[role] || role || 'ROLE');
+function safeDetailSlots(player, configuredFields) {
+  try {
+    const slots = resolvePlayerDetailSlots(
+      player,
+      buildDetailSlotDefs(configuredFields, AUDIENCE_DETAIL_SLOTS),
+    );
+    return [
+      slots?.[0] || FALLBACK_DETAIL_SLOT,
+      slots?.[1] || { label: 'Age', value: '—' },
+    ];
+  } catch (error) {
+    console.error('[Audience Display] detail slot resolution failed', error);
+    return [
+      { label: 'Category', value: player?.category || player?.teamName || 'Open Pool' },
+      { label: 'Age', value: player?.age || 'Auction Pool' },
+    ];
+  }
+}
 
 function PlayerStatsPanel({ player }) {
   if (!hasPlayerStats(player)) return null;
@@ -48,9 +79,18 @@ export default function AuctionDisplayPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const title = params.get('title') || 'Royal Champions Trophy Auction Live';
   const sponsor = params.get('sponsor') || 'Premium Auction Arena';
-  const { data, connected } = useOverlayRealtime(tid, token);
+  const [includePlayers, setIncludePlayers] = useState(false);
+  const { data, config, connected, transport } = useOverlayRealtime(tid, token, { includePlayers, studioOverlay: true });
+  const ceremonyEnabled = config?.overlayShowSquadFormation === true;
+  const squadSize = resolveSquadSize(config);
+
+  useEffect(() => {
+    if (ceremonyEnabled) {
+      setIncludePlayers(true);
+    }
+  }, [ceremonyEnabled]);
+  const title = params.get('title') || getAuctionDisplayName(config, 'Auction Live');
   const auction = data?.auction;
   const player = auction?.currentPlayer;
   const teams = data?.teams || [];
@@ -58,14 +98,124 @@ export default function AuctionDisplayPage() {
   const status = auction?.status || 'IDLE';
   const liveText = status === 'ACTIVE' ? 'Auction Live' : status === 'SOLD' ? 'Sold' : status === 'UNSOLD' ? 'Unsold' : 'Auction Standby';
   const isResult = status === 'SOLD' || status === 'UNSOLD';
+  const isSold = status === 'SOLD';
+  const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
+  const { soldOverlay, dismissOverlay } = useAuctionVerdictOverlay(auction, teams);
+  const recordBreakEnabled = config?.overlayShowRecordBreak !== false;
+  const [gavelDone, setGavelDone] = useState(false);
+  const [recordBreakDone, setRecordBreakDone] = useState(false);
+  const prevRecordFlagRef = useRef(false);
+  const needsRecordBreak = soldOverlay?.verdict === 'SOLD'
+    && soldOverlay?.isRecord
+    && recordBreakEnabled;
+
+  useEffect(() => {
+    setGavelDone(false);
+    setRecordBreakDone(false);
+    prevRecordFlagRef.current = false;
+  }, [soldOverlay?.sessionKey]);
+
+  useEffect(() => {
+    const isRecord = soldOverlay?.isRecord === true;
+    if (isRecord && !prevRecordFlagRef.current && recordBreakEnabled) {
+      setRecordBreakDone(false);
+    }
+    prevRecordFlagRef.current = isRecord;
+  }, [recordBreakEnabled, soldOverlay?.isRecord]);
+
+  const showGavel = Boolean(soldOverlay && !(gavelDone && needsRecordBreak));
+  const showRecordBreak = Boolean(soldOverlay && needsRecordBreak && gavelDone && !recordBreakDone);
+  const soldOverlayRef = useRef(soldOverlay);
+  soldOverlayRef.current = soldOverlay;
+
+  const {
+    active: ceremonyActive,
+    phase: ceremonyPhase,
+    teamRoster,
+    flyRequest,
+    activeTeamId,
+    saleSummary,
+    newPlayerKey,
+    sourceRef,
+    registerNextSlot,
+    beginCeremony,
+    completeFly,
+    flyDurationMs,
+    exitDurationMs,
+  } = useSquadFormationCeremony(ceremonyEnabled, teams, config?.playerRoles, squadSize);
+
+  const soldSequenceActive = Boolean(soldOverlay) || showRecordBreak || (ceremonyEnabled && ceremonyActive);
+
+  const handleGavelComplete = useCallback(() => {
+    setGavelDone(true);
+    const overlay = soldOverlayRef.current;
+    const playRecord = overlay?.verdict === 'SOLD'
+      && overlay?.isRecord
+      && recordBreakEnabled;
+    if (playRecord) return;
+    if (ceremonyEnabled && overlay?.verdict === 'SOLD') {
+      beginCeremony(overlay);
+    }
+    dismissOverlay();
+  }, [beginCeremony, ceremonyEnabled, dismissOverlay, recordBreakEnabled]);
+
+  const handleRecordBreakComplete = useCallback(() => {
+    setRecordBreakDone(true);
+    const overlay = soldOverlayRef.current;
+    if (ceremonyEnabled && overlay?.verdict === 'SOLD') {
+      beginCeremony(overlay);
+    }
+    dismissOverlay();
+  }, [beginCeremony, ceremonyEnabled, dismissOverlay]);
+
+  const { active: countdownActive, dismiss: dismissCountdown } = useAudienceCountdown(auction, tid);
+  const [introForceKey, setIntroForceKey] = useState(0);
+
+  const handleCountdownComplete = useCallback(() => {
+    dismissCountdown();
+    if (config?.overlayShowCinematicIntro === true && auction?.cinematicIntroLive !== false && player) {
+      setIntroForceKey((k) => k + 1);
+    }
+  }, [auction?.cinematicIntroLive, config?.overlayShowCinematicIntro, dismissCountdown, player]);
+
+  const showResultLayer = isResult && !soldOverlay && !ceremonyActive;
+  const ceremonyTeam = teams.find((t) => t.id === activeTeamId);
+  const cinematicEnabled = config?.overlayShowCinematicIntro === true
+    && auction?.cinematicIntroLive !== false
+    && !soldSequenceActive;
+  const bidPopEnabled = config?.overlayShowBidPop !== false;
+  const bidPopToken = useOverlayBidPop(auction?.currentBid, auction?.sessionId, bidPopEnabled && status === 'ACTIVE');
+  const { isPlaying: cinematicPlaying, sessionReady } = useCinematicPlayerIntro(
+    auction?.sessionId,
+    status,
+    cinematicEnabled,
+    CINEMATIC_INTRO_MS,
+    introForceKey,
+  );
+  const showCinematicLayer = cinematicPlaying && Boolean(auction?.sessionId);
+  const showStatsIntro = useTimedPlayerStatsOverlay(
+    player,
+    auction?.sessionId,
+    config?.overlayShowPlayerStatsIntro !== false && sessionReady,
+    config?.overlayPlayerStatsIntroMs || 5500
+  );
+  const [categorySlot, ageSlot] = safeDetailSlots(player, config?.overlayAudienceDetailFields);
 
   return (
-    <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''}`}>
+    <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''} ${showCinematicLayer ? styles.cinematicMode : ''}`}>
       <OverlayFullscreenButton />
-      <div className={styles.shell}>
+      {!data && transport === 'connecting' && (
+        <div className={styles.bootState}>
+          <div className={styles.bootPulse} />
+          <div>Connecting Audience Display…</div>
+        </div>
+      )}
+      <div className={`${styles.shell} ${showCinematicLayer ? styles.shellDuringCinematic : ''}`}>
         <header className={styles.topBar}>
           <div>
-            <div className={styles.brandKicker}>{connected ? 'Live Sync Connected' : 'Connecting Live Feed'}</div>
+            <div className={styles.brandKicker}>
+              {transport === 'websocket' || connected ? 'Live Sync Connected' : transport === 'polling' ? 'Polling Feed (check WebSocket)' : 'Connecting Live Feed'}
+            </div>
             <div className={styles.title}>{title}</div>
           </div>
           <div className={styles.sponsor}>{sponsor}</div>
@@ -79,20 +229,20 @@ export default function AuctionDisplayPage() {
             </div>
             <div className={styles.detailGrid}>
               <div className={`${styles.glass} ${styles.detailCard}`}>
-                <div className={styles.label}>Category</div>
-                <div className={styles.value}>{player?.category || player?.teamName || 'Open Pool'}</div>
+                <div className={styles.label}>{categorySlot.label}</div>
+                <div className={`${styles.value} ${styles.valueClamp}`} title={categorySlot.value}>{categorySlot.value}</div>
               </div>
               <div className={`${styles.glass} ${styles.detailCard}`}>
                 <div className={styles.label}>Role</div>
-                <div className={styles.value}>{roleLabel(player?.role)}</div>
+                <div className={styles.value}>{getRoleShortLabel(player?.role, config?.playerRoles)}</div>
               </div>
               <div className={`${styles.glass} ${styles.detailCard}`}>
                 <div className={styles.label}>Base Price</div>
                 <div className={styles.value}>{money(player?.basePrice)}</div>
               </div>
               <div className={`${styles.glass} ${styles.detailCard}`}>
-                <div className={styles.label}>Age</div>
-                <div className={styles.value}>{player?.age || 'Auction Pool'}</div>
+                <div className={styles.label}>{ageSlot.label}</div>
+                <div className={`${styles.value} ${styles.valueClamp}`} title={ageSlot.value}>{ageSlot.value}</div>
               </div>
             </div>
           </aside>
@@ -108,12 +258,15 @@ export default function AuctionDisplayPage() {
           <aside className={styles.bidPanel}>
             <div className={`${styles.glass} ${styles.bidCard}`}>
               <div className={styles.label}>Current Bid</div>
-              <div className={styles.bidAmount}>
-                {money(auction?.currentBid)}
-              </div>
+              <BidAmountDisplay
+                className={styles.bidAmount}
+                amount={auction?.currentBid}
+                formatAmount={money}
+                popToken={bidPopToken}
+              />
             </div>
 
-            <div className={`${styles.glass} ${styles.teamCard}`}>
+            <div className={`${styles.glass} ${styles.teamCard} ${isSold ? styles.teamCardSold : ''}`}>
               {team?.logoUrl ? (
                 <img className={styles.teamLogo} src={resolveUrl(team.logoUrl)} alt={team.name} />
               ) : (
@@ -122,12 +275,15 @@ export default function AuctionDisplayPage() {
                 </div>
               )}
               <div>
-                <div className={styles.label}>Currently Bidding</div>
-                <div className={styles.teamName}>{auction?.highestBidderTeamName || 'Awaiting Bid'}</div>
+                <div className={styles.label}>{isSold ? 'Winning Team' : 'Currently Bidding'}</div>
+                <div className={styles.teamName}>
+                  {auction?.highestBidderTeamName || 'Awaiting Bid'}
+                  {squadPickLabel && <span className={styles.squadPickBadge}>{squadPickLabel}</span>}
+                </div>
               </div>
             </div>
 
-            <PlayerStatsPanel player={player} />
+            {showStatsIntro && <PlayerStatsPanel player={player} />}
           </aside>
         </section>
 
@@ -138,7 +294,7 @@ export default function AuctionDisplayPage() {
         </footer>
       </div>
 
-      {isResult && (
+      {showResultLayer && (
         <section className={styles.resultLayer}>
           <div className={`${styles.resultBursts} ${status === 'UNSOLD' ? styles.unsoldBursts : ''}`} />
           <div className={styles.resultCard}>
@@ -148,8 +304,17 @@ export default function AuctionDisplayPage() {
             {status === 'SOLD' ? (
               <>
                 <div className={styles.resultTeam}>
-                  {team?.logoUrl && <img src={resolveUrl(team.logoUrl)} alt={team.name} />}
-                  <span>{auction?.highestBidderTeamName || 'Winning Team'}</span>
+                  {team?.logoUrl ? (
+                    <img className={styles.resultTeamLogo} src={resolveUrl(team.logoUrl)} alt={team.name} />
+                  ) : (
+                    <div className={styles.resultTeamLogoFallback}>
+                      {(auction?.highestBidderTeamName || 'W')[0]}
+                    </div>
+                  )}
+                  <span>
+                    {auction?.highestBidderTeamName || 'Winning Team'}
+                    {squadPickLabel && <small className={styles.resultSquadPick}>{squadPickLabel} in Squad</small>}
+                  </span>
                 </div>
                 <div className={styles.resultAmount}>{money(auction?.currentBid)}</div>
               </>
@@ -158,6 +323,68 @@ export default function AuctionDisplayPage() {
             )}
           </div>
         </section>
+      )}
+
+      {showGavel && (
+        <GavelOverlay
+          key={soldOverlay.sessionKey}
+          verdict={soldOverlay.verdict}
+          name={soldOverlay.name}
+          team={soldOverlay.team}
+          teamLogo={soldOverlay.teamLogo}
+          amount={soldOverlay.amount}
+          squadPick={soldOverlay.squadPick}
+          duration={soldOverlay.verdict === 'SOLD' ? GAVEL_SOLD_MS : GAVEL_UNSOLD_MS}
+          onComplete={soldOverlay.verdict === 'SOLD' ? handleGavelComplete : dismissOverlay}
+        />
+      )}
+
+      {showRecordBreak && (
+        <RecordBreakOverlay
+          key={`record-${soldOverlay.sessionKey}`}
+          name={soldOverlay.name}
+          team={soldOverlay.team}
+          teamLogo={soldOverlay.teamLogo}
+          amount={soldOverlay.amount}
+          previousRecord={soldOverlay.previousRecord}
+          playerImageUrl={soldOverlay.playerImageUrl}
+          onComplete={handleRecordBreakComplete}
+        />
+      )}
+
+      {ceremonyEnabled && ceremonyActive && ceremonyTeam && (
+        <SquadFormationCeremony
+          team={ceremonyTeam}
+          filledPlayers={teamRoster[ceremonyTeam.id] || []}
+          squadSize={squadSize}
+          saleSummary={saleSummary}
+          phase={ceremonyPhase}
+          newPlayerKey={newPlayerKey}
+          flyRequest={flyRequest}
+          flyDurationMs={flyDurationMs}
+          exitDurationMs={exitDurationMs}
+          registerNextSlot={registerNextSlot}
+          sourceRef={sourceRef}
+          onFlyComplete={completeFly}
+        />
+      )}
+
+      {countdownActive && (
+        <TournamentCountdownOverlay
+          key={countdownActive.id}
+          tournamentName={config?.auctionDisplayName || config?.tournamentName || title}
+          logoUrl={config?.logoUrl}
+          countdownSeconds={countdownActive.seconds}
+          onComplete={handleCountdownComplete}
+        />
+      )}
+
+      {showCinematicLayer && (
+        <CinematicPlayerIntro
+          player={player}
+          playerRoles={config?.playerRoles}
+          scene={auction?.sessionId}
+        />
       )}
     </main>
   );

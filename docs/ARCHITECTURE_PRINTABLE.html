@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cricket Auction Platform — Architecture (Printable)</title>
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #cbd5e1;
+      --accent: #0f766e;
+      --accent2: #1d4ed8;
+      --bg: #ffffff;
+      --box: #f8fafc;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      font-size: 10.5pt;
+      line-height: 1.45;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 14mm 12mm;
+    }
+
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .no-print { display: none !important; }
+      .page-break { page-break-before: always; }
+      a { color: var(--ink); text-decoration: none; }
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #0f172a;
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .toolbar button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .doc {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 10mm 12mm 16mm;
+    }
+
+    .cover {
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+      background: linear-gradient(135deg, #ecfeff 0%, #f8fafc 60%, #fff 100%);
+    }
+
+    .cover h1 {
+      font-size: 22pt;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+    }
+
+    .cover .sub {
+      font-size: 11pt;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      font-size: 9pt;
+    }
+
+    .meta-grid div {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #fff;
+    }
+
+    .meta-grid strong { display: block; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 2px; }
+
+    h2 {
+      font-size: 12pt;
+      color: var(--accent);
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 4px;
+      margin: 14px 0 8px;
+    }
+
+    h3 {
+      font-size: 10pt;
+      margin: 10px 0 5px;
+      color: var(--ink);
+    }
+
+    p, li { color: var(--ink); }
+    ul { margin: 4px 0 8px 18px; }
+    li { margin-bottom: 3px; }
+
+    .diagram {
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      margin: 8px 0 10px;
+      background: var(--box);
+    }
+
+    .flow-row {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 6px 0;
+    }
+
+    .box {
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #fff;
+      text-align: center;
+      min-width: 88px;
+      font-size: 9pt;
+      font-weight: 600;
+    }
+
+    .box.accent { border-color: var(--accent); background: #ecfeff; }
+    .box.blue { border-color: var(--accent2); background: #eff6ff; }
+    .box.dark { background: #0f172a; color: #fff; border-color: #0f172a; }
+
+    .arrow {
+      display: flex;
+      align-items: center;
+      font-size: 14pt;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .three-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt;
+      margin: 6px 0 10px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 5px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #e2e8f0;
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: #f0fdfa;
+      padding: 8px 10px;
+      margin: 8px 0;
+      font-size: 9.5pt;
+    }
+
+    .warn {
+      border-left: 4px solid #d97706;
+      background: #fffbeb;
+      padding: 8px 10px;
+      margin: 8px 0;
+      font-size: 9.5pt;
+    }
+
+    .footer {
+      margin-top: 14px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+      font-size: 8.5pt;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .pc-label {
+      font-size: 7.5pt;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <span><strong>Cricket Auction Architecture</strong> — open this file in Chrome → Print → Save as PDF</span>
+    <button onclick="window.print()">Print / Save as PDF</button>
+  </div>
+
+  <div class="doc">
+
+    <!-- PAGE 1: COVER + SYSTEM OVERVIEW -->
+    <section class="cover">
+      <h1>Cricket Auction Platform</h1>
+      <div class="sub">System Architecture — Printable Reference · All Flows · Event Day Setup</div>
+      <div class="meta-grid">
+        <div><strong>Frontend</strong>React 19 · Vite · Tailwind</div>
+        <div><strong>Backend</strong>Spring Boot 3.2 · Java 17 · JWT</div>
+        <div><strong>Data</strong>MySQL 8 · JPA</div>
+        <div><strong>Realtime</strong>WebSocket STOMP</div>
+        <div><strong>Deploy</strong>Docker Compose</div>
+        <div><strong>Version</strong>June 2026</div>
+      </div>
+    </section>
+
+    <h2>1. System overview</h2>
+    <div class="diagram">
+      <div class="flow-row">
+        <div class="stack">
+          <span class="pc-label">Clients</span>
+          <div class="box">Admin UI</div>
+          <div class="box">Live Auction</div>
+          <div class="box">LED Display</div>
+          <div class="box">OBS Overlays</div>
+          <div class="box">Public /view</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stack">
+          <span class="pc-label">Frontend</span>
+          <div class="box accent">React SPA<br><small>Single build</small></div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stack">
+          <span class="pc-label">Backend</span>
+          <div class="box blue">REST API<br><small>/api/*</small></div>
+          <div class="box blue">WebSocket<br><small>/ws-overlay-native</small></div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stack">
+          <span class="pc-label">Storage</span>
+          <div class="box dark">MySQL 8</div>
+          <div class="box">File uploads</div>
+        </div>
+      </div>
+    </div>
+
+    <h2>2. User roles</h2>
+    <table>
+      <tr><th>Role</th><th>Can do</th><th>Cannot do</th></tr>
+      <tr><td><strong>Super Admin</strong></td><td>Everything: users, form builder, tournaments, auction</td><td>—</td></tr>
+      <tr><td><strong>Operator</strong></td><td>Run auction, broadcast, registrations, teams/players</td><td>Users, audit logs, form builder</td></tr>
+      <tr><td><strong>Viewer</strong></td><td>Read-only: players, teams, sold, unsold</td><td>Auction desk, broadcast, registrations</td></tr>
+      <tr><td><strong>Public</strong></td><td>/view, /register, all overlays (no login)</td><td>Admin write actions</td></tr>
+    </table>
+
+    <h2>3. Multi-PC event day (your typical setup)</h2>
+    <div class="diagram">
+      <div class="three-col">
+        <div>
+          <div class="pc-label">PC 1 — Auction operator</div>
+          <div class="box accent" style="margin-top:4px">/auction<br><small>JWT login · Operator</small></div>
+          <p style="font-size:9pt;margin-top:6px">Only machine that changes auction state (bid, SOLD, UNSOLD).</p>
+        </div>
+        <div>
+          <div class="pc-label">PC 2 — LED / hall screen</div>
+          <div class="box accent" style="margin-top:4px">/auction-display<br><small>Public · no login</small></div>
+          <p style="font-size:9pt;margin-top:6px">Projector view. Ceremony + gavel. Listens to server feed.</p>
+        </div>
+        <div>
+          <div class="pc-label">PC 3 — OBS / YouTube</div>
+          <div class="box accent" style="margin-top:4px">/overlay/main<br>/overlay/team-squad-board<br><small>Browser sources</small></div>
+          <p style="font-size:9pt;margin-top:6px">Stream graphics. Each OBS source = one WebSocket connection.</p>
+        </div>
+      </div>
+      <div class="flow-row" style="margin-top:10px">
+        <div class="box">PC 1</div><div class="arrow">→</div>
+        <div class="box dark">Server API + WebSocket</div><div class="arrow">→</div>
+        <div class="box">PC 2 + PC 3</div>
+      </div>
+    </div>
+    <div class="note"><strong>Important:</strong> PC 1 does NOT push directly to PC 2 or PC 3. All displays subscribe to the <strong>same server WebSocket topic</strong>. Lag happens only if WebSocket fails → HTTP polling fallback (~1.5–3 s).</div>
+
+    <!-- PAGE 2: FLOWS -->
+    <section class="page-break"></section>
+
+    <h2>4. Live auction flow (core)</h2>
+    <div class="diagram">
+      <div class="flow-row">
+        <div class="box">Operator action<br><small>bid / SOLD</small></div>
+        <div class="arrow">→</div>
+        <div class="box blue">POST /api/.../auction/*</div>
+        <div class="arrow">→</div>
+        <div class="box">AuctionService<br><small>DB update</small></div>
+        <div class="arrow">→</div>
+        <div class="box blue">OverlayPushService<br><small>async</small></div>
+        <div class="arrow">→</div>
+        <div class="box accent">WebSocket push<br><small>all overlays</small></div>
+      </div>
+    </div>
+    <table>
+      <tr><th>Action</th><th>API</th><th>Overlay push</th></tr>
+      <tr><td>Start / Bid / Calling bid</td><td>POST auction/start, bid, calling-bid</td><td>Lightweight snapshot</td></tr>
+      <tr><td><strong>SOLD</strong></td><td>POST auction/sell</td><td>Lightweight + <strong>full squad</strong></td></tr>
+      <tr><td>Unsold / Stop</td><td>POST auction/unsold, stop</td><td>Lightweight</td></tr>
+      <tr><td>Undo</td><td>POST auction/undo</td><td>Lightweight + squad</td></tr>
+    </table>
+
+    <h2>5. Realtime overlay transport</h2>
+    <div class="two-col">
+      <div>
+        <h3>Primary — WebSocket (target)</h3>
+        <ul>
+          <li>URL: <code>wss://your-api/ws-overlay-native</code></li>
+          <li>Topic: <code>/topic/overlay/{tournamentId}/snapshot</code></li>
+          <li>Latency: ~100–300 ms</li>
+          <li>UI shows: <strong>“Live Sync Connected”</strong></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Fallback — HTTP poll</h3>
+        <ul>
+          <li>GET <code>/api/overlay/{id}/snapshot</code></li>
+          <li>Used when WebSocket fails</li>
+          <li>Latency: ~1.5–3 s</li>
+          <li>Network tab shows many <code>snapshot</code> XHR calls</li>
+        </ul>
+      </div>
+    </div>
+    <div class="warn"><strong>Health check:</strong> DevTools → Network → filter <strong>WS</strong> (not XHR). You should see <code>ws-overlay-native</code> status <strong>101</strong>. Add <code>?debugOverlay=1</code> to overlay URL for console logs.</div>
+
+    <h2>6. Overlay & display routes</h2>
+    <table>
+      <tr><th>Route</th><th>Use on</th><th>Purpose</th></tr>
+      <tr><td>/auction-display</td><td>LED PC</td><td>Full-screen hall display, gavel, ceremony</td></tr>
+      <tr><td>/overlay/main</td><td>OBS</td><td>Primary stream — player + bid + team</td></tr>
+      <tr><td>/overlay/team-squad-board</td><td>OBS</td><td>Premium squad board, 8s rotate</td></tr>
+      <tr><td>/overlay/team-squad</td><td>OBS</td><td>All teams classic grid</td></tr>
+      <tr><td>/overlay/team-budget</td><td>OBS</td><td>Budget bars</td></tr>
+      <tr><td>/overlay/sold · /unsold</td><td>OBS scenes</td><td>Full-screen verdict moments</td></tr>
+      <tr><td>/view/{id}</td><td>Audience phones</td><td>Public live viewer (no login)</td></tr>
+    </table>
+    <p>All overlay URLs are copied from <strong>Broadcast Control</strong> page. Optional <code>&amp;token=</code> if broadcast token enabled.</p>
+
+    <h2>7. Registration flow</h2>
+    <div class="diagram">
+      <div class="flow-row">
+        <div class="box">Form Builder<br><small>Super Admin</small></div>
+        <div class="arrow">→</div>
+        <div class="box">/register/{id}<br><small>public form</small></div>
+        <div class="arrow">→</div>
+        <div class="box">PENDING<br><small>in DB</small></div>
+        <div class="arrow">→</div>
+        <div class="box">Registrations page<br><small>Operator import</small></div>
+        <div class="arrow">→</div>
+        <div class="box accent">Player pool<br><small>AVAILABLE</small></div>
+      </div>
+    </div>
+
+    <h2>8. Player lifecycle</h2>
+    <div class="diagram">
+      <div class="flow-row">
+        <div class="box">Excel / Manual /<br>Registration</div>
+        <div class="arrow">→</div>
+        <div class="box accent">AVAILABLE</div>
+        <div class="arrow">→</div>
+        <div class="box">IN_AUCTION</div>
+        <div class="arrow">→</div>
+        <div class="box" style="background:#dcfce7">SOLD</div>
+        <div class="arrow">/</div>
+        <div class="box" style="background:#fee2e2">UNSOLD</div>
+      </div>
+      <p style="font-size:9pt;margin-top:8px;text-align:center"><strong>Retained:</strong> assigned to team before auction · budget deducted · appears on squad immediately</p>
+    </div>
+
+    <!-- PAGE 3: CHECKLISTS -->
+    <section class="page-break"></section>
+
+    <h2>9. Pre-event checklist</h2>
+    <div class="two-col">
+      <div>
+        <h3>Setup (before event)</h3>
+        <ul>
+          <li>☐ Create tournament + set squad size</li>
+          <li>☐ Create teams with budgets &amp; logos</li>
+          <li>☐ Upload players (Excel) or import registrations</li>
+          <li>☐ Mark retained players if any</li>
+          <li>☐ Configure bid rules in Broadcast</li>
+          <li>☐ Copy all overlay URLs (same tournamentId)</li>
+          <li>☐ Test WebSocket on LED + OBS PCs</li>
+          <li>☐ Change default admin password</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Live day</h3>
+        <ul>
+          <li>☐ Broadcast → Broadcaster mode <strong>ON</strong></li>
+          <li>☐ PC 1: operator logged in → /auction</li>
+          <li>☐ PC 2: /auction-display fullscreen</li>
+          <li>☐ PC 3: OBS browser sources loaded</li>
+          <li>☐ Header says “Live Sync Connected” on displays</li>
+          <li>☐ Test one SOLD — all screens update together</li>
+          <li>☐ WhatsApp auto OFF during auction (optional)</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>10. Auction operator quick reference</h2>
+    <table>
+      <tr><th>Step</th><th>Action</th><th>Key</th></tr>
+      <tr><td>1</td><td>Pick player or Random</td><td>R (random)</td></tr>
+      <tr><td>2</td><td>Adjust calling bid</td><td>↑ ↓</td></tr>
+      <tr><td>3</td><td>Assign team</td><td>1–9 or click</td></tr>
+      <tr><td>4</td><td>Finalize</td><td>S = SOLD · U = Unsold</td></tr>
+      <tr><td>—</td><td>Undo last SOLD/UNSOLD</td><td>Button on idle screen</td></tr>
+      <tr><td>—</td><td>Voice on/off</td><td>M</td></tr>
+    </table>
+
+    <h2>11. Hosting requirements (production)</h2>
+    <table>
+      <tr><th>Item</th><th>Requirement</th></tr>
+      <tr><td>Frontend build</td><td><code>VITE_API_URL</code> = production API (https)</td></tr>
+      <tr><td>WebSocket proxy</td><td>Nginx/Cloudflare must upgrade <code>/ws-overlay-native</code></td></tr>
+      <tr><td>HTTPS</td><td>Site and API on HTTPS → uses <code>wss://</code></td></tr>
+      <tr><td>Ports</td><td>Frontend 3000/443 · Backend 8080 · MySQL 3306</td></tr>
+      <tr><td>WhatsApp (optional)</td><td>WHATSAPP_API_TOKEN + WHATSAPP_PHONE_NUMBER_ID on server</td></tr>
+    </table>
+
+    <h2>12. Key documents in repo</h2>
+    <table>
+      <tr><th>File</th><th>Contents</th></tr>
+      <tr><td>docs/ARCHITECTURE.md</td><td>Full architecture with Mermaid diagrams</td></tr>
+      <tr><td>docs/ARCHITECTURE_PRINTABLE.html</td><td>This printable file</td></tr>
+      <tr><td>docs/USER_MANUAL.md</td><td>Complete user manual tab-by-tab</td></tr>
+      <tr><td>README.md</td><td>Developer setup &amp; API reference</td></tr>
+    </table>
+
+    <div class="footer">
+      Cricket Auction Platform · Architecture Reference · Print from Chrome: Ctrl+P → Save as PDF · Margins: Default · Scale: 100%
+    </div>
+  </div>
+</body>
+</html>

@@ -9,7 +9,10 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "players")
+@Table(name = "players", indexes = {
+        @Index(name = "idx_players_tournament_status", columnList = "tournament_id,status"),
+        @Index(name = "idx_players_tournament_team", columnList = "tournament_id,team_id")
+})
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,9 +26,8 @@ public class Player {
     @Column(nullable = false)
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PlayerRole role;
+    @Column(nullable = false, length = 50)
+    private String role;
 
     @Column(name = "base_price", nullable = false)
     private Double basePrice;
@@ -84,6 +86,20 @@ public class Player {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    /** Optional kit/contact fields from Excel upload — export only, not shown in auction UI */
+    @Column(name = "extra_data", columnDefinition = "TEXT")
+    private String extraData;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "whatsapp_notify_status", length = 20)
+    private WhatsAppNotifyStatus whatsappNotifyStatus;
+
+    @Column(name = "whatsapp_notify_error", length = 500)
+    private String whatsappNotifyError;
+
+    @Column(name = "whatsapp_sent_at")
+    private LocalDateTime whatsappSentAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -92,11 +108,11 @@ public class Player {
         if (retained == null) retained = false;
     }
 
-    public enum PlayerRole {
-        BATSMAN, BOWLER, ALL_ROUNDER, WICKET_KEEPER
-    }
-
     public enum PlayerStatus {
         AVAILABLE, IN_AUCTION, SOLD, UNSOLD
+    }
+
+    public enum WhatsAppNotifyStatus {
+        PENDING, SENT, FAILED, SKIPPED
     }
 }

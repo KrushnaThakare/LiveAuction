@@ -4,16 +4,21 @@ import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.dto.AuctionStateResponse;
 import com.cricketauction.dto.BroadcastSettingsDto;
 import com.cricketauction.dto.TeamResponse;
+import com.cricketauction.dto.TopSoldPlayerResponse;
 import com.cricketauction.service.AuctionService;
+import com.cricketauction.service.TopSoldCacheService;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.exception.AuctionException;
 import com.cricketauction.service.TeamService;
 import com.cricketauction.service.TournamentService;
+import com.cricketauction.service.PlayerRoleService;
+import com.cricketauction.util.OverlayDetailFieldsUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 
 @RestController
 @RequestMapping("/api/overlay")
@@ -21,30 +26,57 @@ public class OverlayController {
     private final AuctionService auctionService;
     private final TeamService teamService;
     private final TournamentService tournamentService;
+    private final PlayerRoleService playerRoleService;
+    private final TopSoldCacheService topSoldCacheService;
 
-    public OverlayController(AuctionService auctionService, TeamService teamService, TournamentService tournamentService) {
+    public OverlayController(AuctionService auctionService, TeamService teamService, TournamentService tournamentService, PlayerRoleService playerRoleService, TopSoldCacheService topSoldCacheService) {
         this.auctionService = auctionService;
         this.teamService = teamService;
         this.tournamentService = tournamentService;
+        this.playerRoleService = playerRoleService;
+        this.topSoldCacheService = topSoldCacheService;
     }
 
     @GetMapping("/{tournamentId}/snapshot")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> snapshot(@PathVariable Long tournamentId, @RequestParam(value = "token", required = false) String token) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> snapshot(
+            @PathVariable Long tournamentId,
+            @RequestParam(value = "token", required = false) String token,
+            @RequestParam(value = "includePlayers", defaultValue = "false") boolean includePlayers,
+            @RequestParam(value = "studio", defaultValue = "false") boolean studio) {
         Tournament t = tournamentService.findById(tournamentId);
-        validateOverlayAccess(t, token);
+        validateOverlayAccess(t, token, studio);
         AuctionStateResponse auction = auctionService.getAuctionState(tournamentId);
-        List<TeamResponse> teams = teamService.getTeamsByTournament(tournamentId);
+        List<TeamResponse> teams = includePlayers
+                ? teamService.getTeamsByTournament(tournamentId)
+                : teamService.getTeamSummariesByTournament(tournamentId);
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "auction", auction,
                 "teams", teams
         )));
     }
 
+    @GetMapping("/{tournamentId}/top-sold")
+    public ResponseEntity<ApiResponse<List<TopSoldPlayerResponse>>> topSold(
+            @PathVariable Long tournamentId,
+            @RequestParam(value = "token", required = false) String token,
+            @RequestParam(value = "limit", defaultValue = "5") int limit) {
+        Tournament t = tournamentService.findById(tournamentId);
+        validateOverlayAccess(t, token, true);
+        List<TopSoldPlayerResponse> players = topSoldCacheService.getOrRefresh(tournamentId);
+        return ResponseEntity.ok(ApiResponse.success(players != null ? players : Collections.emptyList()));
+    }
+
     @GetMapping("/{tournamentId}/config")
     public ResponseEntity<ApiResponse<BroadcastSettingsDto>> config(@PathVariable Long tournamentId, @RequestParam(value = "token", required = false) String token) {
         Tournament t = tournamentService.findById(tournamentId);
-        validateOverlayAccess(t, token);
-        return ResponseEntity.ok(ApiResponse.success(BroadcastSettingsDto.builder()
+        if (Boolean.TRUE.equals(t.getOverlayEnabled())) {
+            validateOverlayAccess(t, token, false);
+        }
+        return ResponseEntity.ok(ApiResponse.success(mapConfig(t)));
+    }
+
+    private BroadcastSettingsDto mapConfig(Tournament t) {
+        return BroadcastSettingsDto.builder()
                 .overlayEnabled(t.getOverlayEnabled())
                 .overlayTheme(t.getOverlayTheme())
                 .overlayShowTeamBudget(t.getOverlayShowTeamBudget())
@@ -52,14 +84,37 @@ public class OverlayController {
                 .overlayShowTicker(t.getOverlayShowTicker())
                 .overlayShowPlayerIntro(t.getOverlayShowPlayerIntro())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
-                .build()));
+                .tournamentName(t.getName())
+                .auctionDisplayName(t.getAuctionDisplayName())
+                .logoUrl(t.getLogoUrl())
+                .sport(t.getSport() == null ? "CRICKET" : t.getSport())
+                .playerRoles(playerRoleService.getRoles(t))
+                .overlayAudienceDetailFields(OverlayDetailFieldsUtil.parse(t.getOverlayAudienceDetailFields()))
+                .overlayMainDetailFields(OverlayDetailFieldsUtil.parse(t.getOverlayMainDetailFields()))
+                .overlayShowRecordBreak(t.getOverlayShowRecordBreak())
+                .overlayCountdownSeconds(countdownSecondsOrDefault(t.getOverlayCountdownSeconds()))
+                .build();
     }
 
-    private void validateOverlayAccess(Tournament t, String token) {
-        if (!Boolean.TRUE.equals(t.getOverlayEnabled())) throw new AuctionException("Overlay is disabled");
+    private void validateOverlayAccess(Tournament t, String token, boolean studio) {
+        if (!studio && !Boolean.TRUE.equals(t.getOverlayEnabled())) {
+            throw new AuctionException("Broadcast currently disabled by Admin");
+        }
         String secret = t.getOverlaySecretToken();
         if (secret != null && !secret.isBlank() && (token == null || !secret.equals(token))) {
             throw new AuctionException("Invalid overlay token");
         }
+    }
+
+    private static int squadSizeOrDefault(Integer value) {
+        if (value == null) return 15;
+        return Math.max(5, Math.min(30, value));
+    }
+
+    private static int countdownSecondsOrDefault(Integer value) {
+        if (value == null) return 5;
+        if (value <= 7) return 5;
+        if (value <= 12) return 10;
+        return 15;
     }
 }

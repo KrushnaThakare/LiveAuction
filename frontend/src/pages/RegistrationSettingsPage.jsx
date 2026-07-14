@@ -85,6 +85,17 @@ export default function RegistrationSettingsPage() {
     } finally { setSaving(false); }
   };
 
+  const handleToggleWhatsAppAuto = async () => {
+    if (!activeTournament || !settings) return;
+    const newVal = !settings.whatsappAutoEnabled;
+    setSaving(true);
+    try {
+      await registrationApi.updateSettings(activeTournament.id, { whatsappAutoEnabled: newVal });
+      setSettings(s => ({ ...s, whatsappAutoEnabled: newVal }));
+      toast.success(newVal ? 'Auto WhatsApp on sell enabled' : 'Auto WhatsApp on sell disabled');
+    } finally { setSaving(false); }
+  };
+
   const handleSaveSettings = async () => {
     if (!activeTournament) return;
     setSaving(true);
@@ -97,6 +108,7 @@ export default function RegistrationSettingsPage() {
       await registrationApi.updateSettings(activeTournament.id, {
         registrationMessage: settings.registrationMessage,
         registrationRedirectLink: settings.registrationRedirectLink,
+        whatsappAutoEnabled: settings.whatsappAutoEnabled,
       });
       toast.success('Settings saved');
     } finally { setSaving(false); }
@@ -305,6 +317,35 @@ export default function RegistrationSettingsPage() {
           <input className="input" placeholder="https://chat.whatsapp.com/..."
             value={settings?.registrationRedirectLink || ''}
             onChange={e => setSettings(s => ({ ...s, registrationRedirectLink: e.target.value }))} />
+        </div>
+
+        <div
+          className="flex items-center justify-between gap-4 p-4 rounded-xl"
+          style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}
+        >
+          <div>
+            <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
+              Auto WhatsApp on sell
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+              Sends a congratulations message automatically when a player is sold during auction.
+              Requires WhatsApp Cloud API env vars on the backend
+              {settings?.whatsappConfigured === false && (
+                <span style={{ color: 'var(--color-warning)' }}> (API not configured on server yet)</span>
+              )}.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleWhatsAppAuto}
+            disabled={saving}
+            className="flex-shrink-0"
+            aria-label="Toggle auto WhatsApp on sell"
+          >
+            {settings?.whatsappAutoEnabled
+              ? <ToggleRight size={36} style={{ color: 'var(--color-success)' }} />
+              : <ToggleLeft size={36} style={{ color: 'var(--color-text-secondary)' }} />}
+          </button>
         </div>
 
         <button onClick={handleSaveSettings} disabled={saving} className="btn-primary">
