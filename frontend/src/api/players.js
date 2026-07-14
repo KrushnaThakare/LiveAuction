@@ -16,6 +16,8 @@ export const playerApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  repairRoles: (tournamentId) =>
+    api.post(`/tournaments/${tournamentId}/players/repair-roles`),
   update: (tournamentId, playerId, data) =>
     api.put(`/tournaments/${tournamentId}/players/${playerId}`, data),
   fetchCricHeroesStats: (tournamentId, playerId) =>
@@ -24,6 +26,10 @@ export const playerApi = {
     api.post(`/tournaments/${tournamentId}/players/cricheroes/clean-invalid`),
   delete: (tournamentId, playerId) =>
     api.delete(`/tournaments/${tournamentId}/players/${playerId}`),
+  retryWhatsApp: (tournamentId, playerId) =>
+    api.post(`/tournaments/${tournamentId}/players/${playerId}/whatsapp/retry`),
+  retryWhatsAppBulk: (tournamentId, playerIds) =>
+    api.post(`/tournaments/${tournamentId}/players/whatsapp/retry`, { playerIds }),
   downloadImages: (tournamentId) =>
     api.post(`/tournaments/${tournamentId}/players/download-images`),
 };

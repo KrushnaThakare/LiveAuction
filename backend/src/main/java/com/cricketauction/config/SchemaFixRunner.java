@@ -57,6 +57,9 @@ public class SchemaFixRunner implements ApplicationRunner {
             // (Hibernate ddl-auto=update only runs on application startup;
             //  this ensures columns exist even before Hibernate processes the schema)
             addUndoColumnsIfMissing(conn);
+            addTournamentConfigColumnsIfMissing(conn);
+            widenPlayerRoleColumn(conn);
+            addPerformanceIndexes(conn);
 
             // Step 1: null out FK values on closed sessions first
             // (needed even if the index is already gone, prevents future constraint hits)
@@ -138,6 +141,73 @@ public class SchemaFixRunner implements ApplicationRunner {
             } catch (SQLException e) {
                 log.debug("SchemaFixRunner addColumn {}.{}: {}", tableName, colName, e.getMessage());
             }
+        }
+    }
+
+    private void addTournamentConfigColumnsIfMissing(Connection conn) {
+        addColumnsToTable(conn, "tournaments", new String[]{
+            "auction_display_name VARCHAR(120)",
+            "sport VARCHAR(50) DEFAULT 'CRICKET'",
+            "player_roles_config TEXT",
+            "overlay_show_player_stats_intro BOOLEAN DEFAULT TRUE",
+            "overlay_player_stats_intro_ms INT DEFAULT 5500",
+            "public_view_show_teams BOOLEAN DEFAULT TRUE",
+            "public_view_show_sold BOOLEAN DEFAULT TRUE",
+            "public_view_show_unsold BOOLEAN DEFAULT TRUE",
+            "overlay_audience_detail_fields TEXT",
+            "overlay_main_detail_fields TEXT",
+            "highest_sold_bid DOUBLE DEFAULT 0",
+            "overlay_show_record_break BOOLEAN DEFAULT TRUE",
+            "overlay_countdown_seconds INT DEFAULT 5"
+        });
+    }
+
+    private void addPerformanceIndexes(Connection conn) {
+        addIndexIfMissing(conn, "players", "idx_players_tournament_status", "tournament_id", "status");
+        addIndexIfMissing(conn, "players", "idx_players_tournament_team", "tournament_id", "team_id");
+        addIndexIfMissing(conn, "teams", "idx_teams_tournament", "tournament_id");
+        addIndexIfMissing(conn, "auction_sessions", "idx_auction_sessions_tournament_status", "tournament_id", "status");
+        addIndexIfMissing(conn, "auction_sessions", "idx_auction_sessions_tournament_id", "tournament_id", "id");
+    }
+
+    private void addIndexIfMissing(Connection conn, String tableName, String indexName, String... columns) {
+        try {
+            boolean exists = false;
+            try (ResultSet rs = conn.getMetaData().getIndexInfo(null, null, tableName, false, false)) {
+                while (rs.next()) {
+                    if (indexName.equalsIgnoreCase(rs.getString("INDEX_NAME"))) {
+                        exists = true;
+                        break;
+                    }
+                }
+            }
+            if (!exists) {
+                boolean wasAuto = conn.getAutoCommit();
+                conn.setAutoCommit(true);
+                try (Statement st = conn.createStatement()) {
+                    st.execute("CREATE INDEX " + indexName + " ON " + tableName + " (" + String.join(",", columns) + ")");
+                    log.info("SchemaFixRunner: added index {} on {}", indexName, tableName);
+                } finally {
+                    conn.setAutoCommit(wasAuto);
+                }
+            }
+        } catch (SQLException e) {
+            log.debug("SchemaFixRunner addIndex {}.{}: {}", tableName, indexName, e.getMessage());
+        }
+    }
+
+    private void widenPlayerRoleColumn(Connection conn) {
+        try {
+            boolean wasAuto = conn.getAutoCommit();
+            conn.setAutoCommit(true);
+            try (Statement st = conn.createStatement()) {
+                st.execute("ALTER TABLE players MODIFY COLUMN role VARCHAR(50) NOT NULL");
+                log.debug("SchemaFixRunner: player role column is VARCHAR(50)");
+            } finally {
+                conn.setAutoCommit(wasAuto);
+            }
+        } catch (SQLException e) {
+            log.debug("SchemaFixRunner role column: {}", e.getMessage());
         }
     }
 

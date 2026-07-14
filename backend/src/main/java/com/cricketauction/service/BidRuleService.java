@@ -10,12 +10,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Transactional
 public class BidRuleService {
     private final BidRuleRepository bidRuleRepository;
     private final TournamentService tournamentService;
+    private final Map<Long, List<BidRuleDto>> rulesCache = new ConcurrentHashMap<>();
 
     public BidRuleService(BidRuleRepository bidRuleRepository, TournamentService tournamentService) {
         this.bidRuleRepository = bidRuleRepository;
@@ -24,9 +27,7 @@ public class BidRuleService {
 
     @Transactional(readOnly = true)
     public List<BidRuleDto> getRules(Long tournamentId) {
-        List<BidRule> rules = bidRuleRepository.findByTournamentIdOrderByPositionAscMinAmountAsc(tournamentId);
-        if (rules.isEmpty()) return defaultRules().stream().map(this::map).toList();
-        return rules.stream().map(this::map).toList();
+        return rulesCache.computeIfAbsent(tournamentId, this::loadRules);
     }
 
     public List<BidRuleDto> replaceRules(Long tournamentId, List<BidRuleDto> request) {
@@ -47,18 +48,24 @@ public class BidRuleService {
                     .position(i)
                     .build());
         }
+        rulesCache.remove(tournamentId);
         return getRules(tournamentId);
     }
 
     @Transactional(readOnly = true)
     public double getIncrement(Long tournamentId, double currentBid) {
-        List<BidRule> rules = bidRuleRepository.findByTournamentIdOrderByPositionAscMinAmountAsc(tournamentId);
-        if (rules.isEmpty()) rules = defaultRules();
+        List<BidRuleDto> rules = getRules(tournamentId);
         return rules.stream()
                 .filter(r -> currentBid < r.getMaxAmount())
                 .findFirst()
                 .orElse(rules.get(rules.size() - 1))
                 .getIncrementAmount();
+    }
+
+    private List<BidRuleDto> loadRules(Long tournamentId) {
+        List<BidRule> rules = bidRuleRepository.findByTournamentIdOrderByPositionAscMinAmountAsc(tournamentId);
+        if (rules.isEmpty()) return defaultRules().stream().map(this::map).toList();
+        return rules.stream().map(this::map).toList();
     }
 
     private void validate(List<BidRuleDto> rules) {

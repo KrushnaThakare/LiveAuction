@@ -3,23 +3,25 @@ import { Users } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { resolveUrl } from '../utils/resolveUrl';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
+import { getRoleShortLabel } from '../utils/formatters';
 import styles from './OverlayBroadcast.module.css';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
-
-const roleLabel = (role) => ({
-  BATSMAN: 'BAT',
-  BOWLER: 'BOWL',
-  ALL_ROUNDER: 'AR',
-  WICKET_KEEPER: 'WK',
-}[role] || role || 'ROLE');
 
 export default function OverlayTeamListPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const { data, config } = useOverlayRealtime(tid, token);
+  const { data, config } = useOverlayRealtime(tid, token, { includePlayers: true, studioOverlay: true });
   const teams = data?.teams || [];
+
+  if (!data && !config) {
+    return (
+      <div className={`${styles.stage} ${styles.squadStage}`}>
+        <div className={styles.boardTitle}>Connecting squad overlay…</div>
+      </div>
+    );
+  }
 
   if (config && config.overlayShowTeamList === false) return null;
 
@@ -46,7 +48,7 @@ export default function OverlayTeamListPage() {
                   {players.length ? players.map(player => (
                     <div key={player.id} className={styles.playerRow}>
                       <span>{player.name}</span>
-                      <span className={styles.roleBadge}>{roleLabel(player.role)}</span>
+                      <span className={styles.roleBadge}>{getRoleShortLabel(player.role, config?.playerRoles)}</span>
                       <span className={styles.rowPrice}>{money(player.currentBid || player.basePrice)}</span>
                     </div>
                   )) : (

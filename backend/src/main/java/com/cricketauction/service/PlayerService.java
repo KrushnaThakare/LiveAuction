@@ -2,6 +2,7 @@ package com.cricketauction.service;
 
 import com.cricketauction.dto.PlayerRequest;
 import com.cricketauction.dto.PlayerResponse;
+import com.cricketauction.dto.TopSoldPlayerResponse;
 import com.cricketauction.entity.Player;
 import com.cricketauction.entity.Team;
 import com.cricketauction.entity.Tournament;
@@ -11,16 +12,27 @@ import com.cricketauction.repository.PlayerRepository;
 import com.cricketauction.repository.TeamRepository;
 import com.cricketauction.util.ExcelParserUtil;
 import com.cricketauction.util.GoogleDriveUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @Transactional
 public class PlayerService {
+    private static final Logger log = LoggerFactory.getLogger(PlayerService.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final PlayerRepository  playerRepository;
     private final TournamentService tournamentService;
@@ -29,6 +41,7 @@ public class PlayerService {
     private final ExcelParserUtil   excelParserUtil;
     private final GoogleDriveUtil   googleDriveUtil;
     private final CricHeroesStatsService cricHeroesStatsService;
+    private final PlayerRoleService playerRoleService;
 
     public PlayerService(PlayerRepository playerRepository,
                          TournamentService tournamentService,
@@ -36,7 +49,8 @@ public class PlayerService {
                          AuditLogService auditLogService,
                          ExcelParserUtil excelParserUtil,
                          GoogleDriveUtil googleDriveUtil,
-                         CricHeroesStatsService cricHeroesStatsService) {
+                         CricHeroesStatsService cricHeroesStatsService,
+                         PlayerRoleService playerRoleService) {
         this.playerRepository  = playerRepository;
         this.tournamentService = tournamentService;
         this.teamRepository    = teamRepository;
@@ -44,6 +58,7 @@ public class PlayerService {
         this.excelParserUtil   = excelParserUtil;
         this.googleDriveUtil   = googleDriveUtil;
         this.cricHeroesStatsService = cricHeroesStatsService;
+        this.playerRoleService = playerRoleService;
     }
 
     public List<PlayerResponse> uploadPlayers(Long tournamentId, MultipartFile file) throws IOException {
@@ -53,11 +68,38 @@ public class PlayerService {
         return players.stream().map(this::mapToResponse).toList();
     }
 
+    public int repairRolesFromExtraData(Long tournamentId) {
+        Tournament tournament = tournamentService.findById(tournamentId);
+        List<Player> players = playerRepository.findByTournamentId(tournamentId);
+        int updated = 0;
+        for (Player player : players) {
+            LinkedHashMap<String, String> extras = excelParserUtil.mutableExtrasCopy(parseExtraData(player.getExtraData()));
+            if (extras.isEmpty()) continue;
+            String rawRole = excelParserUtil.extractRoleFromExtras(extras);
+            if (rawRole == null || rawRole.isBlank()) continue;
+            String resolved;
+            try {
+                resolved = playerRoleService.resolveRole(tournament, rawRole);
+            } catch (AuctionException ignored) {
+                continue;
+            }
+            boolean roleChanged = !resolved.equals(player.getRole());
+            String nextExtraJson = writeExtraData(extras);
+            boolean extrasChanged = !java.util.Objects.equals(nextExtraJson, player.getExtraData());
+            if (!roleChanged && !extrasChanged) continue;
+            player.setRole(resolved);
+            player.setExtraData(nextExtraJson);
+            playerRepository.save(player);
+            if (roleChanged) updated++;
+        }
+        return updated;
+    }
+
     public PlayerResponse createPlayer(Long tournamentId, PlayerRequest request) {
         Tournament tournament = tournamentService.findById(tournamentId);
         Player player = Player.builder()
                 .name(request.getName())
-                .role(request.getRole())
+                .role(playerRoleService.resolveRole(tournament, request.getRole()))
                 .basePrice(request.getBasePrice())
                 .currentBid(0.0)
                 .imageUrl(request.getImageUrl() != null ? googleDriveUtil.convertToDirectLink(request.getImageUrl()) : null)
@@ -67,6 +109,7 @@ public class PlayerService {
                 .retained(Boolean.TRUE.equals(request.getRetained()))
                 .tournament(tournament)
                 .build();
+        applyManualStats(player, request);
         applyRetainedAssignment(player, request.getTeamId());
         player = playerRepository.save(player);
         auditLogService.record("PLAYER_CREATED", "Player", player.getId(), tournamentId,
@@ -96,14 +139,16 @@ public class PlayerService {
 
     public PlayerResponse updatePlayer(Long id, com.cricketauction.dto.PlayerRequest request) {
         Player player = findById(id);
+        Tournament tournament = player.getTournament();
         player.setName(request.getName());
-        player.setRole(request.getRole());
+        player.setRole(playerRoleService.resolveRole(tournament, request.getRole()));
         player.setBasePrice(request.getBasePrice());
         if (request.getImageUrl() != null) {
             player.setImageUrl(googleDriveUtil.convertToDirectLink(request.getImageUrl()));
         }
         player.setCricheroesProfileUrl(ExcelParserUtil.normalizeCricHeroesProfileUrl(request.getCricheroesProfileUrl()));
         player.setCricheroesPlayerId(ExcelParserUtil.extractCricHeroesPlayerId(request.getCricheroesProfileUrl()));
+        applyManualStats(player, request);
         if (request.getRetained() != null) {
             clearRetainedBudget(player);
             player.setRetained(Boolean.TRUE.equals(request.getRetained()));
@@ -126,8 +171,18 @@ public class PlayerService {
             return mapToResponse(player);
         } catch (IOException e) {
             if (cricHeroesStatsService.isTimeout(e)) {
+                log.warn("CricHeroes stats fetch timed out. playerId={} url={}", player.getId(), player.getCricheroesProfileUrl());
                 throw new AuctionException("CricHeroes is not reachable from backend right now. Please retry later or fetch stats outside live auction.");
             }
+            if (e instanceof CricHeroesStatsService.CricHeroesBlockedException) {
+                log.warn("CricHeroes blocked backend stats fetch. playerId={} tournamentId={} url={}",
+                        player.getId(),
+                        player.getTournament() != null ? player.getTournament().getId() : null,
+                        player.getCricheroesProfileUrl());
+                throw new AuctionException(e.getMessage());
+            }
+            log.warn("CricHeroes stats fetch failed. playerId={} url={} error={}",
+                    player.getId(), player.getCricheroesProfileUrl(), e.getMessage());
             throw new AuctionException("Failed to fetch CricHeroes stats: " + e.getMessage());
         } catch (IllegalStateException e) {
             throw new AuctionException("Failed to fetch CricHeroes stats: " + e.getMessage());
@@ -198,7 +253,32 @@ public class PlayerService {
                 .tournamentId(player.getTournament() != null ? player.getTournament().getId() : null)
                 .teamId(player.getTeam() != null ? player.getTeam().getId() : null)
                 .teamName(player.getTeam() != null ? player.getTeam().getName() : null)
+                .extraData(parseExtraData(player.getExtraData()))
+                .whatsappNotifyStatus(player.getWhatsappNotifyStatus())
+                .whatsappNotifyError(player.getWhatsappNotifyError())
+                .whatsappSentAt(player.getWhatsappSentAt() != null ? player.getWhatsappSentAt().toString() : null)
                 .build();
+    }
+
+    private Map<String, String> parseExtraData(String raw) {
+        if (raw == null || raw.isBlank()) return Map.of();
+        try {
+            Map<String, String> parsed = OBJECT_MAPPER.readValue(raw, new TypeReference<LinkedHashMap<String, String>>() {});
+            return parsed != null ? parsed : Map.of();
+        } catch (Exception e) {
+            log.warn("Could not parse player extraData JSON");
+            return Map.of();
+        }
+    }
+
+    private String writeExtraData(Map<String, String> extras) {
+        if (extras == null || extras.isEmpty()) return null;
+        try {
+            return OBJECT_MAPPER.writeValueAsString(extras);
+        } catch (Exception e) {
+            log.warn("Could not serialize player extraData JSON");
+            return null;
+        }
     }
 
     private void applyRetainedAssignment(Player player, Long teamId) {
@@ -235,7 +315,61 @@ public class PlayerService {
         player.setCurrentBid(0.0);
     }
 
+    private void applyManualStats(Player player, PlayerRequest request) {
+        boolean changed = false;
+        if (request.getStatsMatches() != null) {
+            player.setStatsMatches(request.getStatsMatches());
+            changed = true;
+        }
+        if (request.getStatsRuns() != null) {
+            player.setStatsRuns(request.getStatsRuns());
+            changed = true;
+        }
+        if (request.getStatsStrikeRate() != null) {
+            player.setStatsStrikeRate(request.getStatsStrikeRate());
+            changed = true;
+        }
+        if (request.getStatsWickets() != null) {
+            player.setStatsWickets(request.getStatsWickets());
+            changed = true;
+        }
+        if (request.getStatsEconomy() != null) {
+            player.setStatsEconomy(request.getStatsEconomy());
+            changed = true;
+        }
+        if (request.getStatsAverage() != null) {
+            player.setStatsAverage(request.getStatsAverage());
+            changed = true;
+        }
+        if (changed) {
+            player.setStatsLastUpdatedAt(LocalDateTime.now());
+        }
+    }
+
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TopSoldPlayerResponse> getTopSoldPlayers(Long tournamentId, int limit) {
+        int safeLimit = Math.max(1, Math.min(5, limit));
+        tournamentService.findById(tournamentId);
+        List<Player> players = playerRepository.findTopSoldByPrice(
+                tournamentId, Player.PlayerStatus.SOLD, PageRequest.of(0, safeLimit));
+        List<TopSoldPlayerResponse> result = new java.util.ArrayList<>();
+        int rank = 1;
+        for (Player player : players) {
+            Team team = player.getTeam();
+            result.add(TopSoldPlayerResponse.builder()
+                    .rank(rank++)
+                    .playerId(player.getId())
+                    .playerName(player.getName())
+                    .imageUrl(player.getImageUrl())
+                    .soldPrice(player.getCurrentBid())
+                    .teamName(team != null ? team.getName() : null)
+                    .teamLogoUrl(team != null ? team.getLogoUrl() : null)
+                    .build());
+        }
+        return result;
     }
 }

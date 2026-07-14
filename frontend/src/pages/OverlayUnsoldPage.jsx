@@ -8,9 +8,8 @@ export default function OverlayUnsoldPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const { data, config } = useOverlayRealtime(tid, token);
+  const { data, config } = useOverlayRealtime(tid, token, { studioOverlay: true });
   const player = data?.auction?.currentPlayer;
-  if (config && config.overlayEnabled === false) return null;
 
   return <div className="overlay-stage overlay-full-celebration unsold-bg">
     <OverlayFullscreenButton />

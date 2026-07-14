@@ -1,0 +1,33 @@
+# Optional Render blueprint for a STAGING backend (separate from production).
+# In Render: New → Blueprint → paste / fork this file as render-staging.yaml
+#
+# You still need:
+# - A separate MySQL database (cricket_auction_staging)
+# - A Netlify staging site with VITE_API_URL pointing here
+# - CORS_ORIGINS set to that Netlify URL
+
+services:
+  - type: web
+    name: cricket-auction-backend-staging
+    runtime: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    plan: starter
+    healthCheckPath: /api/tournaments
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: UPLOAD_DIR
+        value: /tmp/cricket-auction-uploads

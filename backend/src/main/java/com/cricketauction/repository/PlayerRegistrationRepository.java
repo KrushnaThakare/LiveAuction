@@ -10,6 +10,8 @@ import java.util.Optional;
 @Repository
 public interface PlayerRegistrationRepository extends JpaRepository<PlayerRegistration, Long> {
     List<PlayerRegistration> findByTournamentIdOrderBySubmittedAtDesc(Long tournamentId);
+    Optional<PlayerRegistration> findByTournamentIdAndImportedPlayerId(Long tournamentId, Long importedPlayerId);
+    Optional<PlayerRegistration> findFirstByTournamentIdAndPlayerNameIgnoreCase(Long tournamentId, String playerName);
     Optional<PlayerRegistration> findByTournamentIdAndMobile(Long tournamentId, String mobile);
     boolean existsByTournamentIdAndMobile(Long tournamentId, String mobile);
     long countByTournamentId(Long tournamentId);

@@ -25,6 +25,17 @@ public class Tournament {
     @Column(nullable = false, unique = true)
     private String name;
 
+    @Column(name = "auction_display_name", length = 120)
+    private String auctionDisplayName;
+
+    @Column(length = 50)
+    @Builder.Default
+    private String sport = "CRICKET";
+
+    @Lob
+    @Column(name = "player_roles_config", columnDefinition = "TEXT")
+    private String playerRolesConfig;
+
     private String description;
 
     @Column(name = "created_at")
@@ -59,6 +70,11 @@ public class Tournament {
     @Column(name = "registration_redirect_link", length = 500)
     private String registrationRedirectLink;
 
+    /** Send WhatsApp congratulations automatically when a player is sold */
+    @Column(name = "whatsapp_auto_enabled")
+    @Builder.Default
+    private Boolean whatsappAutoEnabled = false;
+
     // Broadcast overlay settings
     @Column(name = "overlay_enabled")
     @Builder.Default
@@ -80,12 +96,89 @@ public class Tournament {
     @Builder.Default
     private Boolean overlayShowTicker = true;
 
+<<<<<<< HEAD
     @Column(name = "overlay_show_player_intro")
     @Builder.Default
     private Boolean overlayShowPlayerIntro = true;
+=======
+    @Column(name = "public_view_show_teams")
+    @Builder.Default
+    private Boolean publicViewShowTeams = true;
+
+    @Column(name = "public_view_show_sold")
+    @Builder.Default
+    private Boolean publicViewShowSold = true;
+
+    @Column(name = "public_view_show_unsold")
+    @Builder.Default
+    private Boolean publicViewShowUnsold = true;
+
+    @Column(name = "overlay_show_player_stats_intro")
+    @Builder.Default
+    private Boolean overlayShowPlayerStatsIntro = true;
+
+    @Column(name = "overlay_player_stats_intro_ms")
+    @Builder.Default
+    private Integer overlayPlayerStatsIntroMs = 5500;
+
+    /** Audience Display: cinematic next-player reveal (admin setting) */
+    @Column(name = "overlay_show_cinematic_intro")
+    @Builder.Default
+    private Boolean overlayShowCinematicIntro = false;
+
+    /** Runtime toggle during auction — skip intros when behind schedule */
+    @Column(name = "overlay_cinematic_intro_live")
+    @Builder.Default
+    private Boolean overlayCinematicIntroLive = true;
+
+    /** Main overlay: premium player card transition on next player */
+    @Column(name = "overlay_show_player_transition")
+    @Builder.Default
+    private Boolean overlayShowPlayerTransition = true;
+
+    /** Overlay displays: subtle bid amount pop on bid change */
+    @Column(name = "overlay_show_bid_pop")
+    @Builder.Default
+    private Boolean overlayShowBidPop = true;
+
+    /** Audience Display: squad formation ceremony after SOLD gavel */
+    @Column(name = "overlay_show_squad_formation")
+    @Builder.Default
+    private Boolean overlayShowSquadFormation = false;
+
+    /** Maximum players per team squad (drives ceremony slot UI) */
+    @Column(name = "max_squad_size")
+    @Builder.Default
+    private Integer maxSquadSize = 15;
+>>>>>>> main
 
     @Column(name = "overlay_secret_token", length = 120)
     private String overlaySecretToken;
+
+    /** JSON array of Excel extra column headers for Audience Display detail cards (max 2) */
+    @Lob
+    @Column(name = "overlay_audience_detail_fields", columnDefinition = "TEXT")
+    private String overlayAudienceDetailFields;
+
+    /** JSON array of Excel extra column headers for Main overlay stat cards (max 2) */
+    @Lob
+    @Column(name = "overlay_main_detail_fields", columnDefinition = "TEXT")
+    private String overlayMainDetailFields;
+
+    /** Highest sold price reached in this tournament (for record-break overlay) */
+    @Column(name = "highest_sold_bid")
+    @Builder.Default
+    private Double highestSoldBid = 0.0;
+
+    /** Audience Display: play record-break animation on new highest sold price */
+    @Column(name = "overlay_show_record_break")
+    @Builder.Default
+    private Boolean overlayShowRecordBreak = true;
+
+    /** Audience Display: countdown duration in seconds (5, 10, or 15) */
+    @Column(name = "overlay_countdown_seconds")
+    @Builder.Default
+    private Integer overlayCountdownSeconds = 5;
 
     @PrePersist
     protected void onCreate() {

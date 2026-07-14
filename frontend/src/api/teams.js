@@ -2,6 +2,7 @@ import api from './axios';
 
 export const teamApi = {
   getAll:  (tid)              => api.get(`/tournaments/${tid}/teams`),
+  getSummary: (tid)           => api.get(`/tournaments/${tid}/teams/summary`),
   getById: (tid, teamId)      => api.get(`/tournaments/${tid}/teams/${teamId}`),
   create:  (tid, data)        => api.post(`/tournaments/${tid}/teams`, data),
   update:  (tid, teamId, data) => api.put(`/tournaments/${tid}/teams/${teamId}`, data),
@@ -10,6 +11,14 @@ export const teamApi = {
     const fd = new FormData();
     fd.append('file', file);
     return api.post(`/tournaments/${tid}/teams/${teamId}/logo`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  upload: (tid, file, defaultBudget) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post(`/tournaments/${tid}/teams/upload`, fd, {
+      params: defaultBudget ? { defaultBudget } : {},
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },

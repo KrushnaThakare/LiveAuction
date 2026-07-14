@@ -1,0 +1,20 @@
+# Dependencies and build output
+**/node_modules/
+**/dist/
+**/target/
+**/.mvn/
+
+# Large, low-signal generated metadata. Read explicitly only for dependency work.
+**/package-lock.json
+
+# IDE metadata
+.idea/
+
+# Local environment files and secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Runtime/upload scratch data
+**/uploads/
+**/tmp/

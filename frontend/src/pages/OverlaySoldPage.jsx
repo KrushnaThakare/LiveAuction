@@ -9,11 +9,10 @@ export default function OverlaySoldPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
   const token = params.get('token');
-  const { data, config } = useOverlayRealtime(tid, token);
+  const { data, config } = useOverlayRealtime(tid, token, { studioOverlay: true });
   const auction = data?.auction;
   const teams = data?.teams || [];
   const team = teams.find(t => t.name === auction?.highestBidderTeamName || t.id === auction?.highestBidderTeamId);
-  if (config && config.overlayEnabled === false) return null;
 
   return <div className="overlay-stage overlay-full-celebration">
     <OverlayFullscreenButton />

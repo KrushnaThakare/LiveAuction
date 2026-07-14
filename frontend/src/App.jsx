@@ -21,11 +21,14 @@ import PublicViewPage from './pages/PublicViewPage';
 import OverlayMainPage from './pages/OverlayMainPage';
 import OverlayTeamBudgetPage from './pages/OverlayTeamBudgetPage';
 import OverlayTeamListPage from './pages/OverlayTeamListPage';
+import OverlayTeamSquadBoardPage from './pages/OverlayTeamSquadBoardPage';
 import OverlayTickerPage from './pages/OverlayTickerPage';
 import OverlaySoldPage from './pages/OverlaySoldPage';
 import OverlayUnsoldPage from './pages/OverlayUnsoldPage';
 import OverlayBreakScreenPage from './pages/OverlayBreakScreenPage';
+import OverlayTopSoldPage from './pages/OverlayTopSoldPage';
 import AuctionDisplayPage from './pages/AuctionDisplayPage';
+import AuctionDisplayErrorBoundary from './components/overlay/AuctionDisplayErrorBoundary';
 import BroadcastControlPage from './pages/BroadcastControlPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import './styles/overlay.css';
@@ -82,12 +85,14 @@ function AppRoutes() {
       <Route path="/overlay/team-budget" element={<OverlayTeamBudgetPage />} />
       <Route path="/overlay/team-list" element={<OverlayTeamListPage />} />
       <Route path="/overlay/team-squad" element={<OverlayTeamListPage />} />
+      <Route path="/overlay/team-squad-board" element={<OverlayTeamSquadBoardPage />} />
       <Route path="/overlay/ticker" element={<OverlayTickerPage />} />
       <Route path="/overlay/sold" element={<OverlaySoldPage />} />
       <Route path="/overlay/unsold" element={<OverlayUnsoldPage />} />
       <Route path="/overlay/break-screen" element={<OverlayBreakScreenPage />} />
-      <Route path="/auction-display" element={<AuctionDisplayPage />} />
-      <Route path="/display-screen" element={<AuctionDisplayPage />} />
+      <Route path="/overlay/top-sold" element={<OverlayTopSoldPage />} />
+      <Route path="/auction-display" element={<AuctionDisplayErrorBoundary><AuctionDisplayPage /></AuctionDisplayErrorBoundary>} />
+      <Route path="/display-screen" element={<AuctionDisplayErrorBoundary><AuctionDisplayPage /></AuctionDisplayErrorBoundary>} />
 
       {/* Auth */}
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
