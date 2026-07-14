@@ -11,6 +11,7 @@ public class BroadcastSettingsDto {
     private Boolean overlayShowTeamBudget;
     private Boolean overlayShowTeamList;
     private Boolean overlayShowTicker;
+    private Boolean overlayShowPlayerIntro;
     private Boolean tokenEnabled;
     private String overlaySecretToken;
 }

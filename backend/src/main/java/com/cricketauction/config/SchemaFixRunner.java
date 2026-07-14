@@ -95,6 +95,10 @@ public class SchemaFixRunner implements ApplicationRunner {
             "app_name     VARCHAR(100)",
             "app_logo_url VARCHAR(500)"
         });
+
+        addColumnsToTable(conn, "tournaments", new String[]{
+            "overlay_show_player_intro BOOLEAN DEFAULT TRUE"
+        });
         // Also ensure the status ENUM includes UNDONE
         try {
             boolean wasAuto = conn.getAutoCommit();

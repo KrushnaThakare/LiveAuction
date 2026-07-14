@@ -80,6 +80,10 @@ public class Tournament {
     @Builder.Default
     private Boolean overlayShowTicker = true;
 
+    @Column(name = "overlay_show_player_intro")
+    @Builder.Default
+    private Boolean overlayShowPlayerIntro = true;
+
     @Column(name = "overlay_secret_token", length = 120)
     private String overlaySecretToken;
 

@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 export default function BroadcastControlPage() {
   const { activeTournament } = useTournament();
   const tid = activeTournament?.id;
-  const [settings, setSettings] = useState({ overlayEnabled:true, overlayTheme:'classic', overlayShowTeamBudget:true, overlayShowTeamList:true, overlayShowTicker:true, tokenEnabled:false, overlaySecretToken:'' });
+  const [settings, setSettings] = useState({ overlayEnabled:true, overlayTheme:'classic', overlayShowTeamBudget:true, overlayShowTeamList:true, overlayShowTicker:true, overlayShowPlayerIntro:true, tokenEnabled:false, overlaySecretToken:'' });
   const [bidRules, setBidRules] = useState([]);
 
   useEffect(() => {
@@ -55,6 +55,7 @@ export default function BroadcastControlPage() {
         <label><input type='checkbox' checked={!!settings.overlayShowTeamBudget} onChange={e=>setSettings(s=>({...s,overlayShowTeamBudget:e.target.checked}))} /> Show Team Budget</label>
         <label><input type='checkbox' checked={!!settings.overlayShowTeamList} onChange={e=>setSettings(s=>({...s,overlayShowTeamList:e.target.checked}))} /> Show Team List</label>
         <label><input type='checkbox' checked={!!settings.overlayShowTicker} onChange={e=>setSettings(s=>({...s,overlayShowTicker:e.target.checked}))} /> Show Ticker</label>
+        <label><input type='checkbox' checked={settings.overlayShowPlayerIntro !== false} onChange={e=>setSettings(s=>({...s,overlayShowPlayerIntro:e.target.checked}))} /> Player details on Main screen</label>
         <label><input type='checkbox' checked={!!settings.tokenEnabled} onChange={e=>setSettings(s=>({...s,tokenEnabled:e.target.checked}))} /> Enable token</label>
         {settings.tokenEnabled && <input className='input' value={settings.overlaySecretToken||''} onChange={e=>setSettings(s=>({...s,overlaySecretToken:e.target.value}))} placeholder='secret token'/>}
         <button className='btn-primary' onClick={save}>Save</button>

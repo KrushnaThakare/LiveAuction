@@ -30,6 +30,7 @@ public class BroadcastController {
         if (d.getOverlayShowTeamBudget() != null) t.setOverlayShowTeamBudget(d.getOverlayShowTeamBudget());
         if (d.getOverlayShowTeamList() != null) t.setOverlayShowTeamList(d.getOverlayShowTeamList());
         if (d.getOverlayShowTicker() != null) t.setOverlayShowTicker(d.getOverlayShowTicker());
+        if (d.getOverlayShowPlayerIntro() != null) t.setOverlayShowPlayerIntro(d.getOverlayShowPlayerIntro());
         if (Boolean.FALSE.equals(d.getTokenEnabled())) t.setOverlaySecretToken(null);
         if (d.getOverlaySecretToken() != null) t.setOverlaySecretToken(d.getOverlaySecretToken().isBlank() ? null : d.getOverlaySecretToken());
         tournamentService.saveTournament(t);
@@ -43,6 +44,7 @@ public class BroadcastController {
                 .overlayShowTeamBudget(t.getOverlayShowTeamBudget())
                 .overlayShowTeamList(t.getOverlayShowTeamList())
                 .overlayShowTicker(t.getOverlayShowTicker())
+                .overlayShowPlayerIntro(t.getOverlayShowPlayerIntro())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .overlaySecretToken(includeSecret ? t.getOverlaySecretToken() : null)
                 .build();

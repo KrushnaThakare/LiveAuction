@@ -50,6 +50,7 @@ public class OverlayController {
                 .overlayShowTeamBudget(t.getOverlayShowTeamBudget())
                 .overlayShowTeamList(t.getOverlayShowTeamList())
                 .overlayShowTicker(t.getOverlayShowTicker())
+                .overlayShowPlayerIntro(t.getOverlayShowPlayerIntro())
                 .tokenEnabled(t.getOverlaySecretToken() != null && !t.getOverlaySecretToken().isBlank())
                 .build()));
     }
@@ -62,4 +63,3 @@ public class OverlayController {
         }
     }
 }
-

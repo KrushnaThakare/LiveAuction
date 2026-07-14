@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity, BarChart3, Calendar, IndianRupee, Radio, Shield, Target, TrendingUp, Trophy, UserRound } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
@@ -59,6 +60,44 @@ function PlayerStatsOverlay({ player }) {
   );
 }
 
+function PlayerIntroCard({ player, visible }) {
+  if (!player || !visible) return null;
+  const facts = [
+    ['Player ID', playerIdLabel(player)],
+    ['Role', roleLabel(player.role)],
+    ['Base Price', money(player.basePrice)],
+    ['Pool', player.teamName || player.category || 'Open Auction'],
+  ];
+
+  return (
+    <section className={styles.playerIntroOverlay}>
+      <div className={styles.playerIntroCard}>
+        <div className={styles.playerIntroImageFrame}>
+          {player.imageUrl ? (
+            <img className={styles.playerIntroImage} src={driveImg(player.imageUrl) || resolveUrl(player.imageUrl)} alt={player.name} />
+          ) : (
+            <div className={styles.playerIntroFallback}><UserRound size={112} /></div>
+          )}
+        </div>
+
+        <div className={styles.playerIntroDetails}>
+          <div className={styles.playerIntroKicker}>Now Entering The Auction</div>
+          <h2>{player.name}</h2>
+          <div className={styles.playerIntroRole}>{roleLabel(player.role)}</div>
+          <div className={styles.playerIntroFacts}>
+            {facts.map(([label, value]) => (
+              <div key={label} className={styles.playerIntroFact}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function OverlayMainPage() {
   const [params] = useSearchParams();
   const tid = params.get('tournamentId');
@@ -72,12 +111,29 @@ export default function OverlayMainPage() {
   const status = auction?.status || 'IDLE';
   const isSold = status === 'SOLD';
   const isUnsold = status === 'UNSOLD';
+  const [showIntro, setShowIntro] = useState(false);
+
+  useEffect(() => {
+    const schedule = (callback) => window.setTimeout(callback, 0);
+    if (!player?.id || status !== 'ACTIVE' || config?.overlayShowPlayerIntro === false) {
+      const resetTimer = schedule(() => setShowIntro(false));
+      return () => window.clearTimeout(resetTimer);
+    }
+
+    const revealTimer = schedule(() => setShowIntro(true));
+    const hideTimer = window.setTimeout(() => setShowIntro(false), 4200);
+    return () => {
+      window.clearTimeout(revealTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, [player?.id, status, config?.overlayShowPlayerIntro]);
 
   if (config && config.overlayEnabled === false) return null;
 
   return (
     <div className={styles.stage}>
       <OverlayFullscreenButton />
+      <PlayerIntroCard player={player} visible={showIntro} />
       <PlayerStatsOverlay player={player} />
       <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
         <div className={styles.infoStack}>
