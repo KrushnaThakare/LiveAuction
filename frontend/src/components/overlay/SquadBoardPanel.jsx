@@ -93,6 +93,7 @@ export default function SquadBoardPanel({
   showNextSlot = true,
   kicker = 'Squad Formation',
   saleSummary = null,
+  maxBidInfo = null,
   variant = 'ceremony',
   className = '',
 }) {
@@ -166,6 +167,14 @@ export default function SquadBoardPanel({
               <span>Full Purse</span>
               <strong>{formatPurse(team.remainingBudget)}</strong>
             </div>
+            {maxBidInfo?.show && (
+              <div className={styles.summaryStatWide}>
+                <span>Max bid{maxBidInfo.playerName ? ` · ${maxBidInfo.playerName}` : ''}</span>
+                <strong style={{ color: maxBidInfo.squadFull ? 'var(--color-text-secondary)' : '#ffc72c' }}>
+                  {maxBidInfo.squadFull ? 'Squad full' : formatCurrency(maxBidInfo.maxBid)}
+                </strong>
+              </div>
+            )}
           </div>
         </div>
       </header>

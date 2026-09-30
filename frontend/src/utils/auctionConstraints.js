@@ -34,3 +34,17 @@ export function isSquadFull(team, maxSquadSize) {
   const squadSize = clampSquadSize(maxSquadSize);
   return (Number(team?.playerCount) || 0) >= squadSize;
 }
+
+/** Max bid hint for squad boards / exports when a live player is on the block. */
+export function maxBidInfoForTeam(team, maxSquadSize, auctionState) {
+  if (!team || auctionState?.status !== 'ACTIVE' || !auctionState?.currentPlayer) {
+    return null;
+  }
+  const basePrice = resolveAuctionBasePrice(auctionState);
+  const squadFull = isSquadFull(team, maxSquadSize);
+  return {
+    maxBid: maxAllowedBid(team, maxSquadSize, basePrice),
+    squadFull,
+    playerName: auctionState.currentPlayer.name,
+  };
+}

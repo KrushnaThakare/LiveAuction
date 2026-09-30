@@ -7,6 +7,7 @@ import {
   formatPurse,
   squadProgress,
 } from './squadFormation';
+import { maxBidInfoForTeam } from './auctionConstraints';
 
 const API_ORIGIN = (() => {
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
@@ -162,7 +163,7 @@ export function exportTeamRosters(teams, tournamentName = '') {
  * Premium squad-board PDF (print) — same visual style as Audience Display ceremony.
  * Client-side only; runs once when the operator clicks export.
  */
-export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 15, playerRoles = []) {
+export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 15, playerRoles = [], auctionState = null) {
   const squadSize = clampSquadSize(maxSquadSize);
   const css = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
@@ -246,6 +247,13 @@ export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 
       ? Array.from({ length: Math.min(remaining, 1) }, () => '<div class="card open">Open Slot</div>').join('')
       : '';
 
+    const liveBid = maxBidInfoForTeam(team, squadSize, auctionState);
+    const maxBidStat = liveBid
+      ? `<div class="stat"><span>Max bid (live player)</span><strong>${
+        liveBid.squadFull ? 'Squad full' : formatCurrency(liveBid.maxBid)
+      }</strong></div>`
+      : '';
+
     return `<section class="page">
       <div class="kicker">Squad Board</div>
       <div class="hero">
@@ -258,6 +266,7 @@ export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 
         <div class="stat"><span>Remaining</span><strong>${remaining}</strong></div>
         <div class="stat"><span>Budget Left</span><strong>${formatCompactPurse(team.remainingBudget)}</strong></div>
         <div class="stat"><span>Full Purse</span><strong>${formatPurse(team.remainingBudget)}</strong></div>
+        ${maxBidStat}
       </div>
       <div class="panel">
         <div class="progress-meta"><span>${filled} Filled</span><span>${remaining} Remaining</span></div>
