@@ -13,6 +13,7 @@ import {
   toSlotPlayer,
 } from '../utils/squadFormation';
 import { getRoleShortLabel } from '../utils/formatters';
+import { maxBidInfoForTeam } from '../utils/auctionConstraints';
 import styles from './OverlayTeamSquadBoard.module.css';
 
 const ROTATE_MS = 8000;
@@ -109,6 +110,14 @@ export default function OverlayTeamSquadBoardPage() {
     return mergeBoardPlayers(rosterByTeam[team.id], team, playerRoles, true);
   }, [rosterByTeam, team, playerRoles]);
 
+  const auction = data?.auction;
+  const maxBidInfo = useMemo(() => {
+    const info = maxBidInfoForTeam(team, squadSize, auction);
+    if (!info) return null;
+    const first = info.playerName?.split(/\s+/)[0] || info.playerName;
+    return { show: true, maxBid: info.maxBid, squadFull: info.squadFull, playerName: first };
+  }, [team, auction, squadSize]);
+
   const goTo = useCallback((nextIndex) => {
     if (!teamCount) return;
     setVisible(false);
@@ -181,6 +190,7 @@ export default function OverlayTeamSquadBoardPage() {
           showNextSlot
           variant="overlay"
           kicker="Team Squad Board"
+          maxBidInfo={maxBidInfo}
         />
       </div>
     </div>

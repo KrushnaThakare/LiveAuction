@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { teamApi } from '../api/teams';
+import { auctionApi } from '../api/auction';
 import { registrationApi } from '../api/registration';
 import TeamForm from '../components/teams/TeamForm';
 import Modal from '../components/common/Modal';
@@ -84,13 +85,21 @@ export default function TeamsPage() {
     } catch { /* handled */ }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (teams.length === 0) { toast.error('No teams to export'); return; }
+    let auctionState = null;
+    try {
+      const res = await auctionApi.getState(activeTournament.id);
+      auctionState = res.data?.data ?? null;
+    } catch {
+      /* export still works without live auction context */
+    }
     exportTeamSquadBoard(
       teams,
       activeTournament?.name,
       clampSquadSize(activeTournament?.maxSquadSize),
       getPlayerRoles(activeTournament),
+      auctionState,
     );
     toast.success('Squad board PDF ready — use Print in the new tab');
   };

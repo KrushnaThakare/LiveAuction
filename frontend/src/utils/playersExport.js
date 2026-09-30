@@ -64,6 +64,12 @@ export function exportPlayersList(players, tournamentName = '') {
                   padding: 2px 8px; border-radius: 999px; margin: 4px 0; }
     .base { font-size: 0.75rem; color: #94a3b8; }
     .base strong { color: #f59e0b; }
+    .retained-badge { display: inline-block; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em;
+                      text-transform: uppercase; padding: 3px 8px; border-radius: 999px; margin: 4px 0;
+                      background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.45); }
+    .card-retained { border-color: rgba(245,158,11,0.55) !important; box-shadow: 0 0 0 1px rgba(245,158,11,0.15); }
+    .legend { font-size: 0.75rem; color: #94a3b8; margin-bottom: 20px; padding: 10px 14px; border-radius: 10px;
+              background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); }
     .footer { margin-top: 40px; text-align: center; font-size: 0.7rem; color: #334155; }
     @media print {
       body { background: #0f172a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -85,12 +91,14 @@ export function exportPlayersList(players, tournamentName = '') {
       const photoHtml = img
         ? `<div class="photo" style="background:${rbg}"><img src="${img}" alt="${escHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;object-position:top;"/></div>`
         : `<div class="photo" style="background:${rbg};color:${rc};">${escHtml(p.name[0])}</div>`;
+      const retained = Boolean(p.retained);
       return `
-        <div class="card" style="border-color:${rc}33;">
+        <div class="card ${retained ? 'card-retained' : ''}" style="border-color:${retained ? 'rgba(245,158,11,0.55)' : rc + '33'};">
           ${photoHtml}
           <div class="info">
             <div class="player-id">${escHtml(playerIdLabel(p))}</div>
             <div class="player-name">${escHtml(p.name)}</div>
+            ${retained ? '<span class="retained-badge">Retained · not in auction pool</span>' : ''}
             <span class="role-badge" style="background:${rbg};color:${rc};">${formatRole(p.role)}</span>
             <div class="base">Base: <strong>${formatCurrency(p.basePrice)}</strong></div>
           </div>
@@ -105,7 +113,8 @@ export function exportPlayersList(players, tournamentName = '') {
   }).join('');
 
   const total     = players.length;
-  const available = players.filter(p => p.status === 'AVAILABLE').length;
+  const retained  = players.filter(p => p.retained).length;
+  const available = players.filter(p => p.status === 'AVAILABLE' && !p.retained).length;
   const sold      = players.filter(p => p.status === 'SOLD').length;
   const unsold    = players.filter(p => p.status === 'UNSOLD').length;
 
@@ -119,10 +128,12 @@ export function exportPlayersList(players, tournamentName = '') {
     <div class="meta">Generated on ${new Date().toLocaleString()}</div>
     <div class="stats">
       <div class="stat"><div class="stat-val" style="color:#3b82f6">${total}</div><div class="stat-lbl">Total Players</div></div>
-      <div class="stat"><div class="stat-val" style="color:#94a3b8">${available}</div><div class="stat-lbl">Available</div></div>
+      <div class="stat"><div class="stat-val" style="color:#94a3b8">${available}</div><div class="stat-lbl">In auction pool</div></div>
+      <div class="stat"><div class="stat-val" style="color:#f59e0b">${retained}</div><div class="stat-lbl">Retained</div></div>
       <div class="stat"><div class="stat-val" style="color:#10b981">${sold}</div><div class="stat-lbl">Sold</div></div>
       <div class="stat"><div class="stat-val" style="color:#ef4444">${unsold}</div><div class="stat-lbl">Unsold</div></div>
     </div>
+    ${retained > 0 ? '<p class="legend">Players marked <strong>Retained</strong> are pre-assigned to a team and are not part of the live auction pool.</p>' : ''}
     ${sections}
     <div class="footer">Cricket Auction · ${escHtml(tournamentName)} · ${total} players</div>
   </body></html>`;
