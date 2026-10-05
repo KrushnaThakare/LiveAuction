@@ -74,7 +74,10 @@ const FilledPlayerCard = memo(function FilledPlayerCard({ player, isNew, showPri
         )}
       </div>
       <div className={styles.filledMeta}>
-        <span className={styles.filledName}>{player.name}</span>
+        <span className={styles.filledName} title={player.fullName || player.name}>
+          {player.name}
+        </span>
+        {player.retained ? <span className={styles.filledRetained}>Retained</span> : null}
         {player.role ? <span className={styles.filledRole}>{player.role}</span> : null}
         {showPrices && player.soldPrice != null ? (
           <span className={styles.filledPrice}>{formatCurrency(player.soldPrice)}</span>

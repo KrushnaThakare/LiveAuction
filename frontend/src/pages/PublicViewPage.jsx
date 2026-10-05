@@ -411,7 +411,7 @@ function TeamsView({ teams, roles, loading }) {
               <div className="mt-3 space-y-1.5 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
                 <p className="text-xs font-bold uppercase tracking-wide mb-2"
                   style={{ color: 'var(--color-text-secondary)' }}>Squad</p>
-                {team.players.map(p => {
+                {[...(team.players || [])].sort((a, b) => Number(Boolean(b.retained)) - Number(Boolean(a.retained))).map(p => {
                   const rc  = getRoleColor(p.role, roles);
                   const rbg = getRoleBg(p.role, roles);
                   const imgUrl = driveImg(p.imageUrl);

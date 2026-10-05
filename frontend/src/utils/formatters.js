@@ -1,3 +1,15 @@
+/** Max characters for squad board / overlay player tiles (full words preserved until limit). */
+export const OVERLAY_PLAYER_NAME_MAX = 22;
+
+export function formatDisplayName(name, maxLen = OVERLAY_PLAYER_NAME_MAX) {
+  const full = String(name || '').trim();
+  if (!full) return 'Player';
+  const limit = Math.max(4, Number(maxLen) || OVERLAY_PLAYER_NAME_MAX);
+  if (full.length <= limit) return full;
+  const trimmed = full.slice(0, limit - 1).trimEnd();
+  return `${trimmed}…`;
+}
+
 export function formatCurrency(amount) {
   if (amount === null || amount === undefined) return '₹0';
   if (amount >= 100000) {

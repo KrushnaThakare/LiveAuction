@@ -1,4 +1,4 @@
-import { formatCurrency, formatRole } from './formatters';
+import { formatCurrency, formatRole, formatDisplayName } from './formatters';
 import {
   boardPlayersFromTeam,
   clampSquadSize,
@@ -235,9 +235,11 @@ export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 
       const photo = img
         ? `<img src="${img}" alt="" />`
         : `<div style="display:grid;place-items:center;height:100%;color:#999;">${escHtml((p.name || '?')[0])}</div>`;
+      const label = formatDisplayName(p.fullName || p.name);
       return `<article class="card">
         <div class="photo">${photo}</div>
-        <div class="name">${escHtml(p.name)}</div>
+        <div class="name" title="${escHtml(p.fullName || p.name)}">${escHtml(label)}</div>
+        ${p.retained ? '<div class="role" style="color:#fbbf24">Retained</div>' : ''}
         ${p.role ? `<div class="role">${escHtml(p.role)}</div>` : ''}
         <div class="price">${formatCurrency(p.soldPrice || 0)}</div>
       </article>`;

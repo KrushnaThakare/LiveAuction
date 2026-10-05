@@ -1,4 +1,4 @@
-import { getRoleShortLabel } from './formatters';
+import { formatDisplayName, getRoleShortLabel, OVERLAY_PLAYER_NAME_MAX } from './formatters';
 
 export const DEFAULT_SQUAD_SIZE = 15;
 export const MIN_SQUAD_SIZE = 5;
@@ -70,18 +70,26 @@ export function squadProgress(filledCount, squadSize) {
   return { filled, total, remaining, percent };
 }
 
+/** @deprecated Use formatDisplayName — kept for any external imports */
 export function firstName(name) {
-  if (!name) return 'Player';
-  const part = String(name).trim().split(/\s+/)[0];
-  return part || 'Player';
+  return formatDisplayName(name, OVERLAY_PLAYER_NAME_MAX);
 }
 
-export function toSlotPlayer(player, playerRoles) {
+export function sortRetainedFirst(players) {
+  return [...(players || [])].sort((a, b) => {
+    const retainedOrder = Number(Boolean(b.retained)) - Number(Boolean(a.retained));
+    if (retainedOrder !== 0) return retainedOrder;
+    return String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
+  });
+}
+
+export function toSlotPlayer(player, playerRoles, nameMaxLen = OVERLAY_PLAYER_NAME_MAX) {
   if (!player) return null;
+  const fullName = String(player.name || '').trim() || 'Player';
   return {
     id: player.id,
-    name: firstName(player.name),
-    fullName: player.name,
+    name: formatDisplayName(fullName, nameMaxLen),
+    fullName,
     imageUrl: player.imageUrl || null,
     role: getRoleShortLabel(player.role, playerRoles),
     retained: Boolean(player.retained),
@@ -89,8 +97,9 @@ export function toSlotPlayer(player, playerRoles) {
 }
 
 export function squadPlayersFromTeam(team) {
-  return (Array.isArray(team?.players) ? team.players : [])
+  const list = (Array.isArray(team?.players) ? team.players : [])
     .filter((player) => player && (player.name || player.id != null));
+  return sortRetainedFirst(list);
 }
 
 export function formatPurse(value) {
@@ -120,10 +129,13 @@ export function mergeBoardPlayers(localPlayers, team, playerRoles, includePrices
 
   if (!local.length) return server;
   if (!server.length) return local;
+  let merged;
   if (server.length >= expected || server.length >= local.length) {
-    return mergePlayersById(server, local);
+    merged = mergePlayersById(server, local);
+  } else {
+    merged = mergePlayersById(local, server);
   }
-  return mergePlayersById(local, server);
+  return sortRetainedFirst(merged);
 }
 
 export function mergePlayersById(primary, secondary) {

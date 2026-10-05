@@ -1,4 +1,4 @@
-/** Mobile resolution helpers for sold-player WhatsApp display */
+/** Resolve masked mobile from registration / player extra fields */
 
 function parseFormData(reg) {
   if (!reg?.formData) return {};
@@ -17,7 +17,7 @@ function parsePlayerExtraData(player) {
 }
 
 function isMobileLabel(label) {
-  return /mobile|phone|whatsapp/i.test(label || '');
+  return /mobile|phone/i.test(label || '');
 }
 
 function normalizeCell(value) {
@@ -58,7 +58,7 @@ export function resolvePlayerMobile(player, registrationIndex) {
     if (isMobileLabel(label) && value) return normalizeCell(value);
   }
 
-  const fromForm = normalizeCell(formData.mobile || formData.phone || formData.whatsapp);
+  const fromForm = normalizeCell(formData.mobile || formData.phone);
   if (fromForm) return fromForm;
 
   for (const [key, value] of Object.entries(formData)) {
