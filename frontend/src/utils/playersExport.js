@@ -1,4 +1,5 @@
 import { formatCurrency, formatRole } from './formatters';
+import { sortRetainedFirst } from './squadFormation';
 import { playerIdLabel } from './playerSearch';
 
 const ROLE_COLORS = {
@@ -77,7 +78,7 @@ export function exportPlayersList(players, tournamentName = '') {
   `;
 
   const roleGroups = {};
-  players.forEach(p => {
+  sortRetainedFirst(players).forEach(p => {
     if (!roleGroups[p.role]) roleGroups[p.role] = [];
     roleGroups[p.role].push(p);
   });

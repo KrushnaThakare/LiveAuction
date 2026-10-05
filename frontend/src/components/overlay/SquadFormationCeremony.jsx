@@ -111,7 +111,10 @@ const FilledPlayerCard = memo(function FilledPlayerCard({ player, isNew }) {
         )}
       </div>
       <div className={styles.filledMeta}>
-        <span className={styles.filledName}>{player.name}</span>
+        <span className={styles.filledName} title={player.fullName || player.name}>
+          {player.name}
+        </span>
+        {player.retained ? <span className={styles.filledRetained}>Retained</span> : null}
         {player.role ? <span className={styles.filledRole}>{player.role}</span> : null}
       </div>
     </article>

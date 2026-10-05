@@ -6,7 +6,6 @@ import com.cricketauction.dto.BidAmountRequest;
 import com.cricketauction.dto.BidRequest;
 import com.cricketauction.service.AuctionService;
 import com.cricketauction.service.OverlayPushService;
-import com.cricketauction.service.WhatsAppNotifyService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,14 +18,11 @@ public class AuctionController {
 
     private final AuctionService auctionService;
     private final OverlayPushService overlayPushService;
-    private final WhatsAppNotifyService whatsAppNotifyService;
 
     public AuctionController(AuctionService auctionService,
-                             OverlayPushService overlayPushService,
-                             WhatsAppNotifyService whatsAppNotifyService) {
+                             OverlayPushService overlayPushService) {
         this.auctionService = auctionService;
         this.overlayPushService = overlayPushService;
-        this.whatsAppNotifyService = whatsAppNotifyService;
     }
 
     @GetMapping("/state")
@@ -85,10 +81,6 @@ public class AuctionController {
         var r = auctionService.sellPlayer(tournamentId);
         overlayPushService.pushLightweightSnapshot(tournamentId, r);
         overlayPushService.pushSquadSnapshot(tournamentId);
-        if (r.getCurrentPlayer() != null && r.getCurrentPlayer().getId() != null
-                && Boolean.TRUE.equals(r.getWhatsappAutoEnabled())) {
-            whatsAppNotifyService.notifyPlayerSoldAsync(tournamentId, r.getCurrentPlayer().getId());
-        }
         return ResponseEntity.ok(ApiResponse.success("Player sold", r));
     }
 
