@@ -96,12 +96,25 @@
   right: clamp(10px, 2vw, 28px);
 }
 
-.teamIndicator {
+.topBar {
   position: absolute;
-  top: clamp(12px, 2vh, 24px);
+  top: clamp(10px, 1.8vh, 20px);
   left: 50%;
-  z-index: 4;
+  z-index: 5;
   transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: min(94vw, 760px);
+  pointer-events: none;
+}
+
+.topBar > * {
+  pointer-events: auto;
+}
+
+.teamIndicator {
   padding: 8px 16px;
   border-radius: 999px;
   background: rgba(6, 12, 28, 0.78);
@@ -112,7 +125,40 @@
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.88);
   white-space: nowrap;
-  max-width: min(92vw, 720px);
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.autoScrollToggle {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(6, 12, 28, 0.65);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.autoScrollToggle:hover {
+  border-color: rgba(255, 199, 44, 0.35);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.autoScrollOn {
+  border-color: rgba(255, 199, 44, 0.45);
+  background: rgba(255, 199, 44, 0.12);
+  color: #ffc72c;
+}
+
+.autoScrollHint {
+  font-weight: 600;
+  opacity: 0.75;
+  text-transform: none;
+  letter-spacing: 0;
 }
