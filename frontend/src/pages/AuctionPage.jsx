@@ -13,7 +13,7 @@ import { formatCurrency, formatRole, getRoleColor, getRoleBg, getRoleIcon, getPl
 import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
 import { matchesPlayerIdOrName, playerIdLabel } from '../utils/playerSearch';
-import { canTeamBid, isSquadFull } from '../utils/auctionConstraints';
+import { canTeamBid, isSquadFull, maxAllowedBid } from '../utils/auctionConstraints';
 import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
@@ -789,53 +789,52 @@ export default function AuctionPage() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* ════ STAGE ════ */}
-        <div className="flex-1 flex flex-col overflow-auto">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           {isActive && auctionState?.currentPlayer ? (
             <>
-              <StageCard
-                player={auctionState.currentPlayer}
-                committedBid={auctionState.currentBid}
-                proposedBid={proposedBid}
-                highestBidderTeamName={auctionState.highestBidderTeamName}
-                bidFlash={bidFlash}
-                bidKey={bidKey}
-                roles={playerRoles}
-              />
+              <div className="flex-1 overflow-y-auto min-h-0">
+                <StageCard
+                  player={auctionState.currentPlayer}
+                  committedBid={auctionState.currentBid}
+                  proposedBid={proposedBid}
+                  highestBidderTeamName={auctionState.highestBidderTeamName}
+                  bidFlash={bidFlash}
+                  bidKey={bidKey}
+                  roles={playerRoles}
+                />
 
-              {/* SOLD / UNSOLD / STOP */}
-              <div className="flex gap-2 px-4 pb-2">
-                <button onClick={handleSell}
-                  disabled={actionLoading || !auctionState?.highestBidderTeamId}
-                  className="flex-1 btn-success py-3 text-sm font-bold">
-                  <CheckCircle size={17} /> SOLD <span className="opacity-50 text-xs">[S]</span>
-                </button>
-                <button onClick={handleUnsold}
+                <div className="flex gap-2 px-4 pb-2">
+                  <button onClick={handleSell}
+                    disabled={actionLoading || !auctionState?.highestBidderTeamId}
+                    className="flex-1 btn-success py-3 text-sm font-bold">
+                    <CheckCircle size={17} /> SOLD <span className="opacity-50 text-xs">[S]</span>
+                  </button>
+                  <button onClick={handleUnsold}
+                    disabled={actionLoading}
+                    className="flex-1 btn-danger py-3 text-sm font-bold">
+                    <XCircle size={17} /> UNSOLD <span className="opacity-50 text-xs">[U]</span>
+                  </button>
+                  <button onClick={handleStop}
+                    disabled={actionLoading}
+                    className="btn-secondary !px-4 py-3 text-sm" title="Stop & return player to Available">
+                    <StopCircle size={17} />
+                  </button>
+                </div>
+
+                <BidStrip
+                  proposedBid={proposedBid}
+                  setProposedBid={setProposedBid}
+                  setBidKey={setBidKey}
+                  committedBid={auctionState.currentBid}
+                  nextBid={auctionState.nextBidAmount}
+                  onStepUp={stepUp}
+                  onStepDown={stepDown}
+                  onCommitBid={updateCallingBid}
                   disabled={actionLoading}
-                  className="flex-1 btn-danger py-3 text-sm font-bold">
-                  <XCircle size={17} /> UNSOLD <span className="opacity-50 text-xs">[U]</span>
-                </button>
-                <button onClick={handleStop}
-                  disabled={actionLoading}
-                  className="btn-secondary !px-4 py-3 text-sm" title="Stop & return player to Available">
-                  <StopCircle size={17} />
-                </button>
+                />
               </div>
 
-              {/* Bid amount strip */}
-              <BidStrip
-                proposedBid={proposedBid}
-                setProposedBid={setProposedBid}
-                setBidKey={setBidKey}
-                committedBid={auctionState.currentBid}
-                nextBid={auctionState.nextBidAmount}
-                onStepUp={stepUp}
-                onStepDown={stepDown}
-                onCommitBid={updateCallingBid}
-                disabled={actionLoading}
-              />
-
-              {/* Team assign grid */}
-              <TeamAssignGrid
+              <TeamAssignStrip
                 teams={teams}
                 auctionState={auctionState}
                 displayBid={displayBid}
@@ -847,23 +846,24 @@ export default function AuctionPage() {
               />
             </>
           ) : (
-            <IdleStage
-              auctionState={auctionState}
-              availablePlayers={availablePlayers}
-              unsoldPlayers={unsoldPlayers}
-              allDone={allDone}
-              actionLoading={actionLoading}
-              roles={playerRoles}
-              onStart={handleStartAuction}
-              onRandom={handleStartRandom}
-              onReAuction={handleReAuction}
-              onUndo={handleUndo}
-            />
+            <div className="flex-1 overflow-auto min-h-0">
+              <IdleStage
+                auctionState={auctionState}
+                availablePlayers={availablePlayers}
+                unsoldPlayers={unsoldPlayers}
+                allDone={allDone}
+                actionLoading={actionLoading}
+                roles={playerRoles}
+                onStart={handleStartAuction}
+                onRandom={handleStartRandom}
+                onReAuction={handleReAuction}
+                onUndo={handleUndo}
+              />
+            </div>
           )}
         </div>
 
-        {/* ════ SIDEBAR ════ */}
-        <TeamsSidebar teams={teams} auctionState={auctionState} />
+        {!isActive && <TeamsSidebar teams={teams} auctionState={auctionState} />}
       </div>
 
     </div>
@@ -1130,70 +1130,85 @@ function BidStrip({ proposedBid, setProposedBid, setBidKey, committedBid, nextBi
 }
 
 /* ═══════════════════════════════════════════════════════════
-   TEAM ASSIGN GRID
-   Clicking a team ONLY records "this team bids at displayBid".
-   It never auto-increments on its own.
+   TEAM ASSIGN STRIP — single horizontal row during live auction
 ═══════════════════════════════════════════════════════════ */
-function TeamAssignGrid({ teams, auctionState, displayBid, proposedBid, maxSquadSize, basePrice, onAssign, disabled }) {
+function TeamAssignStrip({ teams, auctionState, displayBid, proposedBid, maxSquadSize, basePrice, onAssign, disabled }) {
   return (
-    <div className="px-4 pb-4">
-      <p className="text-xs font-semibold mb-2 flex items-center gap-2"
+    <div className="flex-shrink-0 px-3 py-2"
+      style={{ backgroundColor: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
+      <p className="text-[10px] font-semibold mb-1.5 flex items-center gap-2 px-0.5"
         style={{ color: 'var(--color-text-secondary)' }}>
-        <span>{proposedBid !== null ? '→ Confirm bid at' : 'Assign bidder at'}</span>
+        <span>{proposedBid !== null ? 'Confirm bid at' : 'Assign at'}</span>
         <span style={{ color: proposedBid !== null ? 'var(--color-accent)' : 'var(--color-primary)', fontWeight: 700 }}>
           {formatCurrency(displayBid)}
         </span>
-        <span className="ml-auto opacity-60">Keys 1–9</span>
+        <span className="ml-auto opacity-60">Keys 1–9 · scroll →</span>
       </p>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-0.5 snap-x snap-mandatory" style={{ scrollbarWidth: 'thin' }}>
         {teams.map((team, idx) => {
           const isHighest = team.id === auctionState?.highestBidderTeamId;
           const squadFull = isSquadFull(team, maxSquadSize);
-          const canBid    = !squadFull && canTeamBid(team, displayBid, maxSquadSize, basePrice);
-          const pct       = team.budget ? ((team.budget - team.remainingBudget) / team.budget) * 100 : 0;
+          const canBid = !squadFull && canTeamBid(team, displayBid, maxSquadSize, basePrice);
+          const maxBid = maxAllowedBid(team, maxSquadSize, basePrice);
+          const playerCount = Number(team.playerCount) || 0;
 
           return (
-            <button key={team.id} onClick={() => onAssign(team.id)}
+            <button
+              key={team.id}
+              type="button"
+              onClick={() => onAssign(team.id)}
               disabled={disabled || !canBid}
-              className="relative flex flex-col gap-1 px-3 py-3 rounded-2xl font-medium transition-all duration-200 text-left active:scale-95"
+              className="relative flex-shrink-0 snap-start flex flex-col gap-0.5 px-2.5 py-2 rounded-xl text-left transition-all duration-200 active:scale-[0.98] min-w-[9.5rem] max-w-[11rem]"
               style={{
-                backgroundColor: isHighest ? 'var(--color-primary)' : 'var(--color-surface)',
+                backgroundColor: isHighest ? 'var(--color-primary)' : 'var(--color-surface-2)',
                 border: `2px solid ${isHighest ? 'var(--color-primary)' : 'var(--color-border)'}`,
                 color: isHighest ? 'white' : 'var(--color-text-primary)',
-                opacity: !canBid ? 0.3 : 1,
-                boxShadow: isHighest ? '0 0 20px var(--color-primary)' : 'none',
+                opacity: !canBid ? 0.35 : 1,
+                boxShadow: isHighest ? '0 0 14px var(--color-primary)' : 'none',
                 animation: isHighest ? 'teamHighlight 1.2s ease-in-out infinite' : 'none',
-              }}>
+              }}
+            >
               {idx < 9 && (
-                <span className="absolute top-2 right-2 text-xs w-5 h-5 rounded flex items-center justify-center font-mono font-bold"
-                  style={{ backgroundColor: isHighest ? 'rgba(255,255,255,0.2)' : 'var(--color-surface-2)',
-                           color: isHighest ? 'white' : 'var(--color-text-secondary)' }}>
+                <span className="absolute top-1 right-1 text-[10px] w-4 h-4 rounded flex items-center justify-center font-mono font-bold"
+                  style={{
+                    backgroundColor: isHighest ? 'rgba(255,255,255,0.25)' : 'var(--color-surface)',
+                    color: isHighest ? 'white' : 'var(--color-text-secondary)',
+                  }}>
                   {idx + 1}
                 </span>
               )}
-              {isHighest && <span className="text-xs font-bold opacity-90">● Highest Bid</span>}
-              {squadFull && !isHighest && (
-                <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Squad full</span>
-              )}
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center font-bold text-sm flex-shrink-0"
-                  style={{ backgroundColor: isHighest ? 'rgba(255,255,255,0.2)' : 'var(--color-surface-2)',
-                           color: isHighest ? 'white' : 'var(--color-primary)' }}>
+              <div className="flex items-center gap-1.5 pr-4 min-w-0">
+                <div className="w-6 h-6 rounded-md overflow-hidden flex items-center justify-center font-bold text-[10px] flex-shrink-0"
+                  style={{
+                    backgroundColor: isHighest ? 'rgba(255,255,255,0.2)' : 'var(--color-surface)',
+                    color: isHighest ? 'white' : 'var(--color-primary)',
+                  }}>
                   {team.logoUrl
-                    ? <img src={resolveUrl(team.logoUrl)} alt="" className="w-full h-full object-cover" onError={e => e.target.style.display='none'} />
+                    ? <img src={resolveUrl(team.logoUrl)} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
                     : team.name[0]}
                 </div>
-                <span className="font-bold text-sm truncate">{team.name}</span>
+                <span className="font-bold text-xs truncate leading-tight">{team.name}</span>
               </div>
-              <div className="text-xs" style={{ color: isHighest ? 'rgba(255,255,255,0.75)' : 'var(--color-text-secondary)' }}>
-                {formatCurrency(team.remainingBudget)} left
-              </div>
-              <div className="h-1 rounded-full overflow-hidden"
-                style={{ backgroundColor: isHighest ? 'rgba(255,255,255,0.2)' : 'var(--color-surface-2)' }}>
-                <div className="h-full rounded-full"
-                  style={{ width: `${pct}%`,
-                    backgroundColor: isHighest ? 'rgba(255,255,255,0.7)' : pct > 80 ? 'var(--color-danger)' : 'var(--color-primary)' }} />
+              {isHighest && <span className="text-[10px] font-bold opacity-90 leading-none">● Highest</span>}
+              <div className="text-[10px] leading-snug space-y-0.5"
+                style={{ color: isHighest ? 'rgba(255,255,255,0.85)' : 'var(--color-text-secondary)' }}>
+                <div>
+                  <span style={{ opacity: 0.85 }}>Purse </span>
+                  <strong style={{ color: isHighest ? 'white' : 'var(--color-success)' }}>
+                    {formatCurrency(team.remainingBudget)}
+                  </strong>
+                </div>
+                <div>
+                  <span style={{ opacity: 0.85 }}>Squad </span>
+                  <strong>{playerCount}</strong>
+                </div>
+                <div>
+                  <span style={{ opacity: 0.85 }}>Max bid </span>
+                  <strong style={{ color: isHighest ? '#fde68a' : 'var(--color-accent)' }}>
+                    {squadFull ? 'Full' : formatCurrency(maxBid)}
+                  </strong>
+                </div>
               </div>
             </button>
           );
