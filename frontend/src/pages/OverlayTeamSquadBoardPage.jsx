@@ -16,7 +16,16 @@ import { getRoleShortLabel } from '../utils/formatters';
 import { maxBidInfoForTeam } from '../utils/auctionConstraints';
 import styles from './OverlayTeamSquadBoard.module.css';
 
-const ROTATE_MS = 8000;
+const ROTATE_MS = 12000;
+const AUTO_SCROLL_STORAGE_KEY = 'overlaySquadBoardAutoScroll';
+
+function readAutoScrollPreference() {
+  try {
+    return localStorage.getItem(AUTO_SCROLL_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 export default function OverlayTeamSquadBoardPage() {
   const [params] = useSearchParams();
@@ -28,9 +37,11 @@ export default function OverlayTeamSquadBoardPage() {
   const playerRoles = config?.playerRoles;
   const [teamIndex, setTeamIndex] = useState(0);
   const [visible, setVisible] = useState(true);
+  const [autoScroll, setAutoScroll] = useState(readAutoScrollPreference);
   const [rosterByTeam, setRosterByTeam] = useState({});
   const timerRef = useRef(null);
   const lastSoldKeyRef = useRef('');
+  const goNextRef = useRef(() => {});
 
   useEffect(() => {
     if (!teams.length) return;
@@ -130,17 +141,40 @@ export default function OverlayTeamSquadBoardPage() {
   const goNext = useCallback(() => goTo(safeIndex + 1), [goTo, safeIndex]);
   const goPrev = useCallback(() => goTo(safeIndex - 1), [goTo, safeIndex]);
 
+  goNextRef.current = goNext;
+
+  const toggleAutoScroll = useCallback(() => {
+    setAutoScroll((on) => {
+      const next = !on;
+      try {
+        localStorage.setItem(AUTO_SCROLL_STORAGE_KEY, next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
-    if (teamCount <= 1) return undefined;
+    if (!autoScroll || teamCount <= 1) {
+      clearInterval(timerRef.current);
+      return undefined;
+    }
     clearInterval(timerRef.current);
-    timerRef.current = window.setInterval(goNext, ROTATE_MS);
+    timerRef.current = window.setInterval(() => goNextRef.current(), ROTATE_MS);
     return () => clearInterval(timerRef.current);
-  }, [goNext, teamCount, safeIndex]);
+  }, [autoScroll, teamCount]);
 
   useEffect(() => {
     const onKey = (event) => {
-      if (event.key === 'ArrowRight') goNext();
-      if (event.key === 'ArrowLeft') goPrev();
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goNext();
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goPrev();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -175,8 +209,20 @@ export default function OverlayTeamSquadBoardPage() {
           <button type="button" className={`${styles.navBtn} ${styles.navRight}`} onClick={goNext} aria-label="Next team">
             <ChevronRight size={42} />
           </button>
-          <div className={styles.teamIndicator}>
-            {safeIndex + 1} / {teamCount} · {team.name}
+          <div className={styles.topBar}>
+            <div className={styles.teamIndicator}>
+              {safeIndex + 1} / {teamCount} · {team.name}
+            </div>
+            <button
+              type="button"
+              className={`${styles.autoScrollToggle} ${autoScroll ? styles.autoScrollOn : ''}`}
+              onClick={toggleAutoScroll}
+              aria-pressed={autoScroll}
+              title="Auto-rotate teams every 12 seconds"
+            >
+              Auto-scroll {autoScroll ? 'On' : 'Off'}
+              <span className={styles.autoScrollHint}> · ← → manual</span>
+            </button>
           </div>
         </>
       )}
