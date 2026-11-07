@@ -62,6 +62,11 @@ public class BroadcastController {
         if (d.getOverlayDisplayFont() != null && !d.getOverlayDisplayFont().isBlank()) {
             t.setOverlayDisplayFont(d.getOverlayDisplayFont().trim().toLowerCase());
         }
+        if (d.getOverlayMainLayout() != null && !d.getOverlayMainLayout().isBlank()) {
+            t.setOverlayMainLayout(d.getOverlayMainLayout().trim());
+        }
+        if (d.getOverlayMainShowFields() != null) t.setOverlayMainShowFields(d.getOverlayMainShowFields());
+        if (d.getOverlayShowTeamMaxBid() != null) t.setOverlayShowTeamMaxBid(d.getOverlayShowTeamMaxBid());
         if (d.getOverlayShowPlayerStatsIntro() != null) t.setOverlayShowPlayerStatsIntro(d.getOverlayShowPlayerStatsIntro());
         if (d.getOverlayPlayerStatsIntroMs() != null) {
             t.setOverlayPlayerStatsIntroMs(Math.max(1000, Math.min(15000, d.getOverlayPlayerStatsIntroMs())));
@@ -148,7 +153,11 @@ public class BroadcastController {
                 .overlayAudienceBackgroundUrl(t.getOverlayAudienceBackgroundUrl())
                 .overlayMainScalePercent(t.getOverlayMainScalePercent() != null ? t.getOverlayMainScalePercent() : 94)
                 .overlayDisplayFont(t.getOverlayDisplayFont() != null ? t.getOverlayDisplayFont() : "sport")
+                .overlayMainLayout(t.getOverlayMainLayout() != null ? t.getOverlayMainLayout() : "classic")
+                .overlayMainShowFields(t.getOverlayMainShowFields())
+                .overlayShowTeamMaxBid(t.getOverlayShowTeamMaxBid() != null ? t.getOverlayShowTeamMaxBid() : true)
                 .logoUrl(t.getLogoUrl())
+                .auctionDisplayName(t.getAuctionDisplayName())
                 .overlayShowPlayerStatsIntro(t.getOverlayShowPlayerStatsIntro())
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
                 .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())

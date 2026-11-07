@@ -1,0 +1,57 @@
+.strip {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(12px, 2vh, 24px);
+  transform: translateX(-50%);
+  width: min(96%, 1200px);
+  z-index: 5;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(6, 12, 28, 0.88);
+  border: 1px solid rgba(255, 199, 44, 0.35);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+}
+
+.stripTitle {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 199, 44, 0.85);
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.stripGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.chipName {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipValue {
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: #ffc72c;
+}

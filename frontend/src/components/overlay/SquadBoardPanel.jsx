@@ -165,16 +165,26 @@ export default function SquadBoardPanel({
               <span>Budget Left</span>
               <strong>{formatCompactPurse(team.remainingBudget)}</strong>
             </div>
-            {maxBidInfo?.show && (
-              <div className={`${styles.summaryStatWide} ${styles.maxBidStat}`}>
-                <span>Max bid{maxBidInfo.playerName ? ` · ${maxBidInfo.playerName}` : ''}</span>
-                <strong style={{ color: maxBidInfo.squadFull ? 'var(--color-text-secondary)' : '#ffc72c' }}>
-                  {maxBidInfo.squadFull ? 'Squad full' : formatCurrency(maxBidInfo.maxBid)}
-                </strong>
-              </div>
-            )}
           </div>
         </div>
+        {isOverlay && maxBidInfo?.show && (
+          <div className={styles.maxBidRibbon} role="status">
+            <span className={styles.maxBidRibbonLabel}>
+              Max bid{maxBidInfo.playerName ? ` · ${maxBidInfo.playerName}` : ''}
+            </span>
+            <strong className={styles.maxBidRibbonValue}>
+              {maxBidInfo.squadFull ? 'Squad full' : formatCurrency(maxBidInfo.maxBid)}
+            </strong>
+          </div>
+        )}
+        {!isOverlay && maxBidInfo?.show && (
+          <div className={`${styles.summaryStatWide} ${styles.maxBidStat}`}>
+            <span>Max bid{maxBidInfo.playerName ? ` · ${maxBidInfo.playerName}` : ''}</span>
+            <strong style={{ color: maxBidInfo.squadFull ? 'var(--color-text-secondary)' : '#ffc72c' }}>
+              {maxBidInfo.squadFull ? 'Squad full' : formatCurrency(maxBidInfo.maxBid)}
+            </strong>
+          </div>
+        )}
       </header>
 
       <section className={styles.squadPanel}>

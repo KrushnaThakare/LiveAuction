@@ -30,6 +30,7 @@ import OverlayTopSoldPage from './pages/OverlayTopSoldPage';
 import AuctionDisplayPage from './pages/AuctionDisplayPage';
 import AuctionDisplayErrorBoundary from './components/overlay/AuctionDisplayErrorBoundary';
 import BroadcastControlPage from './pages/BroadcastControlPage';
+import DisplayStudioPage from './pages/DisplayStudioPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import './styles/overlay.css';
 
@@ -132,6 +133,9 @@ function AppRoutes() {
               } />
               <Route path="/broadcast" element={
                 <Protected requireOperator><BroadcastControlPage /></Protected>
+              } />
+              <Route path="/display-studio" element={
+                <Protected requireOperator><DisplayStudioPage /></Protected>
               } />
             </Routes>
           </main>

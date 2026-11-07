@@ -11,7 +11,9 @@ import OverlayFullscreenButton from '../components/common/OverlayFullscreenButto
 import OverlayMainPlayerPanel from '../components/overlay/OverlayMainPlayerPanel';
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import styles from './OverlayBroadcast.module.css';
-import { overlayDisplayStyle } from '../utils/overlayDisplayTheme';
+import { mainOverlayScaledStyle, mainOverlayViewportStyle } from '../utils/overlayDisplayTheme';
+import OverlayMainHplLayout from '../components/overlay/mainLayouts/OverlayMainHplLayout';
+import { parseMainOverlayFields } from '../utils/overlayMainFields';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 
@@ -79,10 +81,93 @@ export default function OverlayMainPage() {
   const showVerdict = isSold || isUnsold;
   const verdictStampKey = showVerdict ? `${auction?.sessionId || 'session'}-${status}` : 'idle';
 
-  const stageStyle = overlayDisplayStyle(config, { scalePercent: config?.overlayMainScalePercent ?? 94 });
+  const layout = config?.overlayMainLayout || 'classic';
+  const mainFields = parseMainOverlayFields(config?.overlayMainShowFields);
+  const useHpl = layout === 'hpl-lower-third' || layout === 'compact-strip';
+  const viewportStyle = mainOverlayViewportStyle(config);
+  const scaledStyle = mainOverlayScaledStyle(config);
+
+  const dock = useHpl ? (
+    <OverlayMainHplLayout
+      auction={auction}
+      player={player}
+      team={team}
+      config={config}
+      connected={connected}
+      bidPopToken={bidPopToken}
+      squadPickLabel={squadPickLabel}
+      isSold={isSold}
+      isUnsold={isUnsold}
+      showVerdict={showVerdict}
+      increment={increment}
+    />
+  ) : (
+    <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
+      <OverlayMainPlayerPanel
+        player={player}
+        sessionId={auction?.sessionId}
+        transitionEnabled={config?.overlayShowPlayerTransition !== false}
+        connected={connected}
+        playerRoles={config?.playerRoles}
+        detailFields={mainFields.detailSlots === false ? [] : config?.overlayMainDetailFields}
+      />
+      {(mainFields.currentBid !== false || mainFields.teamBlock !== false) && (
+        <div className={`${styles.bidPanel} ${showVerdict ? styles.bidPanelSoldLayout : ''}`}>
+          {!showVerdict && mainFields.currentBid !== false && (
+            <div className={styles.liveBadge}>
+              <Radio size={15} />
+              LIVE BID
+            </div>
+          )}
+          {mainFields.currentBid !== false && (
+            <div className={`${styles.glassCard} ${styles.amountCard}`}>
+              <div className={styles.bidLabel}>Current Bid</div>
+              <BidAmountDisplay
+                className={styles.bidAmount}
+                amount={auction?.currentBid}
+                formatAmount={money}
+                popToken={bidPopToken}
+              />
+              <div className={styles.status}>{status === 'ACTIVE' ? 'Auction Active' : status}</div>
+            </div>
+          )}
+          {mainFields.teamBlock !== false && (
+            <div className={`${styles.glassCard} ${styles.teamBid} ${isSold ? styles.teamBidSold : ''}`}>
+              {team?.logoUrl ? (
+                <img className={styles.teamLogo} src={resolveUrl(team.logoUrl)} alt={team.name} />
+              ) : (
+                <div className={`${styles.teamLogo} ${styles.teamLogoFallback}`}>
+                  {(auction?.highestBidderTeamName || 'A')[0]}
+                </div>
+              )}
+              <div>
+                <div className={styles.teamLabel}>{isSold ? 'Winning Team' : 'Currently Bidding'}</div>
+                <div className={styles.teamName}>
+                  {auction?.highestBidderTeamName || 'Awaiting Bidder'}
+                  {squadPickLabel && <span className={styles.squadPickBadge}>{squadPickLabel}</span>}
+                </div>
+              </div>
+              {!isSold && mainFields.bidIncrement !== false && (
+                <div className={styles.increment}>
+                  <TrendingUp size={18} />
+                  +{money(increment)}
+                </div>
+              )}
+              {isSold && (
+                <div className={styles.soldAmount}>
+                  {money(auction?.currentBid)}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
 
   return (
-    <div className={styles.stage} style={stageStyle}>
+    <div className={styles.obsViewport} style={viewportStyle}>
+      <div className={`${styles.stage} ${styles.obsScaled}`} style={scaledStyle}>
       <OverlayFullscreenButton />
       {showStatsIntro && <PlayerStatsOverlay player={player} />}
       {showVerdict && (
@@ -107,64 +192,8 @@ export default function OverlayMainPage() {
           </div>
         </div>
       )}
-      <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
-        <OverlayMainPlayerPanel
-          player={player}
-          sessionId={auction?.sessionId}
-          transitionEnabled={config?.overlayShowPlayerTransition !== false}
-          connected={connected}
-          playerRoles={config?.playerRoles}
-          detailFields={config?.overlayMainDetailFields}
-        />
-
-        <div className={`${styles.bidPanel} ${showVerdict ? styles.bidPanelSoldLayout : ''}`}>
-          {!showVerdict && (
-            <div className={styles.liveBadge}>
-              <Radio size={15} />
-              LIVE BID
-            </div>
-          )}
-
-          <div className={`${styles.glassCard} ${styles.amountCard}`}>
-            <div className={styles.bidLabel}>Current Bid</div>
-            <BidAmountDisplay
-              className={styles.bidAmount}
-              amount={auction?.currentBid}
-              formatAmount={money}
-              popToken={bidPopToken}
-            />
-            <div className={styles.status}>{status === 'ACTIVE' ? 'Auction Active' : status}</div>
-          </div>
-
-          <div className={`${styles.glassCard} ${styles.teamBid} ${isSold ? styles.teamBidSold : ''}`}>
-            {team?.logoUrl ? (
-              <img className={styles.teamLogo} src={resolveUrl(team.logoUrl)} alt={team.name} />
-            ) : (
-              <div className={`${styles.teamLogo} ${styles.teamLogoFallback}`}>
-                {(auction?.highestBidderTeamName || 'A')[0]}
-              </div>
-            )}
-            <div>
-              <div className={styles.teamLabel}>{isSold ? 'Winning Team' : 'Currently Bidding'}</div>
-              <div className={styles.teamName}>
-                {auction?.highestBidderTeamName || 'Awaiting Bidder'}
-                {squadPickLabel && <span className={styles.squadPickBadge}>{squadPickLabel}</span>}
-              </div>
-            </div>
-            {!isSold && (
-              <div className={styles.increment}>
-                <TrendingUp size={18} />
-                +{money(increment)}
-              </div>
-            )}
-            {isSold && (
-              <div className={styles.soldAmount}>
-                {money(auction?.currentBid)}
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
+      {dock}
+      </div>
     </div>
   );
 }

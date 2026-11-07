@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTournament } from '../contexts/TournamentContext';
 import { broadcastApi } from '../api/broadcast';
-import { tournamentApi } from '../api/tournaments';
-import { resolveUrl } from '../utils/resolveUrl';
 import { bidRuleApi } from '../api/bidRules';
 import toast from 'react-hot-toast';
 import SquadSizeInput from '../components/common/SquadSizeInput';
@@ -50,25 +49,6 @@ export default function BroadcastControlPage() {
   });
   const [bidRules, setBidRules] = useState([]);
   const squadSizeInputRef = useRef(null);
-  const audienceBgInputRef = useRef(null);
-  const logoInputRef = useRef(null);
-
-  const uploadAudienceBg = async (file) => {
-    if (!tid || !file) return;
-    const res = await broadcastApi.uploadAudienceBackground(tid, file);
-    const url = res.data.data;
-    setSettings((s) => ({ ...s, overlayAudienceBackgroundUrl: url }));
-    toast.success('Audience background uploaded — save settings');
-  };
-
-  const uploadTournamentLogo = async (file) => {
-    if (!tid || !file) return;
-    const res = await tournamentApi.uploadLogo(tid, file);
-    const url = res.data.data;
-    setSettings((s) => ({ ...s, logoUrl: url }));
-    toast.success('Tournament logo updated');
-  };
-
   useEffect(() => {
     if (!tid) return;
     broadcastApi.getSettings(tid).then((r) => {
@@ -210,43 +190,12 @@ export default function BroadcastControlPage() {
           )}
         </section>
 
-        <section className="card p-4 space-y-3 lg:col-span-2">
-          <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
-            Display studio (Audience + Main OBS)
-          </h2>
-          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-            Tournament branding and layout — like IPL/broadcast control panels. Saves with the button below.
+        <section className="card p-4 lg:col-span-2" style={{ borderColor: 'var(--color-primary)' }}>
+          <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Display studio</h2>
+          <p className="text-xs mt-1 mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+            Layouts, logos, backgrounds, which Excel fields show on Main &amp; Audience overlays.
           </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <p className="text-xs font-semibold mb-2">Tournament logo</p>
-              {settings.logoUrl ? (
-                <img src={resolveUrl(settings.logoUrl)} alt="" className="h-14 w-14 rounded-lg object-contain mb-2" style={{ background: 'var(--color-surface-2)' }} />
-              ) : null}
-              <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadTournamentLogo(f); e.target.value = ''; }} />
-              <button type="button" className="btn-secondary text-xs" onClick={() => logoInputRef.current?.click()}>Upload logo</button>
-            </div>
-            <div>
-              <p className="text-xs font-semibold mb-2">Audience background</p>
-              {settings.overlayAudienceBackgroundUrl ? (
-                <div className="h-14 rounded-lg mb-2 bg-cover bg-center border" style={{ backgroundImage: `url(${resolveUrl(settings.overlayAudienceBackgroundUrl)})`, borderColor: 'var(--color-border)' }} />
-              ) : null}
-              <input ref={audienceBgInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAudienceBg(f); e.target.value = ''; }} />
-              <button type="button" className="btn-secondary text-xs" onClick={() => audienceBgInputRef.current?.click()}>Upload background</button>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold block">Font style</label>
-              <select className="input" value={settings.overlayDisplayFont || 'sport'}
-                onChange={(e) => setSettings((s) => ({ ...s, overlayDisplayFont: e.target.value }))}>
-                <option value="sport">Sport (default)</option>
-                <option value="broadcast">Broadcast condensed</option>
-                <option value="tech">Tech / robotic</option>
-              </select>
-              <label className="text-xs font-semibold block">Main overlay scale (YouTube)</label>
-              <input className="input" type="number" min={80} max={100} value={settings.overlayMainScalePercent ?? 94}
-                onChange={(e) => setSettings((s) => ({ ...s, overlayMainScalePercent: Number(e.target.value || 94) }))} />
-            </div>
-          </div>
+          <Link to="/display-studio" className="btn-primary text-sm">Open Display Studio →</Link>
         </section>
 
         <section className="card p-4 space-y-2">
