@@ -9,9 +9,15 @@ export function resolveAuctionBasePrice(auctionState) {
   return Number.isFinite(base) && base > 0 ? base : 0;
 }
 
+function teamPlayerCount(team) {
+  const n = Number(team?.playerCount);
+  if (Number.isFinite(n) && n >= 0) return n;
+  return Array.isArray(team?.players) ? team.players.length : 0;
+}
+
 export function maxAllowedBid(team, maxSquadSize, basePrice) {
   const squadSize = clampSquadSize(maxSquadSize);
-  const playerCount = Number(team?.playerCount) || 0;
+  const playerCount = teamPlayerCount(team);
   const purse = Number(team?.remainingBudget) || 0;
   if (playerCount >= squadSize) return 0;
   const playersLeft = squadSize - playerCount;
@@ -22,7 +28,7 @@ export function maxAllowedBid(team, maxSquadSize, basePrice) {
 
 export function canTeamBid(team, bidAmount, maxSquadSize, basePrice) {
   const squadSize = clampSquadSize(maxSquadSize);
-  const playerCount = Number(team?.playerCount) || 0;
+  const playerCount = teamPlayerCount(team);
   const purse = Number(team?.remainingBudget) || 0;
   const bid = Number(bidAmount) || 0;
   if (playerCount >= squadSize) return false;
@@ -32,7 +38,7 @@ export function canTeamBid(team, bidAmount, maxSquadSize, basePrice) {
 
 export function isSquadFull(team, maxSquadSize) {
   const squadSize = clampSquadSize(maxSquadSize);
-  return (Number(team?.playerCount) || 0) >= squadSize;
+  return teamPlayerCount(team) >= squadSize;
 }
 
 /** Max bid hint for squad boards / exports when a live player is on the block. */

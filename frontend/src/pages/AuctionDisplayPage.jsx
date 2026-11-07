@@ -26,6 +26,7 @@ import { GAVEL_SOLD_MS, GAVEL_UNSOLD_MS } from '../constants/gavelTiming';
 import { resolveSquadSize } from '../utils/squadFormation';
 import styles from './AuctionDisplay.module.css';
 import { overlayDisplayStyle } from '../utils/overlayDisplayTheme';
+import TeamMaxBidStrip from '../components/overlay/TeamMaxBidStrip';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 const FALLBACK_DETAIL_SLOT = { label: 'Detail', value: '—' };
@@ -398,6 +399,8 @@ export default function AuctionDisplayPage() {
           scene={auction?.sessionId}
         />
       )}
+
+      <TeamMaxBidStrip teams={teams} auction={auction} config={config} />
     </main>
   );
 }

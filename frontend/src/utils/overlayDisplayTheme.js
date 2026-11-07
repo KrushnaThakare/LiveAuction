@@ -13,7 +13,7 @@ export function overlayFontFamily(fontKey) {
 }
 
 export function overlayDisplayStyle(config, options = {}) {
-  const { includeBackground = false, scalePercent } = options;
+  const { includeBackground = false } = options;
   const style = {
     fontFamily: overlayFontFamily(config?.overlayDisplayFont),
   };
@@ -26,12 +26,29 @@ export function overlayDisplayStyle(config, options = {}) {
       style.backgroundRepeat = 'no-repeat';
     }
   }
-  if (scalePercent != null) {
-    const scale = Math.max(0.8, Math.min(1, Number(scalePercent) / 100));
-    style.transform = `scale(${scale})`;
-    style.transformOrigin = 'top center';
-    style.width = `${(100 / scale).toFixed(2)}%`;
-    style.height = `${(100 / scale).toFixed(2)}%`;
-  }
   return style;
+}
+
+/** Scale inside a 100vw×100vh clip so OBS/YouTube does not scroll off-screen. */
+export function mainOverlayViewportStyle(config) {
+  return {
+    width: '100vw',
+    height: '100vh',
+    overflow: 'hidden',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    fontFamily: overlayFontFamily(config?.overlayDisplayFont),
+  };
+}
+
+export function mainOverlayScaledStyle(config) {
+  const scale = Math.max(0.8, Math.min(1, Number(config?.overlayMainScalePercent ?? 100) / 100));
+  return {
+    transform: `scale(${scale})`,
+    transformOrigin: 'top center',
+    width: '100%',
+    maxWidth: 1920,
+    minHeight: scale < 1 ? `${(100 / scale).toFixed(2)}vh` : '100vh',
+  };
 }

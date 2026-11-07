@@ -18,6 +18,9 @@ public class BroadcastSettingsDto {
     private String overlayAudienceBackgroundUrl;
     private Integer overlayMainScalePercent;
     private String overlayDisplayFont;
+    private String overlayMainLayout;
+    private String overlayMainShowFields;
+    private Boolean overlayShowTeamMaxBid;
     private Boolean overlayShowPlayerStatsIntro;
     private Integer overlayPlayerStatsIntroMs;
     private Boolean overlayShowCinematicIntro;

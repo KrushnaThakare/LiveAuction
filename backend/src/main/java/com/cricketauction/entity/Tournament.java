@@ -126,6 +126,18 @@ public class Tournament {
     @Builder.Default
     private String overlayDisplayFont = "sport";
 
+    @Column(name = "overlay_main_layout", length = 40)
+    @Builder.Default
+    private String overlayMainLayout = "classic";
+
+    @Lob
+    @Column(name = "overlay_main_show_fields", columnDefinition = "TEXT")
+    private String overlayMainShowFields;
+
+    @Column(name = "overlay_show_team_max_bid")
+    @Builder.Default
+    private Boolean overlayShowTeamMaxBid = true;
+
     @Column(name = "overlay_show_player_stats_intro")
     @Builder.Default
     private Boolean overlayShowPlayerStatsIntro = true;

@@ -74,7 +74,7 @@ export default function PublicViewPage() {
         setUnsold(u || []);
       } else if (targetTab === 'remaining') {
         const r = await get(`/tournaments/${tournamentId}/players?status=AVAILABLE`);
-        setRemaining(r || []);
+        setRemaining((r || []).filter((p) => String(p.status || 'AVAILABLE').toUpperCase() === 'AVAILABLE'));
       }
       loadedTabsRef.current = { ...loadedTabsRef.current, [targetTab]: true };
       setLoadedTabs(loadedTabsRef.current);
@@ -102,13 +102,19 @@ export default function PublicViewPage() {
       if (current.status === 'SOLD') {
         if (config?.publicViewShowTeams !== false && loadedTabsRef.current.teams) loadTabData('teams', true);
         if (config?.publicViewShowSold !== false && loadedTabsRef.current.sold) loadTabData('sold', true);
+        if (config?.publicViewShowRemaining !== false && loadedTabsRef.current.remaining) loadTabData('remaining', true);
       }
       if (current.status === 'UNSOLD') {
         if (config?.publicViewShowUnsold !== false && loadedTabsRef.current.unsold) loadTabData('unsold', true);
+        if (config?.publicViewShowTeams !== false && loadedTabsRef.current.teams) loadTabData('teams', true);
       }
     }
+    if (current.status === 'ACTIVE' && previous.status !== 'ACTIVE') {
+      if (config?.publicViewShowRemaining !== false && loadedTabsRef.current.remaining) loadTabData('remaining', true);
+      if (config?.publicViewShowTeams !== false && loadedTabsRef.current.teams) loadTabData('teams', true);
+    }
     previousAuctionRef.current = current;
-  }, [data?.auction, loadTabData, config?.publicViewShowTeams, config?.publicViewShowSold, config?.publicViewShowUnsold]);
+  }, [data?.auction, loadTabData, config?.publicViewShowTeams, config?.publicViewShowSold, config?.publicViewShowUnsold, config?.publicViewShowRemaining]);
 
   const screenStyle = { background: '#060d1a', color: '#f0f6ff', minHeight: '100vh' };
 

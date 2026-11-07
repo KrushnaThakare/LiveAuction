@@ -4,7 +4,7 @@ import ThemeSwitcher from './ThemeSwitcher';
 import TournamentSelector from './TournamentSelector';
 import {
   Trophy, Users, Gavel, ShieldCheck, XCircle, Home,
-  ClipboardList, Settings, UserCog, LogOut, Crown, Radio, ScrollText,
+  ClipboardList, Settings, UserCog, LogOut, Crown, Radio, ScrollText, Monitor,
 } from 'lucide-react';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
@@ -25,6 +25,7 @@ export default function Navbar() {
     { to: '/users',         label: 'Users',          icon: UserCog,       show: isSuperAdmin },
     { to: '/logs',          label: 'Logs',           icon: ScrollText,    show: isSuperAdmin },
     { to: '/broadcast',     label: 'Broadcast',      icon: Radio,         show: isOperator },
+    { to: '/display-studio', label: 'Display Studio', icon: Monitor,      show: isOperator },
   ].filter(l => l.show);
 
   const roleColor = user?.role === 'SUPER_ADMIN' ? 'var(--color-warning)'
