@@ -25,6 +25,7 @@ export function serializeMainOverlayFields(fields) {
 export const MAIN_OVERLAY_LAYOUTS = [
   { id: 'classic', label: 'Classic (center photo, side stats)', description: 'Default OBS layout — player center, bid panel right.' },
   { id: 'hpl-lower-third', label: 'Lower third (HPL-style bar)', description: 'Wide bottom bar, photo left, name center, bid right — like IPL/HPL graphics.' },
+  { id: 'ipl-broadcast', label: 'IPL broadcast bar', description: 'Neon lower third with sold price held on screen after hammer.' },
   { id: 'compact-strip', label: 'Compact strip', description: 'Thin bottom bar; good for small YouTube frame.' },
   { id: 'split-wide', label: 'Split wide', description: 'Player left half, bid + team right half.' },
   { id: 'minimal', label: 'Minimal', description: 'Name + bid only; hides extras.' },

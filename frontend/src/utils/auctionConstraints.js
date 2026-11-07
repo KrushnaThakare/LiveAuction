@@ -9,6 +9,15 @@ export function resolveAuctionBasePrice(auctionState) {
   return Number.isFinite(base) && base > 0 ? base : 0;
 }
 
+/** Base price used for max-bid ribbon (live lot, sold/unsold holdover, or purse estimate). */
+export function resolveMaxBidBasePrice(auctionState) {
+  const fromPlayer = resolveAuctionBasePrice(auctionState);
+  if (fromPlayer > 0) return fromPlayer;
+  const fromBid = Number(auctionState?.currentBid);
+  if (Number.isFinite(fromBid) && fromBid > 0) return fromBid;
+  return 0;
+}
+
 function teamPlayerCount(team) {
   const n = Number(team?.playerCount);
   if (Number.isFinite(n) && n >= 0) return n;
@@ -41,16 +50,18 @@ export function isSquadFull(team, maxSquadSize) {
   return teamPlayerCount(team) >= squadSize;
 }
 
-/** Max bid hint for squad boards / exports when a live player is on the block. */
+/** Max bid hint for squad boards, audience, and broadcaster /view (always shown when team exists). */
 export function maxBidInfoForTeam(team, maxSquadSize, auctionState) {
-  if (!team || auctionState?.status !== 'ACTIVE' || !auctionState?.currentPlayer) {
-    return null;
-  }
-  const basePrice = resolveAuctionBasePrice(auctionState);
+  if (!team) return null;
+  const basePrice = resolveMaxBidBasePrice(auctionState);
   const squadFull = isSquadFull(team, maxSquadSize);
+  const rawName = auctionState?.currentPlayer?.name;
+  const playerName = rawName ? (rawName.split(/\s+/)[0] || rawName) : null;
   return {
     maxBid: maxAllowedBid(team, maxSquadSize, basePrice),
     squadFull,
-    playerName: auctionState.currentPlayer.name,
+    playerName,
+    basePrice,
+    show: true,
   };
 }

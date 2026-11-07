@@ -792,7 +792,7 @@ export default function AuctionPage() {
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           {isActive && auctionState?.currentPlayer ? (
             <>
-              <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="flex flex-col min-h-0 overflow-y-auto">
                 <StageCard
                   player={auctionState.currentPlayer}
                   committedBid={auctionState.currentBid}
@@ -879,7 +879,7 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
   const imgUrl    = driveImg(player.imageUrl);
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 pt-4 pb-2 gap-3 relative">
+    <div className="flex flex-col items-center px-4 pt-3 pb-2 gap-2 relative shrink-0">
 
       {/* ── Stadium atmosphere background ───────────────────────────────────
           The image is blurred + darkened so it reads as atmosphere, not photo.
@@ -954,7 +954,7 @@ function StageCard({ player, committedBid, proposedBid, highestBidderTeamName, b
         {/* Player photo card */}
         <div className="stage-scanlines relative rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center"
           style={{
-            width: 'min(260px,34vw)', height: 'min(300px,38vw)', minWidth: 160, minHeight: 190,
+            width: 'min(200px,26vw)', height: 'min(220px,28vw)', minWidth: 140, minHeight: 160,
             background: `radial-gradient(circle at 50% 55%, ${roleBg} 0%, rgba(0,0,0,0.7) 80%)`,
             border: `3px solid ${roleColor}`,
             boxShadow: `0 0 40px ${roleColor}55, 0 0 80px ${roleColor}22, 0 8px 32px rgba(0,0,0,0.6)`,
@@ -1145,7 +1145,10 @@ function TeamAssignStrip({ teams, auctionState, displayBid, proposedBid, maxSqua
         <span className="ml-auto opacity-60">Keys 1–9 · scroll →</span>
       </p>
 
-      <div className="flex gap-2 overflow-x-auto pb-0.5 snap-x snap-mandatory" style={{ scrollbarWidth: 'thin' }}>
+      <div
+        className="grid gap-2 pb-1 max-h-[min(42vh,320px)] overflow-y-auto pr-0.5"
+        style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(9.25rem, 1fr))', scrollbarWidth: 'thin' }}
+      >
         {teams.map((team, idx) => {
           const isHighest = team.id === auctionState?.highestBidderTeamId;
           const squadFull = isSquadFull(team, maxSquadSize);
@@ -1159,7 +1162,7 @@ function TeamAssignStrip({ teams, auctionState, displayBid, proposedBid, maxSqua
               type="button"
               onClick={() => onAssign(team.id)}
               disabled={disabled || !canBid}
-              className="relative flex-shrink-0 snap-start flex flex-col gap-0.5 px-2.5 py-2 rounded-xl text-left transition-all duration-200 active:scale-[0.98] min-w-[9.5rem] max-w-[11rem]"
+              className="relative w-full flex flex-col gap-0.5 px-2.5 py-2 rounded-xl text-left transition-all duration-200 active:scale-[0.98]"
               style={{
                 backgroundColor: isHighest ? 'var(--color-primary)' : 'var(--color-surface-2)',
                 border: `2px solid ${isHighest ? 'var(--color-primary)' : 'var(--color-border)'}`,

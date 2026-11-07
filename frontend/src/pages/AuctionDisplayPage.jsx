@@ -27,6 +27,8 @@ import { resolveSquadSize } from '../utils/squadFormation';
 import styles from './AuctionDisplay.module.css';
 import { overlayDisplayStyle } from '../utils/overlayDisplayTheme';
 import TeamMaxBidStrip from '../components/overlay/TeamMaxBidStrip';
+import AudienceDisplayStudioMenu from '../components/overlay/AudienceDisplayStudioMenu';
+import AudienceSquadBoardLayer from '../components/overlay/AudienceSquadBoardLayer';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 const FALLBACK_DETAIL_SLOT = { label: 'Detail', value: '—' };
@@ -82,16 +84,18 @@ export default function AuctionDisplayPage() {
   const tid = params.get('tournamentId');
   const token = params.get('token');
   const sponsor = params.get('sponsor') || 'Premium Auction Arena';
+  const [audienceMode, setAudienceMode] = useState('audience');
+  const [squadTeamIndex, setSquadTeamIndex] = useState(0);
   const [includePlayers, setIncludePlayers] = useState(false);
   const { data, config, connected, transport } = useOverlayRealtime(tid, token, { includePlayers, studioOverlay: true });
   const ceremonyEnabled = config?.overlayShowSquadFormation === true;
   const squadSize = resolveSquadSize(config);
 
   useEffect(() => {
-    if (ceremonyEnabled) {
+    if (ceremonyEnabled || audienceMode === 'squadBoard') {
       setIncludePlayers(true);
     }
-  }, [ceremonyEnabled]);
+  }, [ceremonyEnabled, audienceMode]);
   const title = params.get('title') || getAuctionDisplayName(config, 'Auction Live');
   const auction = data?.auction;
   const player = auction?.currentPlayer;
@@ -212,13 +216,21 @@ export default function AuctionDisplayPage() {
       style={screenStyle}
     >
       <OverlayFullscreenButton />
+      <AudienceDisplayStudioMenu
+        mode={audienceMode}
+        onModeChange={setAudienceMode}
+        teamCount={teams.length}
+        teamIndex={squadTeamIndex}
+        onPrevTeam={() => setSquadTeamIndex((i) => (teams.length ? (i - 1 + teams.length) % teams.length : 0))}
+        onNextTeam={() => setSquadTeamIndex((i) => (teams.length ? (i + 1) % teams.length : 0))}
+      />
       {!data && transport === 'connecting' && (
         <div className={styles.bootState}>
           <div className={styles.bootPulse} />
           <div>Connecting Audience Display…</div>
         </div>
       )}
-      <div className={`${styles.shell} ${showCinematicLayer ? styles.shellDuringCinematic : ''}`}>
+      <div className={`${styles.shell} ${showCinematicLayer ? styles.shellDuringCinematic : ''} ${audienceMode === 'squadBoard' ? styles.shellHidden : ''}`}>
         <header className={styles.topBar}>
           <div className="flex items-center gap-3 min-w-0">
             {logoSrc ? (
@@ -400,7 +412,19 @@ export default function AuctionDisplayPage() {
         />
       )}
 
-      <TeamMaxBidStrip teams={teams} auction={auction} config={config} />
+      {audienceMode !== 'squadBoard' && (
+        <TeamMaxBidStrip teams={teams} auction={auction} config={config} />
+      )}
+
+      {audienceMode === 'squadBoard' && (
+        <AudienceSquadBoardLayer
+          teams={teams}
+          config={config}
+          auction={auction}
+          teamIndex={squadTeamIndex}
+          setTeamIndex={setSquadTeamIndex}
+        />
+      )}
     </main>
   );
 }

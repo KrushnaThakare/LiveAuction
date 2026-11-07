@@ -32,6 +32,14 @@
   box-sizing: border-box;
 }
 
+.shellHidden {
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
 .shell {
   position: relative;
   z-index: 1;
