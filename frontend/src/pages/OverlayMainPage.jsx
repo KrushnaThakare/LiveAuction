@@ -83,7 +83,8 @@ export default function OverlayMainPage() {
 
   const layout = config?.overlayMainLayout || 'classic';
   const mainFields = parseMainOverlayFields(config?.overlayMainShowFields);
-  const useHpl = layout === 'hpl-lower-third' || layout === 'compact-strip';
+  const useHpl = layout === 'hpl-lower-third' || layout === 'compact-strip' || layout === 'ipl-broadcast';
+  const barVariant = layout === 'ipl-broadcast' ? 'ipl' : 'hpl';
   const viewportStyle = mainOverlayViewportStyle(config);
   const scaledStyle = mainOverlayScaledStyle(config);
 
@@ -100,6 +101,7 @@ export default function OverlayMainPage() {
       isUnsold={isUnsold}
       showVerdict={showVerdict}
       increment={increment}
+      variant={barVariant}
     />
   ) : (
     <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
@@ -120,15 +122,17 @@ export default function OverlayMainPage() {
             </div>
           )}
           {mainFields.currentBid !== false && (
-            <div className={`${styles.glassCard} ${styles.amountCard}`}>
-              <div className={styles.bidLabel}>Current Bid</div>
+            <div className={`${styles.glassCard} ${styles.amountCard} ${isSold ? styles.amountCardSold : ''}`}>
+              <div className={styles.bidLabel}>{isSold ? 'Sold For' : 'Current Bid'}</div>
               <BidAmountDisplay
                 className={styles.bidAmount}
                 amount={auction?.currentBid}
                 formatAmount={money}
                 popToken={bidPopToken}
               />
-              <div className={styles.status}>{status === 'ACTIVE' ? 'Auction Active' : status}</div>
+              <div className={styles.status}>
+                {isSold ? `To ${auction?.highestBidderTeamName || '—'}` : status === 'ACTIVE' ? 'Auction Active' : status}
+              </div>
             </div>
           )}
           {mainFields.teamBlock !== false && (

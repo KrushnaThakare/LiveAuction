@@ -1206,6 +1206,7 @@
 
 .hplDock {
   position: fixed;
+  isolation: isolate;
   left: 50%;
   bottom: clamp(28px, 4.5vh, 64px);
   transform: translateX(-50%);
@@ -1359,6 +1360,56 @@
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.4);
   margin-top: 6px;
+}
+
+.iplDock {
+  background: linear-gradient(100deg, rgba(8, 8, 32, 0.97) 0%, rgba(28, 10, 56, 0.94) 45%, rgba(6, 32, 72, 0.97) 100%);
+  border: 1px solid rgba(236, 72, 153, 0.35);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.55),
+    0 0 40px rgba(59, 130, 246, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.iplDock::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(236, 72, 153, 0.12), transparent);
+  opacity: 0.8;
+}
+
+.hplSold {
+  border-color: rgba(255, 199, 44, 0.65);
+  box-shadow: 0 0 32px rgba(255, 199, 44, 0.22), 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.hplUnsold {
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
+.hplSoldAmount {
+  display: block;
+  font-size: clamp(2.1rem, 4.5vw, 3.4rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #ffd54a;
+  text-shadow: 0 0 28px rgba(255, 199, 44, 0.45);
+}
+
+.hplUnsoldStamp {
+  display: block;
+  font-size: clamp(1.6rem, 3.2vw, 2.4rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #fca5a5;
+}
+
+.amountCardSold .bidAmount {
+  color: #ffd54a !important;
+  text-shadow: 0 0 24px rgba(255, 199, 44, 0.35);
 }
 
 .obsViewport {

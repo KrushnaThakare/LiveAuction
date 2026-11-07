@@ -12,8 +12,7 @@ import SequentialImage from '../components/common/SequentialImage';
 import GavelOverlay from '../components/common/GavelOverlay';
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import { Gavel, ShieldCheck, Trophy, XCircle, Wifi, ChevronDown, ChevronUp, List } from 'lucide-react';
-import { maxAllowedBid, isSquadFull } from '../utils/auctionConstraints';
-import { clampSquadSize } from '../utils/squadFormation';
+import { maxBidInfoForTeam } from '../utils/auctionConstraints';
 
 async function get(path) {
   const res = await api.get(path);
@@ -33,11 +32,13 @@ function publicViewTabs(config) {
 }
 
 function liveMaxBidForTeam(team, auctionState, maxSquadSize) {
-  if (auctionState?.status !== 'ACTIVE' || !auctionState?.currentPlayer || !team) return null;
-  const squadSize = clampSquadSize(maxSquadSize);
-  if (isSquadFull(team, squadSize)) return { label: 'Max bid', value: 'Squad full' };
-  const max = maxAllowedBid(team, squadSize, Number(auctionState.currentPlayer?.basePrice) || 0);
-  return { label: 'Max bid', value: formatCurrency(max) };
+  const info = maxBidInfoForTeam(team, maxSquadSize, auctionState);
+  if (!info) return null;
+  const hint = info.playerName && auctionState?.status === 'ACTIVE' ? ` · ${info.playerName}` : '';
+  return {
+    label: `Max bid${hint}`,
+    value: info.squadFull ? 'Squad full' : formatCurrency(info.maxBid),
+  };
 }
 
 export default function PublicViewPage() {
@@ -167,7 +168,11 @@ export default function PublicViewPage() {
   };
   const auctionState = data?.auction;
   const summaryTeams = data?.teams || [];
-  const teamsForTab = fullTeams || summaryTeams;
+  const teamsForTab = useMemo(() => {
+    if (!fullTeams?.length) return summaryTeams;
+    const liveById = Object.fromEntries(summaryTeams.map((t) => [t.id, t]));
+    return fullTeams.map((t) => ({ ...t, ...(liveById[t.id] || {}) }));
+  }, [fullTeams, summaryTeams]);
   const live = auctionState?.status === 'ACTIVE';
   const logoSrc = resolveUrl(tournament.logoUrl);
   const playerRoles = getPlayerRoles(tournament);

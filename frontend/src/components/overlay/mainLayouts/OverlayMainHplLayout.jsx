@@ -21,6 +21,7 @@ export default function OverlayMainHplLayout({
   isUnsold,
   showVerdict,
   increment,
+  variant = 'hpl',
 }) {
   const fields = parseMainOverlayFields(config?.overlayMainShowFields);
   const logoSrc = config?.logoUrl ? resolveUrl(config.logoUrl) : null;
@@ -32,7 +33,14 @@ export default function OverlayMainHplLayout({
       {logoSrc && (
         <img src={logoSrc} alt="" className={styles.hplCornerLogo} />
       )}
-      <section className={`${styles.hplDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
+      <section
+        className={[
+          styles.hplDock,
+          variant === 'ipl' ? styles.iplDock : '',
+          isSold ? styles.hplSold : '',
+          isUnsold ? styles.hplUnsold : '',
+        ].filter(Boolean).join(' ')}
+      >
         <div className={styles.hplPhotoSlot}>
           {imgUrl ? (
             <img src={imgUrl} alt="" className={styles.hplPhoto} />
@@ -63,7 +71,25 @@ export default function OverlayMainHplLayout({
           </div>
         </div>
         <div className={styles.hplBidBlock}>
-          {!showVerdict && fields.currentBid && (
+          {isSold && fields.currentBid !== false && (
+            <>
+              <span className={styles.hplBidKicker}>Sold for</span>
+              <strong className={styles.hplSoldAmount}>{money(auction?.currentBid)}</strong>
+              {fields.teamBlock && (
+                <span className={styles.hplTeamLine}>
+                  {auction?.highestBidderTeamName || team?.name}
+                  {squadPickLabel ? ` · ${squadPickLabel}` : ''}
+                </span>
+              )}
+            </>
+          )}
+          {isUnsold && (
+            <>
+              <span className={styles.hplUnsoldStamp}>UNSOLD</span>
+              <span className={styles.hplTeamLine}>Returns to pool</span>
+            </>
+          )}
+          {!isSold && !isUnsold && fields.currentBid && (
             <>
               <span className={styles.hplBidKicker}>Current bid</span>
               <BidAmountDisplay
@@ -74,10 +100,10 @@ export default function OverlayMainHplLayout({
               />
             </>
           )}
-          {fields.teamBlock && !isSold && auction?.highestBidderTeamName && (
+          {fields.teamBlock && !isSold && !isUnsold && auction?.highestBidderTeamName && (
             <span className={styles.hplTeamLine}>{auction.highestBidderTeamName}</span>
           )}
-          {fields.bidIncrement && !showVerdict && (
+          {fields.bidIncrement && !isSold && !isUnsold && (
             <span className={styles.hplIncrement}><TrendingUp size={14} /> +{money(increment)}</span>
           )}
           <span className={styles.hplSync}>{connected ? 'Live' : 'Syncing'} · {status}</span>
