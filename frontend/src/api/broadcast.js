@@ -9,4 +9,11 @@ export const broadcastApi = {
   triggerCountdown: (tid, seconds) => api.post(`/tournaments/${tid}/broadcast/countdown`, {
     overlayCountdownSeconds: seconds,
   }),
+  uploadAudienceBackground: (tid, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post(`/tournaments/${tid}/broadcast/audience-background`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };

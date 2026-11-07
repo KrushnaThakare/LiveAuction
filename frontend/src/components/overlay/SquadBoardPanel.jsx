@@ -6,7 +6,6 @@ import {
   computeFilledGridLayout,
   computeOverlayGridVars,
   formatCompactPurse,
-  formatPurse,
   squadProgress,
 } from '../../utils/squadFormation';
 import styles from './SquadFormationCeremony.module.css';
@@ -166,12 +165,8 @@ export default function SquadBoardPanel({
               <span>Budget Left</span>
               <strong>{formatCompactPurse(team.remainingBudget)}</strong>
             </div>
-            <div className={styles.summaryStatWide}>
-              <span>Full Purse</span>
-              <strong>{formatPurse(team.remainingBudget)}</strong>
-            </div>
             {maxBidInfo?.show && (
-              <div className={styles.summaryStatWide}>
+              <div className={`${styles.summaryStatWide} ${styles.maxBidStat}`}>
                 <span>Max bid{maxBidInfo.playerName ? ` · ${maxBidInfo.playerName}` : ''}</span>
                 <strong style={{ color: maxBidInfo.squadFull ? 'var(--color-text-secondary)' : '#ffc72c' }}>
                   {maxBidInfo.squadFull ? 'Squad full' : formatCurrency(maxBidInfo.maxBid)}

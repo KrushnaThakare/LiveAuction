@@ -51,13 +51,12 @@ export function exportPlayersList(players, tournamentName = '') {
             border-radius: 10px; padding: 12px 20px; text-align: center; }
     .stat-val { font-size: 1.6rem; font-weight: 900; }
     .stat-lbl { font-size: 0.7rem; color: #94a3b8; margin-top: 2px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
     .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
             border-radius: 14px; overflow: hidden; }
-    .photo { width: 100%; aspect-ratio: 1; object-fit: cover; object-position: top;
-             background: rgba(255,255,255,0.05); display: flex; align-items: center;
-             justify-content: center; font-size: 3rem; font-weight: 900; }
-    .photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    .photo { width: 100%; min-height: 220px; aspect-ratio: 3/4; background: #1e293b;
+             display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 900; }
+    .photo img { width: 100%; height: 100%; object-fit: contain; object-position: center; }
     .info { padding: 10px 12px; }
     .player-name { font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .player-id { font-size: 0.65rem; font-weight: 900; color: #f59e0b; margin-bottom: 3px; text-transform: uppercase; }
@@ -77,8 +76,13 @@ export function exportPlayersList(players, tournamentName = '') {
     }
   `;
 
+  const retainedSorted = [...players].sort((a, b) => {
+    const diff = Number(Boolean(b.retained)) - Number(Boolean(a.retained));
+    if (diff) return diff;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
   const roleGroups = {};
-  sortRetainedFirst(players).forEach(p => {
+  retainedSorted.forEach(p => {
     if (!roleGroups[p.role]) roleGroups[p.role] = [];
     roleGroups[p.role].push(p);
   });
@@ -90,7 +94,7 @@ export function exportPlayersList(players, tournamentName = '') {
     const cards = ps.map(p => {
       const img = resolveImageUrl(p.imageUrl);
       const photoHtml = img
-        ? `<div class="photo" style="background:${rbg}"><img src="${img}" alt="${escHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;object-position:top;"/></div>`
+        ? `<div class="photo" style="background:${rbg}"><img src="${img}" alt="${escHtml(p.name)}" style="width:100%;height:100%;object-fit:contain;object-position:center;"/></div>`
         : `<div class="photo" style="background:${rbg};color:${rc};">${escHtml(p.name[0])}</div>`;
       const retained = Boolean(p.retained);
       return `

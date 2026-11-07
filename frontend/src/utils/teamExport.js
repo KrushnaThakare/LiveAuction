@@ -201,7 +201,7 @@ export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 
     .card { border-radius: 14px; padding: 8px; background: rgba(0,0,0,0.32);
             border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; gap: 6px; }
     .photo { width: 100%; aspect-ratio: 3/4; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.08); }
-    .photo img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+    .photo img { width: 100%; height: 100%; object-fit: contain; object-position: center; }
     .name { font-size: 0.82rem; font-weight: 900; }
     .role { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #ffc72c; }
     .price { font-size: 0.68rem; font-weight: 900; color: #00d26a; }
