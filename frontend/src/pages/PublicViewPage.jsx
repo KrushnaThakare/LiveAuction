@@ -11,22 +11,33 @@ import { useAuctionVerdictOverlay } from '../hooks/useAuctionVerdictOverlay';
 import SequentialImage from '../components/common/SequentialImage';
 import GavelOverlay from '../components/common/GavelOverlay';
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
-import { Gavel, ShieldCheck, Trophy, XCircle, Wifi, ChevronDown, ChevronUp } from 'lucide-react';
+import { Gavel, ShieldCheck, Trophy, XCircle, Wifi, ChevronDown, ChevronUp, List } from 'lucide-react';
+import { maxAllowedBid, isSquadFull } from '../utils/auctionConstraints';
+import { clampSquadSize } from '../utils/squadFormation';
 
 async function get(path) {
   const res = await api.get(path);
   return res.data.data;
 }
 
-const TAB_LABELS = { auction: 'Live Auction', teams: 'Teams', sold: 'Sold', unsold: 'Unsold' };
-const TAB_ICONS  = { auction: Gavel, teams: ShieldCheck, sold: Trophy, unsold: XCircle };
+const TAB_LABELS = { auction: 'Live Auction', teams: 'Teams', remaining: 'Remaining', sold: 'Sold', unsold: 'Unsold' };
+const TAB_ICONS  = { auction: Gavel, teams: ShieldCheck, remaining: List, sold: Trophy, unsold: XCircle };
 
 function publicViewTabs(config) {
   const tabs = ['auction'];
   if (config?.publicViewShowTeams !== false) tabs.push('teams');
+  if (config?.publicViewShowRemaining !== false) tabs.push('remaining');
   if (config?.publicViewShowSold !== false) tabs.push('sold');
   if (config?.publicViewShowUnsold !== false) tabs.push('unsold');
   return tabs;
+}
+
+function liveMaxBidForTeam(team, auctionState, maxSquadSize) {
+  if (auctionState?.status !== 'ACTIVE' || !auctionState?.currentPlayer || !team) return null;
+  const squadSize = clampSquadSize(maxSquadSize);
+  if (isSquadFull(team, squadSize)) return { label: 'Max bid', value: 'Squad full' };
+  const max = maxAllowedBid(team, squadSize, Number(auctionState.currentPlayer?.basePrice) || 0);
+  return { label: 'Max bid', value: formatCurrency(max) };
 }
 
 export default function PublicViewPage() {
@@ -36,6 +47,7 @@ export default function PublicViewPage() {
   const [fullTeams, setFullTeams]     = useState(null);
   const [sold, setSold]               = useState([]);
   const [unsold, setUnsold]           = useState([]);
+  const [remaining, setRemaining]     = useState([]);
   const [loadedTabs, setLoadedTabs]   = useState({});
   const [tabLoading, setTabLoading]   = useState(false);
   const { soldOverlay } = useAuctionVerdictOverlay(data?.auction, data?.teams);
@@ -44,8 +56,9 @@ export default function PublicViewPage() {
 
   const loadTabData = useCallback(async (targetTab, force = false) => {
     if (!tournamentId || (!force && loadedTabsRef.current[targetTab])) return;
-    if (!['teams', 'sold', 'unsold'].includes(targetTab)) return;
+    if (!['teams', 'sold', 'unsold', 'remaining'].includes(targetTab)) return;
     if (targetTab === 'teams' && config?.publicViewShowTeams === false) return;
+    if (targetTab === 'remaining' && config?.publicViewShowRemaining === false) return;
     if (targetTab === 'sold' && config?.publicViewShowSold === false) return;
     if (targetTab === 'unsold' && config?.publicViewShowUnsold === false) return;
     setTabLoading(true);
@@ -59,12 +72,15 @@ export default function PublicViewPage() {
       } else if (targetTab === 'unsold') {
         const u = await get(`/tournaments/${tournamentId}/players?status=UNSOLD`);
         setUnsold(u || []);
+      } else if (targetTab === 'remaining') {
+        const r = await get(`/tournaments/${tournamentId}/players?status=AVAILABLE`);
+        setRemaining(r || []);
       }
       loadedTabsRef.current = { ...loadedTabsRef.current, [targetTab]: true };
       setLoadedTabs(loadedTabsRef.current);
     } catch { /* silent */ }
     finally { setTabLoading(false); }
-  }, [tournamentId, config?.publicViewShowTeams, config?.publicViewShowSold, config?.publicViewShowUnsold]);
+  }, [tournamentId, config?.publicViewShowTeams, config?.publicViewShowRemaining, config?.publicViewShowSold, config?.publicViewShowUnsold]);
 
   const visibleTabs = publicViewTabs(config);
   const activeTab = visibleTabs.includes(tab) ? tab : 'auction';
@@ -211,8 +227,32 @@ export default function PublicViewPage() {
           </div>
         ) : (
           <>
-            {activeTab === 'auction' && <AuctionView auctionState={auctionState} teams={summaryTeams} roles={playerRoles} />}
-            {activeTab === 'teams'   && <TeamsView teams={teamsForTab} roles={playerRoles} loading={tabLoading && !fullTeams} />}
+            {activeTab === 'auction' && (
+              <AuctionView
+                auctionState={auctionState}
+                teams={summaryTeams}
+                roles={playerRoles}
+                maxSquadSize={config?.maxSquadSize}
+              />
+            )}
+            {activeTab === 'teams' && (
+              <TeamsView
+                teams={teamsForTab}
+                roles={playerRoles}
+                loading={tabLoading && !fullTeams}
+                auctionState={auctionState}
+                maxSquadSize={config?.maxSquadSize}
+              />
+            )}
+            {activeTab === 'remaining' && (
+              <PlayerListView
+                players={remaining}
+                roles={playerRoles}
+                loading={tabLoading && !loadedTabs.remaining}
+                emptyMsg="No players left in the pool"
+                label="Remaining"
+              />
+            )}
             {activeTab === 'sold'    && <PlayerListView players={sold} roles={playerRoles} loading={tabLoading && !loadedTabs.sold} emptyMsg="No players sold yet" label="Sold" />}
             {activeTab === 'unsold'  && <PlayerListView players={unsold} roles={playerRoles} loading={tabLoading && !loadedTabs.unsold} emptyMsg="No unsold players yet" label="Unsold" />}
           </>
@@ -239,7 +279,7 @@ export default function PublicViewPage() {
 /* GavelOverlay handles both SOLD and UNSOLD — imported from components/common */
 
 /* ═══ AUCTION VIEW ═══ */
-function AuctionView({ auctionState, teams, roles, bidPopEnabled = true }) {
+function AuctionView({ auctionState, teams, roles, maxSquadSize, bidPopEnabled = true }) {
   const isActive = auctionState?.status === 'ACTIVE';
   const player   = auctionState?.currentPlayer;
   const bidPopToken = useOverlayBidPop(auctionState?.currentBid, auctionState?.sessionId, bidPopEnabled && isActive);
@@ -327,6 +367,7 @@ function AuctionView({ auctionState, teams, roles, bidPopEnabled = true }) {
           const isHighest = team.id === auctionState.highestBidderTeamId;
           const pct = team.budget ? ((team.budget - team.remainingBudget) / team.budget) * 100 : 0;
           const logoSrc = resolveUrl(team.logoUrl);
+          const maxBid = liveMaxBidForTeam(team, auctionState, maxSquadSize);
           return (
             <div key={team.id} className="rounded-xl p-3"
               style={{ background: isHighest ? 'rgba(59,130,246,0.1)' : 'var(--color-surface)',
@@ -354,6 +395,11 @@ function AuctionView({ auctionState, teams, roles, bidPopEnabled = true }) {
               <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
                 {team.playerCount} players
               </p>
+              {maxBid && (
+                <p className="text-[10px] font-bold mt-0.5" style={{ color: '#fbbf24' }}>
+                  {maxBid.label}: {maxBid.value}
+                </p>
+              )}
             </div>
           );
         })}
@@ -363,7 +409,7 @@ function AuctionView({ auctionState, teams, roles, bidPopEnabled = true }) {
 }
 
 /* ═══ TEAMS VIEW with squad ═══ */
-function TeamsView({ teams, roles, loading }) {
+function TeamsView({ teams, roles, loading, auctionState, maxSquadSize }) {
   const [expanded, setExpanded] = useState({});
 
   const toggle = (id) => setExpanded(e => ({ ...e, [id]: !e[id] }));
@@ -391,8 +437,17 @@ function TeamsView({ teams, roles, loading }) {
               <div className="flex-1 min-w-0">
                 <p className="font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>{team.name}</p>
                 <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                  {team.playerCount} players · Remaining: <strong style={{ color: 'var(--color-success)' }}>{formatCurrency(team.remainingBudget)}</strong>
+                  {team.playerCount} players · Purse left: <strong style={{ color: 'var(--color-success)' }}>{formatCurrency(team.remainingBudget)}</strong>
                 </p>
+                {(() => {
+                  const maxBid = liveMaxBidForTeam(team, auctionState, maxSquadSize);
+                  if (!maxBid) return null;
+                  return (
+                    <p className="text-xs mt-0.5 font-semibold" style={{ color: '#fbbf24' }}>
+                      {maxBid.label}: {maxBid.value}
+                    </p>
+                  );
+                })()}
                 <div className="h-1.5 rounded-full mt-1.5" style={{ background: 'var(--color-border)' }}>
                   <div className="h-full rounded-full" style={{ width: `${pct}%`,
                     background: pct > 80 ? 'var(--color-danger)' : 'var(--color-primary)' }} />

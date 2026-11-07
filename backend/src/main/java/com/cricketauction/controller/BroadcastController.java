@@ -3,6 +3,7 @@ package com.cricketauction.controller;
 import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.dto.BroadcastSettingsDto;
 import com.cricketauction.entity.Tournament;
+import com.cricketauction.service.FileStorageService;
 import com.cricketauction.service.OverlayAudienceSignalService;
 import com.cricketauction.service.OverlayPushService;
 import com.cricketauction.service.TournamentService;
@@ -10,6 +11,7 @@ import com.cricketauction.service.WhatsAppNotifyService;
 import com.cricketauction.util.OverlayDetailFieldsUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/tournaments/{tournamentId}/broadcast")
@@ -18,15 +20,18 @@ public class BroadcastController {
     private final OverlayPushService overlayPushService;
     private final WhatsAppNotifyService whatsAppNotifyService;
     private final OverlayAudienceSignalService overlayAudienceSignalService;
+    private final FileStorageService fileStorage;
 
     public BroadcastController(TournamentService tournamentService,
                                OverlayPushService overlayPushService,
                                WhatsAppNotifyService whatsAppNotifyService,
-                               OverlayAudienceSignalService overlayAudienceSignalService) {
+                               OverlayAudienceSignalService overlayAudienceSignalService,
+                               FileStorageService fileStorage) {
         this.tournamentService = tournamentService;
         this.overlayPushService = overlayPushService;
         this.whatsAppNotifyService = whatsAppNotifyService;
         this.overlayAudienceSignalService = overlayAudienceSignalService;
+        this.fileStorage = fileStorage;
     }
 
     @GetMapping("/settings")
@@ -47,6 +52,16 @@ public class BroadcastController {
         if (d.getPublicViewShowTeams() != null) t.setPublicViewShowTeams(d.getPublicViewShowTeams());
         if (d.getPublicViewShowSold() != null) t.setPublicViewShowSold(d.getPublicViewShowSold());
         if (d.getPublicViewShowUnsold() != null) t.setPublicViewShowUnsold(d.getPublicViewShowUnsold());
+        if (d.getPublicViewShowRemaining() != null) t.setPublicViewShowRemaining(d.getPublicViewShowRemaining());
+        if (d.getOverlayAudienceBackgroundUrl() != null) {
+            t.setOverlayAudienceBackgroundUrl(d.getOverlayAudienceBackgroundUrl().isBlank() ? null : d.getOverlayAudienceBackgroundUrl().trim());
+        }
+        if (d.getOverlayMainScalePercent() != null) {
+            t.setOverlayMainScalePercent(Math.max(80, Math.min(100, d.getOverlayMainScalePercent())));
+        }
+        if (d.getOverlayDisplayFont() != null && !d.getOverlayDisplayFont().isBlank()) {
+            t.setOverlayDisplayFont(d.getOverlayDisplayFont().trim().toLowerCase());
+        }
         if (d.getOverlayShowPlayerStatsIntro() != null) t.setOverlayShowPlayerStatsIntro(d.getOverlayShowPlayerStatsIntro());
         if (d.getOverlayPlayerStatsIntroMs() != null) {
             t.setOverlayPlayerStatsIntroMs(Math.max(1000, Math.min(15000, d.getOverlayPlayerStatsIntroMs())));
@@ -92,6 +107,22 @@ public class BroadcastController {
     }
 
     /** Audience Display only — triggers tournament countdown cinematic on studio overlay */
+    @PostMapping("/audience-background")
+    public ResponseEntity<ApiResponse<String>> uploadAudienceBackground(
+            @PathVariable Long tournamentId,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            Tournament t = tournamentService.findById(tournamentId);
+            String url = fileStorage.saveTournamentBanner(file);
+            t.setOverlayAudienceBackgroundUrl(url);
+            tournamentService.saveTournament(t);
+            overlayPushService.pushStudioSnapshot(tournamentId);
+            return ResponseEntity.ok(ApiResponse.success("Audience background uploaded", url));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PostMapping("/countdown")
     public ResponseEntity<ApiResponse<BroadcastSettingsDto>> triggerCountdown(
             @PathVariable Long tournamentId,
@@ -113,6 +144,11 @@ public class BroadcastController {
                 .publicViewShowTeams(t.getPublicViewShowTeams())
                 .publicViewShowSold(t.getPublicViewShowSold())
                 .publicViewShowUnsold(t.getPublicViewShowUnsold())
+                .publicViewShowRemaining(t.getPublicViewShowRemaining())
+                .overlayAudienceBackgroundUrl(t.getOverlayAudienceBackgroundUrl())
+                .overlayMainScalePercent(t.getOverlayMainScalePercent() != null ? t.getOverlayMainScalePercent() : 94)
+                .overlayDisplayFont(t.getOverlayDisplayFont() != null ? t.getOverlayDisplayFont() : "sport")
+                .logoUrl(t.getLogoUrl())
                 .overlayShowPlayerStatsIntro(t.getOverlayShowPlayerStatsIntro())
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
                 .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())

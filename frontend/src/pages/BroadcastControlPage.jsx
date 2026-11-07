@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { broadcastApi } from '../api/broadcast';
+import { tournamentApi } from '../api/tournaments';
+import { resolveUrl } from '../utils/resolveUrl';
 import { bidRuleApi } from '../api/bidRules';
 import toast from 'react-hot-toast';
 import SquadSizeInput from '../components/common/SquadSizeInput';
@@ -34,6 +36,11 @@ export default function BroadcastControlPage() {
     publicViewShowTeams: true,
     publicViewShowSold: true,
     publicViewShowUnsold: true,
+    publicViewShowRemaining: true,
+    overlayAudienceBackgroundUrl: '',
+    overlayMainScalePercent: 94,
+    overlayDisplayFont: 'sport',
+    logoUrl: '',
     overlayAudienceDetailFields: ['', ''],
     overlayMainDetailFields: ['', ''],
     overlayShowRecordBreak: true,
@@ -43,6 +50,24 @@ export default function BroadcastControlPage() {
   });
   const [bidRules, setBidRules] = useState([]);
   const squadSizeInputRef = useRef(null);
+  const audienceBgInputRef = useRef(null);
+  const logoInputRef = useRef(null);
+
+  const uploadAudienceBg = async (file) => {
+    if (!tid || !file) return;
+    const res = await broadcastApi.uploadAudienceBackground(tid, file);
+    const url = res.data.data;
+    setSettings((s) => ({ ...s, overlayAudienceBackgroundUrl: url }));
+    toast.success('Audience background uploaded — save settings');
+  };
+
+  const uploadTournamentLogo = async (file) => {
+    if (!tid || !file) return;
+    const res = await tournamentApi.uploadLogo(tid, file);
+    const url = res.data.data;
+    setSettings((s) => ({ ...s, logoUrl: url }));
+    toast.success('Tournament logo updated');
+  };
 
   useEffect(() => {
     if (!tid) return;
@@ -57,6 +82,11 @@ export default function BroadcastControlPage() {
         publicViewShowTeams: loaded.publicViewShowTeams !== false,
         publicViewShowSold: loaded.publicViewShowSold !== false,
         publicViewShowUnsold: loaded.publicViewShowUnsold !== false,
+        publicViewShowRemaining: loaded.publicViewShowRemaining !== false,
+        overlayAudienceBackgroundUrl: loaded.overlayAudienceBackgroundUrl || '',
+        overlayMainScalePercent: loaded.overlayMainScalePercent ?? 94,
+        overlayDisplayFont: loaded.overlayDisplayFont || 'sport',
+        logoUrl: loaded.logoUrl || activeTournament?.logoUrl || '',
         overlayAudienceDetailFields: [
           loaded.overlayAudienceDetailFields?.[0] || '',
           loaded.overlayAudienceDetailFields?.[1] || '',
@@ -180,13 +210,53 @@ export default function BroadcastControlPage() {
           )}
         </section>
 
+        <section className="card p-4 space-y-3 lg:col-span-2">
+          <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
+            Display studio (Audience + Main OBS)
+          </h2>
+          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+            Tournament branding and layout — like IPL/broadcast control panels. Saves with the button below.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs font-semibold mb-2">Tournament logo</p>
+              {settings.logoUrl ? (
+                <img src={resolveUrl(settings.logoUrl)} alt="" className="h-14 w-14 rounded-lg object-contain mb-2" style={{ background: 'var(--color-surface-2)' }} />
+              ) : null}
+              <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadTournamentLogo(f); e.target.value = ''; }} />
+              <button type="button" className="btn-secondary text-xs" onClick={() => logoInputRef.current?.click()}>Upload logo</button>
+            </div>
+            <div>
+              <p className="text-xs font-semibold mb-2">Audience background</p>
+              {settings.overlayAudienceBackgroundUrl ? (
+                <div className="h-14 rounded-lg mb-2 bg-cover bg-center border" style={{ backgroundImage: `url(${resolveUrl(settings.overlayAudienceBackgroundUrl)})`, borderColor: 'var(--color-border)' }} />
+              ) : null}
+              <input ref={audienceBgInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAudienceBg(f); e.target.value = ''; }} />
+              <button type="button" className="btn-secondary text-xs" onClick={() => audienceBgInputRef.current?.click()}>Upload background</button>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold block">Font style</label>
+              <select className="input" value={settings.overlayDisplayFont || 'sport'}
+                onChange={(e) => setSettings((s) => ({ ...s, overlayDisplayFont: e.target.value }))}>
+                <option value="sport">Sport (default)</option>
+                <option value="broadcast">Broadcast condensed</option>
+                <option value="tech">Tech / robotic</option>
+              </select>
+              <label className="text-xs font-semibold block">Main overlay scale (YouTube)</label>
+              <input className="input" type="number" min={80} max={100} value={settings.overlayMainScalePercent ?? 94}
+                onChange={(e) => setSettings((s) => ({ ...s, overlayMainScalePercent: Number(e.target.value || 94) }))} />
+            </div>
+          </div>
+        </section>
+
         <section className="card p-4 space-y-2">
           <h2 className="text-sm font-bold uppercase tracking-wide mb-1" style={{ color: 'var(--color-text-secondary)' }}>Public /view tabs</h2>
           <p className="text-xs mb-2" style={{ color: 'var(--color-text-secondary)' }}>
             Share: <code className="text-xs">{`${base}/view/${tid}`}</code>
           </p>
-          <div className="grid sm:grid-cols-3 gap-1">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-1">
             <ToggleRow label="Teams" checked={settings.publicViewShowTeams !== false} onChange={e => setSettings(s => ({ ...s, publicViewShowTeams: e.target.checked }))} />
+            <ToggleRow label="Remaining pool" hint="Players not yet auctioned" checked={settings.publicViewShowRemaining !== false} onChange={e => setSettings(s => ({ ...s, publicViewShowRemaining: e.target.checked }))} />
             <ToggleRow label="Sold" checked={settings.publicViewShowSold !== false} onChange={e => setSettings(s => ({ ...s, publicViewShowSold: e.target.checked }))} />
             <ToggleRow label="Unsold" checked={settings.publicViewShowUnsold !== false} onChange={e => setSettings(s => ({ ...s, publicViewShowUnsold: e.target.checked }))} />
           </div>

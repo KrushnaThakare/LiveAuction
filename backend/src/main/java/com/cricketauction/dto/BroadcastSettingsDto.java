@@ -14,6 +14,10 @@ public class BroadcastSettingsDto {
     private Boolean publicViewShowTeams;
     private Boolean publicViewShowSold;
     private Boolean publicViewShowUnsold;
+    private Boolean publicViewShowRemaining;
+    private String overlayAudienceBackgroundUrl;
+    private Integer overlayMainScalePercent;
+    private String overlayDisplayFont;
     private Boolean overlayShowPlayerStatsIntro;
     private Integer overlayPlayerStatsIntroMs;
     private Boolean overlayShowCinematicIntro;

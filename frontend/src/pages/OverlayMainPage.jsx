@@ -11,6 +11,7 @@ import OverlayFullscreenButton from '../components/common/OverlayFullscreenButto
 import OverlayMainPlayerPanel from '../components/overlay/OverlayMainPlayerPanel';
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import styles from './OverlayBroadcast.module.css';
+import { overlayDisplayStyle } from '../utils/overlayDisplayTheme';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 
@@ -78,8 +79,10 @@ export default function OverlayMainPage() {
   const showVerdict = isSold || isUnsold;
   const verdictStampKey = showVerdict ? `${auction?.sessionId || 'session'}-${status}` : 'idle';
 
+  const stageStyle = overlayDisplayStyle(config, { scalePercent: config?.overlayMainScalePercent ?? 94 });
+
   return (
-    <div className={styles.stage}>
+    <div className={styles.stage} style={stageStyle}>
       <OverlayFullscreenButton />
       {showStatsIntro && <PlayerStatsOverlay player={player} />}
       {showVerdict && (

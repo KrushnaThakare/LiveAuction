@@ -108,6 +108,24 @@ public class Tournament {
     @Builder.Default
     private Boolean publicViewShowUnsold = true;
 
+    @Column(name = "public_view_show_remaining")
+    @Builder.Default
+    private Boolean publicViewShowRemaining = true;
+
+    /** Audience / main overlay: optional full-screen background image */
+    @Column(name = "overlay_audience_background_url", length = 500)
+    private String overlayAudienceBackgroundUrl;
+
+    /** Main overlay scale for 16:9 capture (e.g. 92 = slightly smaller for YouTube) */
+    @Column(name = "overlay_main_scale_percent")
+    @Builder.Default
+    private Integer overlayMainScalePercent = 94;
+
+    /** sport | broadcast | tech — shared font vibe for audience + main overlay */
+    @Column(name = "overlay_display_font", length = 32)
+    @Builder.Default
+    private String overlayDisplayFont = "sport";
+
     @Column(name = "overlay_show_player_stats_intro")
     @Builder.Default
     private Boolean overlayShowPlayerStatsIntro = true;

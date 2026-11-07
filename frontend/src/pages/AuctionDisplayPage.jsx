@@ -25,6 +25,7 @@ import { CINEMATIC_INTRO_MS } from '../constants/cinematicIntroTiming';
 import { GAVEL_SOLD_MS, GAVEL_UNSOLD_MS } from '../constants/gavelTiming';
 import { resolveSquadSize } from '../utils/squadFormation';
 import styles from './AuctionDisplay.module.css';
+import { overlayDisplayStyle } from '../utils/overlayDisplayTheme';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 const FALLBACK_DETAIL_SLOT = { label: 'Detail', value: '—' };
@@ -201,8 +202,14 @@ export default function AuctionDisplayPage() {
   );
   const [categorySlot, ageSlot] = safeDetailSlots(player, config?.overlayAudienceDetailFields);
 
+  const screenStyle = overlayDisplayStyle(config, { includeBackground: true });
+  const logoSrc = config?.logoUrl ? resolveUrl(config.logoUrl) : null;
+
   return (
-    <main className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''} ${showCinematicLayer ? styles.cinematicMode : ''}`}>
+    <main
+      className={`${styles.screen} ${isResult ? styles.resultMode : ''} ${status === 'UNSOLD' ? styles.unsoldMode : ''} ${showCinematicLayer ? styles.cinematicMode : ''}`}
+      style={screenStyle}
+    >
       <OverlayFullscreenButton />
       {!data && transport === 'connecting' && (
         <div className={styles.bootState}>
@@ -212,11 +219,16 @@ export default function AuctionDisplayPage() {
       )}
       <div className={`${styles.shell} ${showCinematicLayer ? styles.shellDuringCinematic : ''}`}>
         <header className={styles.topBar}>
-          <div>
-            <div className={styles.brandKicker}>
-              {transport === 'websocket' || connected ? 'Live Sync Connected' : transport === 'polling' ? 'Polling Feed (check WebSocket)' : 'Connecting Live Feed'}
+          <div className="flex items-center gap-3 min-w-0">
+            {logoSrc ? (
+              <img src={logoSrc} alt="" className="w-12 h-12 rounded-xl object-contain flex-shrink-0" style={{ background: 'rgba(255,255,255,0.08)' }} />
+            ) : null}
+            <div className="min-w-0">
+              <div className={styles.brandKicker}>
+                {transport === 'websocket' || connected ? 'Live Sync Connected' : transport === 'polling' ? 'Polling Feed (check WebSocket)' : 'Connecting Live Feed'}
+              </div>
+              <div className={styles.title}>{title}</div>
             </div>
-            <div className={styles.title}>{title}</div>
           </div>
           <div className={styles.sponsor}>{sponsor}</div>
         </header>

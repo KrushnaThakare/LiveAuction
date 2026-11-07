@@ -87,8 +87,10 @@
   height: clamp(80px, 9vw, 100px);
 }
 
-.heroHeaderCompact .summaryStatWide {
-  display: none;
+/* Max bid stays visible when squad fills (was hiding all summaryStatWide). */
+.heroHeaderCompact .maxBidStat {
+  display: flex;
+  grid-column: 1 / -1;
 }
 
 .ceremonyKicker {
