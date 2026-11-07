@@ -38,7 +38,11 @@ function resolveImageUrl(url) {
   return null;
 }
 
-export function exportPlayersList(players, tournamentName = '') {
+export function exportPlayersList(players, tournamentName = '', tournamentLogoUrl = '') {
+  const logoUrl = resolveImageUrl(tournamentLogoUrl);
+  const logoHtml = logoUrl
+    ? `<img src="${logoUrl}" alt="" style="width:88px;height:88px;object-fit:contain;border-radius:16px;background:rgba(255,255,255,0.08);padding:8px;margin-bottom:12px;" />`
+    : '';
   const css = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -128,6 +132,7 @@ export function exportPlayersList(players, tournamentName = '') {
     <title>Players — ${escHtml(tournamentName)}</title>
     <style>${css}</style>
   </head><body>
+    ${logoHtml}
     <h1>${escHtml(tournamentName)}</h1>
     <div class="subtitle">Complete Player List</div>
     <div class="meta">Generated on ${new Date().toLocaleString()}</div>

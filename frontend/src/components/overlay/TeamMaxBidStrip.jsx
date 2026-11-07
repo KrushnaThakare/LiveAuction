@@ -8,12 +8,9 @@ export default function TeamMaxBidStrip({ teams = [], auction, config }) {
   if (!teams?.length) return null;
 
   const squadSize = resolveSquadSize(config);
-  const playerTag = auction?.currentPlayer?.name?.split(/\s+/)[0]
-    || (auction?.status === 'ACTIVE' ? 'Live lot' : 'Squad cap');
-
   return (
     <footer className={styles.strip} aria-label="Team max bids">
-      <div className={styles.stripTitle}>Max bid · {playerTag}</div>
+      <div className={styles.stripTitle}>Max bid</div>
       <div className={styles.stripGrid}>
         {(teams || []).map((team) => {
           const info = maxBidInfoForTeam(team, squadSize, auction);

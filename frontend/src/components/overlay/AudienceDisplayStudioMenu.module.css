@@ -1,8 +1,8 @@
 .host {
   position: fixed;
-  top: clamp(12px, 2vh, 28px);
-  right: clamp(12px, 2vw, 28px);
-  z-index: 40;
+  top: 62px;
+  right: 14px;
+  z-index: 9999;
 }
 
 .trigger {
@@ -13,16 +13,18 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.35);
-  background: rgba(8, 14, 28, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(3, 7, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(16px);
   transition: color 0.2s, background 0.2s, border-color 0.2s;
 }
 
-.host:hover .trigger,
-.host:focus-within .trigger {
+.trigger:hover,
+.hostOpen .trigger {
   color: #fff;
-  background: rgba(12, 24, 48, 0.92);
+  background: rgba(15, 23, 42, 0.92);
   border-color: rgba(59, 130, 246, 0.55);
 }
 
@@ -33,20 +35,9 @@
   min-width: 220px;
   padding: 10px;
   border-radius: 14px;
-  background: rgba(6, 12, 26, 0.96);
+  background: rgba(6, 12, 26, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-6px);
-  transition: opacity 0.18s, transform 0.18s;
-}
-
-.host:hover .panel,
-.host:focus-within .panel {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
 }
 
 .panelTitle {

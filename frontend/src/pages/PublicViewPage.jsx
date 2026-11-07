@@ -34,9 +34,8 @@ function publicViewTabs(config) {
 function liveMaxBidForTeam(team, auctionState, maxSquadSize) {
   const info = maxBidInfoForTeam(team, maxSquadSize, auctionState);
   if (!info) return null;
-  const hint = info.playerName && auctionState?.status === 'ACTIVE' ? ` · ${info.playerName}` : '';
   return {
-    label: `Max bid${hint}`,
+    label: 'Max bid',
     value: info.squadFull ? 'Squad full' : formatCurrency(info.maxBid),
   };
 }
@@ -117,6 +116,13 @@ export default function PublicViewPage() {
     previousAuctionRef.current = current;
   }, [data?.auction, loadTabData, config?.publicViewShowTeams, config?.publicViewShowSold, config?.publicViewShowUnsold, config?.publicViewShowRemaining]);
 
+  const summaryTeams = data?.teams || [];
+  const teamsForTab = useMemo(() => {
+    if (!fullTeams?.length) return summaryTeams;
+    const liveById = Object.fromEntries(summaryTeams.map((t) => [t.id, t]));
+    return fullTeams.map((t) => ({ ...t, ...(liveById[t.id] || {}) }));
+  }, [fullTeams, summaryTeams]);
+
   const screenStyle = { background: '#060d1a', color: '#f0f6ff', minHeight: '100vh' };
 
   if (!config) {
@@ -167,12 +173,6 @@ export default function PublicViewPage() {
     playerRoles: config?.playerRoles,
   };
   const auctionState = data?.auction;
-  const summaryTeams = data?.teams || [];
-  const teamsForTab = useMemo(() => {
-    if (!fullTeams?.length) return summaryTeams;
-    const liveById = Object.fromEntries(summaryTeams.map((t) => [t.id, t]));
-    return fullTeams.map((t) => ({ ...t, ...(liveById[t.id] || {}) }));
-  }, [fullTeams, summaryTeams]);
   const live = auctionState?.status === 'ACTIVE';
   const logoSrc = resolveUrl(tournament.logoUrl);
   const playerRoles = getPlayerRoles(tournament);

@@ -23,11 +23,17 @@ function driveImgUrl(url) {
   return null;
 }
 
+function tournamentLogoImg(logoUrl, sizeClass = 'tournament-logo') {
+  const url = driveImgUrl(logoUrl);
+  return url ? `<img class="${sizeClass}" src="${url}" alt="" />` : '';
+}
+
 /**
  * Generates a full-page printable HTML roster for each team and opens the
  * browser's print dialog. Works without any PDF library.
  */
-export function exportTeamRosters(teams, tournamentName = '') {
+export function exportTeamRosters(teams, tournamentName = '', tournamentLogoUrl = '') {
+  const tourLogo = tournamentLogoImg(tournamentLogoUrl);
   const css = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,6 +48,9 @@ export function exportTeamRosters(teams, tournamentName = '') {
     .logo img { width: 100%; height: 100%; object-fit: cover; }
     .team-name { font-size: 2.5rem; font-weight: 900; letter-spacing: -0.03em; }
     .tournament-name { font-size: 0.9rem; opacity: 0.6; margin-top: 4px; }
+    .tournament-logo { width: 56px; height: 56px; object-fit: contain; border-radius: 12px;
+                       background: rgba(255,255,255,0.08); padding: 4px; flex-shrink: 0; }
+    .tour-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
     .budget-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 28px; }
     .budget-card { background: rgba(255,255,255,0.05); border-radius: 12px;
                    padding: 16px; border: 1px solid rgba(255,255,255,0.1); }
@@ -114,6 +123,7 @@ export function exportTeamRosters(teams, tournamentName = '') {
 
     return `
       <div class="page" style="background: linear-gradient(160deg, #0f172a 0%, #1e293b 100%);">
+        ${tourLogo ? `<div class="tour-brand">${tourLogo}<div class="tournament-name">${escHtml(tournamentName)}</div></div>` : ''}
         <div class="header" style="border-color:${color};">
           <div class="logo" style="background:${color};">${logoHtml}</div>
           <div>
@@ -163,8 +173,9 @@ export function exportTeamRosters(teams, tournamentName = '') {
  * Premium squad-board PDF (print) — same visual style as Audience Display ceremony.
  * Client-side only; runs once when the operator clicks export.
  */
-export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 15, playerRoles = [], auctionState = null) {
+export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 15, playerRoles = [], auctionState = null, tournamentLogoUrl = '') {
   const squadSize = clampSquadSize(maxSquadSize);
+  const tourLogo = tournamentLogoImg(tournamentLogoUrl, 'tournament-logo-board');
   const css = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -182,6 +193,8 @@ export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 
                      background: rgba(255,255,255,0.08); border: 3px solid rgba(255,255,255,0.22); }
     .team-name { font-size: 2.2rem; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
     .tournament { margin-top: 6px; font-size: 0.85rem; color: rgba(255,255,255,0.55); }
+    .tournament-logo-board { width: 88px; height: 88px; object-fit: contain; margin: 0 auto 10px;
+                             display: block; border-radius: 16px; background: rgba(255,255,255,0.08); padding: 6px; }
     .stats { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin: 16px 0 20px; }
     .stat { min-width: 120px; padding: 10px 14px; border-radius: 14px; background: rgba(255,255,255,0.06);
             border: 1px solid rgba(255,255,255,0.12); }
@@ -251,7 +264,7 @@ export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 
 
     const liveBid = maxBidInfoForTeam(team, squadSize, auctionState);
     const maxBidStat = liveBid
-      ? `<div class="stat"><span>Max bid (live player)</span><strong>${
+      ? `<div class="stat"><span>Max bid</span><strong>${
         liveBid.squadFull ? 'Squad full' : formatCurrency(liveBid.maxBid)
       }</strong></div>`
       : '';
@@ -259,6 +272,7 @@ export function exportTeamSquadBoard(teams, tournamentName = '', maxSquadSize = 
     return `<section class="page">
       <div class="kicker">Squad Board</div>
       <div class="hero">
+        ${tourLogo}
         ${logoHtml}
         <h1 class="team-name">${escHtml(team.name)}</h1>
         <div class="tournament">${escHtml(tournamentName)}</div>
@@ -454,7 +468,27 @@ const BASE_DETAIL_HEADERS = ['#', 'Name', 'Role', 'Mobile', 'Sold Price'];
  * Opens a printable team-wise squad details table (PDF via print) and downloads CSV.
  * Uses registration data fetched once at export time — no ongoing backend load.
  */
-export function exportTeamSquadDetails(teams, tournamentName = '', registrations = [], formSections = []) {
+function buildUnsoldDetailRows(unsoldPlayers, registrationIndex, extraColumns) {
+  const headers = ['#', 'Name', 'Role', 'Mobile', 'Base Price', ...extraColumns.map((col) => col.label)];
+  const rows = (unsoldPlayers || []).map((player, idx) => {
+    const reg = findRegistrationForPlayer(player, registrationIndex);
+    const formData = parseFormData(reg);
+    const playerExtra = parsePlayerExtraData(player);
+    const extras = extraColumns.map((col) => getColumnValue(formData, playerExtra, col));
+    return [
+      idx + 1,
+      player?.name || '',
+      formatRole(player?.role),
+      resolveMobile(reg, formData, playerExtra),
+      formatCurrency(player?.basePrice || 0),
+      ...extras,
+    ];
+  });
+  return { headers, rows };
+}
+
+export function exportTeamSquadDetails(teams, tournamentName = '', registrations = [], formSections = [], unsoldPlayers = [], tournamentLogoUrl = '') {
+  const tourLogo = tournamentLogoImg(tournamentLogoUrl, 'tournament-logo-details');
   const extraColumns = collectAllExportColumns(formSections, teams);
   const headers = [...BASE_DETAIL_HEADERS, ...extraColumns.map(col => col.label)];
   const index = buildRegistrationIndex(registrations);
@@ -469,7 +503,8 @@ export function exportTeamSquadDetails(teams, tournamentName = '', registrations
     return { team, headers, rows };
   });
 
-  downloadSquadDetailsCsv(teamBlocks, tournamentName, generatedOn);
+  const unsoldBlock = buildUnsoldDetailRows(unsoldPlayers, index, extraColumns);
+  downloadSquadDetailsCsv(teamBlocks, tournamentName, generatedOn, unsoldBlock);
 
   const css = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
@@ -478,6 +513,10 @@ export function exportTeamSquadDetails(teams, tournamentName = '', registrations
     .page { width: 100%; min-height: 100vh; padding: 28px 32px 40px; page-break-after: always; }
     .page:last-child { page-break-after: auto; }
     .header { margin-bottom: 18px; border-bottom: 3px solid #0f766e; padding-bottom: 14px; }
+    .tournament-logo-details { width: 72px; height: 72px; object-fit: contain; border-radius: 12px;
+                               background: #f1f5f9; padding: 6px; margin-bottom: 10px; }
+    .unsold-title { font-size: 1.5rem; font-weight: 900; color: #b45309; margin-top: 8px; }
+    .unsold-intro { font-size: 0.82rem; color: #64748b; margin: 8px 0 16px; max-width: 640px; }
     .team-name { font-size: 1.85rem; font-weight: 900; color: #0f766e; }
     .meta { margin-top: 6px; font-size: 0.85rem; color: #475569; }
     .note { margin: 0 0 16px; font-size: 0.78rem; color: #64748b; }
@@ -507,6 +546,7 @@ export function exportTeamSquadDetails(teams, tournamentName = '', registrations
     return `
       <section class="page">
         <div class="header">
+          ${tourLogo}
           <div class="team-name">${escHtml(team.name)}</div>
           <div class="meta">${escHtml(tournamentName)} · Squad details · ${team.playerCount || rows.length} players</div>
         </div>
@@ -519,6 +559,21 @@ export function exportTeamSquadDetails(teams, tournamentName = '', registrations
       </section>`;
   }).join('');
 
+  const unsoldSection = unsoldBlock.rows.length ? `
+    <section class="page">
+      <div class="header">
+        ${tourLogo}
+        <div class="unsold-title">Unsold players — refund list</div>
+        <div class="meta">${escHtml(tournamentName)} · ${unsoldBlock.rows.length} players</div>
+      </div>
+      <p class="unsold-intro">Use mobile numbers below to process refunds for unsold registrations. Extra columns come from your Excel / registration form.</p>
+      <table>
+        <thead><tr>${unsoldBlock.headers.map(h => `<th>${escHtml(h)}</th>`).join('')}</tr></thead>
+        <tbody>${unsoldBlock.rows.map(cells => `<tr>${cells.map(cell => `<td>${escHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+      <div class="footer">Generated ${escHtml(generatedOn)}</div>
+    </section>` : '';
+
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>Squad Details — ${escHtml(tournamentName)}</title>
     <style>${css}</style></head><body>
@@ -527,6 +582,7 @@ export function exportTeamSquadDetails(teams, tournamentName = '', registrations
       <button onclick="window.print()">Print / Save as PDF</button>
     </div>
     ${pages}
+    ${unsoldSection}
     </body></html>`;
 
   const win = window.open('', '_blank');
@@ -535,13 +591,22 @@ export function exportTeamSquadDetails(teams, tournamentName = '', registrations
   win.onload = () => win.focus();
 }
 
-function downloadSquadDetailsCsv(teamBlocks, tournamentName, generatedOn) {
+function downloadSquadDetailsCsv(teamBlocks, tournamentName, generatedOn, unsoldBlock = { headers: [], rows: [] }) {
   const lines = [`Tournament,${escCsv(tournamentName)}`, `Generated,${escCsv(generatedOn)}`, ''];
 
   for (const { team, headers, rows } of teamBlocks) {
     lines.push(`Team,${escCsv(team.name)}`);
     lines.push(headers.map(escCsv).join(','));
     for (const row of rows) {
+      lines.push(row.map(escCsv).join(','));
+    }
+    lines.push('');
+  }
+
+  if (unsoldBlock.rows.length) {
+    lines.push('Section,Unsold players (refunds)');
+    lines.push(unsoldBlock.headers.map(escCsv).join(','));
+    for (const row of unsoldBlock.rows) {
       lines.push(row.map(escCsv).join(','));
     }
     lines.push('');

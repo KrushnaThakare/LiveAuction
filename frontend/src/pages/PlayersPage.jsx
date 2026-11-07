@@ -10,6 +10,7 @@ import EmptyState from '../components/common/EmptyState';
 import Modal from '../components/common/Modal';
 import { exportPlayersList } from '../utils/playersExport';
 import { formatRole, getPlayerRoles, getAuctionDisplayName } from '../utils/formatters';
+import { resolveUrl } from '../utils/resolveUrl';
 import { matchesPlayerIdOrName } from '../utils/playerSearch';
 import { hasCricHeroesProfile, hasPlayerStats, isCricHeroesProfileUrl, statValue } from '../utils/playerStats';
 import toast from 'react-hot-toast';
@@ -275,7 +276,11 @@ export default function PlayersPage() {
   /* ── export ── */
   const handleExport = () => {
     if (players.length === 0) { toast.error('No players to export'); return; }
-    exportPlayersList(filteredPlayers, getAuctionDisplayName(activeTournament, activeTournament?.name));
+    exportPlayersList(
+      filteredPlayers,
+      getAuctionDisplayName(activeTournament, activeTournament?.name),
+      resolveUrl(activeTournament?.logoUrl),
+    );
   };
 
   const filteredPlayers = players.filter(p =>
