@@ -1,0 +1,21 @@
+# Production overrides — use with repo root docker-compose.yml:
+#   docker compose -f docker-compose.yml -f deploy/aws/docker-compose.aws.yml up -d --build
+
+services:
+  backend:
+    environment:
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      SPRING_DATASOURCE_URL: ${DB_URL}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/tmp/cricket-auction-uploads}
+
+  frontend:
+    build:
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
