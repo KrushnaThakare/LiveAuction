@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { auctionApi } from '../api/auction';
 import { playerApi } from '../api/players';
@@ -13,6 +13,14 @@ import { formatCurrency, formatRole, getRoleColor, getRoleBg, getRoleIcon, getPl
 import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
 import { matchesPlayerIdOrName, playerIdLabel } from '../utils/playerSearch';
+import {
+  applyExtraPoolFilter,
+  collectExtraColumnsFromPlayers,
+  distinctValuesForColumn,
+  isPoolFilterActive,
+  pickRandomPlayer,
+  POOL_FILTER_ALL,
+} from '../utils/playerPoolFilter';
 import { canTeamBid, isSquadFull, maxAllowedBid } from '../utils/auctionConstraints';
 import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -21,7 +29,7 @@ import toast from 'react-hot-toast';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
-  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X, Clapperboard, Timer,
+  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X, Clapperboard, Timer, Filter,
 } from 'lucide-react';
 
 function getDynamicIncrement(rules, amount, fallbackNextBid) {
@@ -135,6 +143,8 @@ export default function AuctionPage() {
   const [cinematicIntroLive, setCinematicIntroLive] = useState(true);
   const [countdownSeconds, setCountdownSeconds] = useState(5);
   const [countdownLoading, setCountdownLoading] = useState(false);
+  const [poolFilterColumn, setPoolFilterColumn] = useState('');
+  const [poolFilterValue, setPoolFilterValue] = useState(POOL_FILTER_ALL);
   const containerRef = useRef(null);
   const bidUpdateSeq = useRef(0);
   const callingBidInFlightRef = useRef(false);
@@ -272,6 +282,32 @@ export default function AuctionPage() {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   useEffect(() => {
+    if (!activeTournament?.id) return;
+    try {
+      const raw = sessionStorage.getItem(`auction-pool-filter:${activeTournament.id}`);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      setPoolFilterColumn(parsed?.column || '');
+      setPoolFilterValue(parsed?.value || POOL_FILTER_ALL);
+    } catch {
+      /* ignore */
+    }
+  }, [activeTournament?.id]);
+
+  useEffect(() => {
+    if (!activeTournament?.id) return;
+    sessionStorage.setItem(
+      `auction-pool-filter:${activeTournament.id}`,
+      JSON.stringify({ column: poolFilterColumn, value: poolFilterValue }),
+    );
+  }, [activeTournament?.id, poolFilterColumn, poolFilterValue]);
+
+  const filteredAvailablePool = useMemo(
+    () => applyExtraPoolFilter(availablePlayers, poolFilterColumn, poolFilterValue),
+    [availablePlayers, poolFilterColumn, poolFilterValue],
+  );
+
+  useEffect(() => {
     if (!activeTournament) return;
     const onStorage = (event) => {
       if (event.key !== 'auction-bid-rules-updated') return;
@@ -327,23 +363,54 @@ export default function AuctionPage() {
   /* ── start random player ── */
   const handleStartRandom = useCallback(async () => {
     if (!activeTournament || actionLoading) return;
+    const pool = isPoolFilterActive(poolFilterColumn, poolFilterValue)
+      ? filteredAvailablePool
+      : availablePlayers;
+    if (!pool.length) {
+      toast.error(isPoolFilterActive(poolFilterColumn, poolFilterValue)
+        ? 'No available players match this Excel filter'
+        : 'No available players');
+      return;
+    }
     setActionLoading(true);
     try {
-      const res = await auctionApi.startRandom(activeTournament.id);
-      const state = res.data.data;
-      setAuctionState(state);
-      publishOverlayAuctionUpdate(activeTournament.id, state);
-      setProposedBid(null);
-      setBidKey(k => k + 1);
-      if (state.currentPlayer) {
-        setAvailablePlayers(p => p.filter(pl => pl.id !== state.currentPlayer.id));
-        if (voiceEnabled) announceAuctionStart(state.currentPlayer.name, state.currentPlayer.basePrice);
-        toast.success(`Now auctioning: ${state.currentPlayer.name}`);
+      if (isPoolFilterActive(poolFilterColumn, poolFilterValue)) {
+        const pick = pickRandomPlayer(pool);
+        if (!pick) return;
+        const res = await auctionApi.startAuction(activeTournament.id, pick.id);
+        setAuctionState(res.data.data);
+        publishOverlayAuctionUpdate(activeTournament.id, res.data.data, teams);
+        setProposedBid(null);
+        setBidKey((k) => k + 1);
+        setAvailablePlayers((p) => p.filter((pl) => pl.id !== pick.id));
+        if (voiceEnabled) announceAuctionStart(pick.name, pick.basePrice);
+        toast.success(`Now auctioning: ${pick.name} (filtered pool)`);
+      } else {
+        const res = await auctionApi.startRandom(activeTournament.id);
+        const state = res.data.data;
+        setAuctionState(state);
+        publishOverlayAuctionUpdate(activeTournament.id, state);
+        setProposedBid(null);
+        setBidKey((k) => k + 1);
+        if (state.currentPlayer) {
+          setAvailablePlayers((p) => p.filter((pl) => pl.id !== state.currentPlayer.id));
+          if (voiceEnabled) announceAuctionStart(state.currentPlayer.name, state.currentPlayer.basePrice);
+          toast.success(`Now auctioning: ${state.currentPlayer.name}`);
+        }
       }
     } finally {
       setActionLoading(false);
     }
-  }, [activeTournament, actionLoading, voiceEnabled]);
+  }, [
+    activeTournament,
+    actionLoading,
+    voiceEnabled,
+    poolFilterColumn,
+    poolFilterValue,
+    filteredAvailablePool,
+    availablePlayers,
+    teams,
+  ]);
 
   /*
    * ── assign bid to a team ──────────────────────────────────────────
@@ -854,6 +921,10 @@ export default function AuctionPage() {
                 allDone={allDone}
                 actionLoading={actionLoading}
                 roles={playerRoles}
+                poolFilterColumn={poolFilterColumn}
+                poolFilterValue={poolFilterValue}
+                onPoolFilterColumnChange={setPoolFilterColumn}
+                onPoolFilterValueChange={setPoolFilterValue}
                 onStart={handleStartAuction}
                 onRandom={handleStartRandom}
                 onReAuction={handleReAuction}
@@ -1224,11 +1295,54 @@ function TeamAssignStrip({ teams, auctionState, displayBid, proposedBid, maxSqua
 /* ═══════════════════════════════════════════════════════════
    IDLE STAGE — between players
 ═══════════════════════════════════════════════════════════ */
-function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
-                     actionLoading, roles, onStart, onRandom, onReAuction, onUndo }) {
+function IdleStage({
+  auctionState,
+  availablePlayers,
+  unsoldPlayers,
+  allDone,
+  actionLoading,
+  roles,
+  poolFilterColumn,
+  poolFilterValue,
+  onPoolFilterColumnChange,
+  onPoolFilterValueChange,
+  onStart,
+  onRandom,
+  onReAuction,
+  onUndo,
+}) {
   const canUndo = auctionState?.undoable;
   const [playerSearch, setPlayerSearch] = useState('');
-  const filteredAvailablePlayers = availablePlayers.filter(player => matchesPlayerIdOrName(player, playerSearch));
+
+  const playersForColumnScan = useMemo(
+    () => [...availablePlayers, ...unsoldPlayers],
+    [availablePlayers, unsoldPlayers],
+  );
+
+  const extraColumns = useMemo(
+    () => collectExtraColumnsFromPlayers(playersForColumnScan),
+    [playersForColumnScan],
+  );
+
+  const valueOptions = useMemo(
+    () => distinctValuesForColumn(availablePlayers, poolFilterColumn),
+    [availablePlayers, poolFilterColumn],
+  );
+
+  const poolFiltered = useMemo(
+    () => applyExtraPoolFilter(availablePlayers, poolFilterColumn, poolFilterValue),
+    [availablePlayers, poolFilterColumn, poolFilterValue],
+  );
+
+  const filteredAvailablePlayers = poolFiltered.filter((player) =>
+    matchesPlayerIdOrName(player, playerSearch));
+
+  const filterActive = isPoolFilterActive(poolFilterColumn, poolFilterValue);
+
+  const clearPoolFilter = () => {
+    onPoolFilterColumnChange('');
+    onPoolFilterValueChange(POOL_FILTER_ALL);
+  };
 
   return (
     <div className="flex-1 flex flex-col p-4 gap-4">
@@ -1249,12 +1363,20 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
            'Ready to start — pick a player'}
         </h2>
         <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          {availablePlayers.length} available · {unsoldPlayers.length} unsold
+          {filterActive
+            ? `${poolFiltered.length} in filter · ${availablePlayers.length} available total`
+            : `${availablePlayers.length} available`} · {unsoldPlayers.length} unsold
         </p>
+        {filterActive && (
+          <p className="text-xs font-bold px-3 py-1 rounded-full"
+            style={{ background: 'rgba(59,130,246,0.15)', color: 'var(--color-primary)', border: '1px solid rgba(59,130,246,0.35)' }}>
+            Excel filter: {poolFilterColumn} = {poolFilterValue}
+          </p>
+        )}
 
         {/* Action buttons */}
         <div className="flex gap-3 flex-wrap justify-center mt-1">
-          {availablePlayers.length > 0 && (
+          {(filterActive ? poolFiltered.length : availablePlayers.length) > 0 && (
             <button onClick={onRandom} disabled={actionLoading} className="btn-primary">
               <Shuffle size={16} /> Random Player <span className="opacity-60 text-xs">[R]</span>
             </button>
@@ -1280,9 +1402,60 @@ function IdleStage({ auctionState, availablePlayers, unsoldPlayers, allDone,
       {/* Available players list */}
       {availablePlayers.length > 0 && (
         <>
+          {extraColumns.length > 0 && (
+            <div className="rounded-xl p-3 flex flex-col gap-2"
+              style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide"
+                style={{ color: 'var(--color-text-secondary)' }}>
+                <Filter size={14} />
+                Excel column filter
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                <label className="flex-1 min-w-0 text-xs">
+                  <span className="block mb-1 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Column</span>
+                  <select
+                    className="input text-sm w-full"
+                    value={poolFilterColumn}
+                    onChange={(e) => {
+                      onPoolFilterColumnChange(e.target.value);
+                      onPoolFilterValueChange(POOL_FILTER_ALL);
+                    }}
+                  >
+                    <option value="">All players (no filter)</option>
+                    {extraColumns.map((col) => (
+                      <option key={col.key} value={col.label}>{col.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex-1 min-w-0 text-xs">
+                  <span className="block mb-1 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Value</span>
+                  <select
+                    className="input text-sm w-full"
+                    disabled={!poolFilterColumn}
+                    value={poolFilterValue}
+                    onChange={(e) => onPoolFilterValueChange(e.target.value)}
+                  >
+                    <option value={POOL_FILTER_ALL}>— select value —</option>
+                    {valueOptions.map((v) => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
+                </label>
+                {filterActive && (
+                  <button type="button" className="btn-secondary text-sm whitespace-nowrap" onClick={clearPoolFilter}>
+                    Clear filter
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
+                Use for Category A/B, Mens/Womens, etc. Random and the list below use only matching players until you clear the filter.
+              </p>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
-              Available Players ({filteredAvailablePlayers.length}/{availablePlayers.length})
+              Available Players ({filteredAvailablePlayers.length}/{filterActive ? poolFiltered.length : availablePlayers.length})
             </p>
             <div className="relative w-full sm:w-80">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2"
