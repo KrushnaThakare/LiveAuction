@@ -1,4 +1,4 @@
-function normalizeHeader(label) {
+export function normalizeHeader(label) {
   return String(label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
