@@ -125,8 +125,7 @@ export default function OverlayTeamSquadBoardPage() {
   const maxBidInfo = useMemo(() => {
     const info = maxBidInfoForTeam(team, squadSize, auction);
     if (!info) return null;
-    const first = info.playerName?.split(/\s+/)[0] || info.playerName;
-    return { show: true, maxBid: info.maxBid, squadFull: info.squadFull, playerName: first };
+    return { show: true, maxBid: info.maxBid, squadFull: info.squadFull };
   }, [team, auction, squadSize]);
 
   const goTo = useCallback((nextIndex) => {

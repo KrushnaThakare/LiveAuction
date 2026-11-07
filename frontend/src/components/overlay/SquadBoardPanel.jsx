@@ -169,9 +169,7 @@ export default function SquadBoardPanel({
         </div>
         {isOverlay && maxBidInfo?.show && (
           <div className={styles.maxBidRibbon} role="status">
-            <span className={styles.maxBidRibbonLabel}>
-              Max bid{maxBidInfo.playerName ? ` · ${maxBidInfo.playerName}` : ''}
-            </span>
+            <span className={styles.maxBidRibbonLabel}>Max bid</span>
             <strong className={styles.maxBidRibbonValue}>
               {maxBidInfo.squadFull ? 'Squad full' : formatCurrency(maxBidInfo.maxBid)}
             </strong>
@@ -179,7 +177,7 @@ export default function SquadBoardPanel({
         )}
         {!isOverlay && maxBidInfo?.show && (
           <div className={`${styles.summaryStatWide} ${styles.maxBidStat}`}>
-            <span>Max bid{maxBidInfo.playerName ? ` · ${maxBidInfo.playerName}` : ''}</span>
+            <span>Max bid</span>
             <strong style={{ color: maxBidInfo.squadFull ? 'var(--color-text-secondary)' : '#ffc72c' }}>
               {maxBidInfo.squadFull ? 'Squad full' : formatCurrency(maxBidInfo.maxBid)}
             </strong>

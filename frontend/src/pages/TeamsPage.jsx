@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTournament } from '../contexts/TournamentContext';
 import { teamApi } from '../api/teams';
 import { auctionApi } from '../api/auction';
+import { playerApi } from '../api/players';
 import { registrationApi } from '../api/registration';
 import TeamForm from '../components/teams/TeamForm';
 import Modal from '../components/common/Modal';
@@ -100,13 +101,14 @@ export default function TeamsPage() {
       clampSquadSize(activeTournament?.maxSquadSize),
       getPlayerRoles(activeTournament),
       auctionState,
+      resolveUrl(activeTournament?.logoUrl),
     );
     toast.success('Squad board PDF ready — use Print in the new tab');
   };
 
   const handleExportClassic = () => {
     if (teams.length === 0) { toast.error('No teams to export'); return; }
-    exportTeamRosters(teams, activeTournament?.name);
+    exportTeamRosters(teams, activeTournament?.name, resolveUrl(activeTournament?.logoUrl));
   };
 
   const handleExportSquadDetails = async () => {
@@ -116,15 +118,18 @@ export default function TeamsPage() {
     }
     setExportingDetails(true);
     try {
-      const [regRes, formRes] = await Promise.all([
+      const [regRes, formRes, unsoldRes] = await Promise.all([
         registrationApi.getRegistrations(activeTournament.id),
         registrationApi.getForm(activeTournament.id),
+        playerApi.getAll(activeTournament.id, 'UNSOLD'),
       ]);
       exportTeamSquadDetails(
         teams,
         activeTournament.name,
         regRes.data.data || [],
         formRes.data.data || [],
+        unsoldRes.data.data || [],
+        resolveUrl(activeTournament?.logoUrl),
       );
       toast.success('Squad details CSV downloaded — use Print in the new tab for PDF');
     } catch {

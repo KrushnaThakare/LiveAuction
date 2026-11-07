@@ -34,7 +34,6 @@ export default function AudienceSquadBoardLayer({
       show: true,
       maxBid: info.maxBid,
       squadFull: info.squadFull,
-      playerName: info.playerName,
     };
   }, [team, auction, squadSize]);
 

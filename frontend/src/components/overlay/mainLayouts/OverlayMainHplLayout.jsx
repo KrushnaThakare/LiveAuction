@@ -24,15 +24,11 @@ export default function OverlayMainHplLayout({
   variant = 'hpl',
 }) {
   const fields = parseMainOverlayFields(config?.overlayMainShowFields);
-  const logoSrc = config?.logoUrl ? resolveUrl(config.logoUrl) : null;
   const imgUrl = player ? driveImg(player.imageUrl) || resolveUrl(player.imageUrl) : null;
   const status = auction?.status || 'IDLE';
 
   return (
     <>
-      {logoSrc && (
-        <img src={logoSrc} alt="" className={styles.hplCornerLogo} />
-      )}
       <section
         className={[
           styles.hplDock,

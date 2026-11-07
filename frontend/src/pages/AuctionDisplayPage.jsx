@@ -234,7 +234,7 @@ export default function AuctionDisplayPage() {
         <header className={styles.topBar}>
           <div className="flex items-center gap-3 min-w-0">
             {logoSrc ? (
-              <img src={logoSrc} alt="" className="w-12 h-12 rounded-xl object-contain flex-shrink-0" style={{ background: 'rgba(255,255,255,0.08)' }} />
+              <img src={logoSrc} alt="" className={styles.tournamentLogo} />
             ) : null}
             <div className="min-w-0">
               <div className={styles.brandKicker}>
