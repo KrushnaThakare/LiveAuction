@@ -3,7 +3,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-ARG VITE_API_URL=https://backend.ktauction.in/api
+# Override on AWS: docker build --build-arg VITE_API_URL=https://backend.ktauction.in/api
+ARG VITE_API_URL=http://localhost:8080/api
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
