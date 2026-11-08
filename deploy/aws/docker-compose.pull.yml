@@ -38,6 +38,9 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     ports:
       - "8080:8080"
+    volumes:
+      - cricket_uploads:/tmp/cricket-auction-uploads
+      - cricket_images:/tmp/cricket-auction-images
 
   frontend:
     image: krushnathakare/cricket-auction-frontend:latest
@@ -50,3 +53,5 @@ services:
 
 volumes:
   mysql_data:
+  cricket_uploads:
+  cricket_images:

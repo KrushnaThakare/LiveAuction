@@ -2,6 +2,8 @@
 
 One codebase on GitHub. **Netlify/Render** use their dashboard env vars. **AWS** uses this folder + `production.env` on the server only.
 
+**EC2 + Docker Hub (ktauction.in):** step-by-step release checklist → **[EC2-DOCKER-HUB-RUNBOOK.md](./EC2-DOCKER-HUB-RUNBOOK.md)**. Canonical server compose → `docker-compose.ec2.yml`.
+
 ## One-time on EC2
 
 1. Clone (or pull) this repo, e.g. `/opt/cricket-auction`.

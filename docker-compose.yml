@@ -35,6 +35,9 @@ services:
       CORS_ORIGINS: http://localhost:5173,http://localhost:3000
     ports:
       - "8080:8080"
+    volumes:
+      - cricket_uploads:/tmp/cricket-auction-uploads
+      - cricket_images:/tmp/cricket-auction-images
 
   frontend:
     build:
@@ -52,3 +55,5 @@ services:
 
 volumes:
   mysql_data:
+  cricket_uploads:
+  cricket_images:

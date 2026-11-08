@@ -1,0 +1,56 @@
+# Canonical EC2 compose: Docker Hub images + persistent DB and uploads.
+# On server:
+#   cp deploy/aws/docker-compose.ec2.yml ~/docker-compose.yml   # if repo cloned under /opt/...
+#   cd ~ && docker compose pull && docker compose up -d
+#
+# See deploy/aws/EC2-DOCKER-HUB-RUNBOOK.md
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: cricket-auction-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: cricket_auction
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: krushnathakare/cricket-auction-backend:latest
+    container_name: cricket-auction-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/cricket_auction?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      CORS_ORIGINS: https://ktauction.in,https://www.ktauction.in
+    ports:
+      - "8080:8080"
+    volumes:
+      - cricket_uploads:/tmp/cricket-auction-uploads
+      - cricket_images:/tmp/cricket-auction-images
+
+  frontend:
+    image: krushnathakare/cricket-auction-frontend:latest
+    container_name: cricket-auction-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  mysql_data:
+  cricket_uploads:
+  cricket_images:
