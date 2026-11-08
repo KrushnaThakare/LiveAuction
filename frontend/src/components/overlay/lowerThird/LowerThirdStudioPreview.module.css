@@ -1,0 +1,41 @@
+.frame {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.12));
+  background: #050810;
+}
+
+.backdrop {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(59, 130, 246, 0.12), transparent 55%),
+  linear-gradient(180deg, #070d1a 0%, #030508 100%);
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.scaled {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42%;
+  transform: scale(0.92);
+  transform-origin: center bottom;
+}
+
+.caption {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.55));
+  background: rgba(0, 0, 0, 0.35);
+}

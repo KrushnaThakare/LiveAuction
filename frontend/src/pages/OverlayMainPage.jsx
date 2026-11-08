@@ -14,7 +14,7 @@ import OverlayMainPlayerPanel from '../components/overlay/OverlayMainPlayerPanel
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
 import styles from './OverlayBroadcast.module.css';
 import { mainOverlayScaledStyle, mainOverlayViewportStyle } from '../utils/overlayDisplayTheme';
-import OverlayMainHplLayout from '../components/overlay/mainLayouts/OverlayMainHplLayout';
+import OverlayMainLowerThird, { isLowerThirdLayout } from '../components/overlay/lowerThird/OverlayMainLowerThird';
 import { parseMainOverlayFields } from '../utils/overlayMainFields';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -60,6 +60,8 @@ export default function OverlayMainPage() {
   const team = teams.find(t => t.id === auction?.highestBidderTeamId || t.name === auction?.highestBidderTeamName);
   const increment = Math.max(0, Number(auction?.nextBidAmount || 0) - Number(auction?.currentBid || 0));
   const status = auction?.status || 'IDLE';
+  const layout = config?.overlayMainLayout || 'classic';
+  const mainFields = parseMainOverlayFields(config?.overlayMainShowFields);
   const isSold = status === 'SOLD';
   const isUnsold = status === 'UNSOLD';
   const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
@@ -78,7 +80,8 @@ export default function OverlayMainPage() {
     config?.overlayShowPlayerStatsIntro !== false && mainIntroReady,
     config?.overlayPlayerStatsIntroMs || 5500
   );
-  const dockHidden = showMainIntro;
+  const premiumLowerThird = layout === 'modern-3d-sports' || layout === 'clean-premium-tv' || layout === 'dynamic-electric';
+  const dockHidden = showMainIntro && !premiumLowerThird;
 
   if (!data && !config) {
     return (
@@ -91,15 +94,12 @@ export default function OverlayMainPage() {
   const showVerdict = isSold || isUnsold;
   const verdictStampKey = showVerdict ? `${auction?.sessionId || 'session'}-${status}` : 'idle';
 
-  const layout = config?.overlayMainLayout || 'classic';
-  const mainFields = parseMainOverlayFields(config?.overlayMainShowFields);
-  const useHpl = layout === 'hpl-lower-third' || layout === 'compact-strip' || layout === 'ipl-broadcast';
-  const barVariant = layout === 'ipl-broadcast' ? 'ipl' : 'hpl';
   const viewportStyle = mainOverlayViewportStyle(config);
   const scaledStyle = mainOverlayScaledStyle(config);
 
-  const dock = useHpl ? (
-    <OverlayMainHplLayout
+  const dock = isLowerThirdLayout(layout) ? (
+    <OverlayMainLowerThird
+      layout={layout}
       auction={auction}
       player={player}
       team={team}
@@ -111,7 +111,7 @@ export default function OverlayMainPage() {
       isUnsold={isUnsold}
       showVerdict={showVerdict}
       increment={increment}
-      variant={barVariant}
+      sessionId={auction?.sessionId}
     />
   ) : (
     <section className={`${styles.auctionDock} ${isSold ? styles.soldResult : ''} ${isUnsold ? styles.unsoldResult : ''}`}>
@@ -183,7 +183,7 @@ export default function OverlayMainPage() {
     <div className={styles.obsViewport} style={viewportStyle}>
       <div className={`${styles.stage} ${styles.obsScaled}`} style={scaledStyle}>
       <OverlayFullscreenButton />
-      {showMainIntro && (
+      {showMainIntro && !premiumLowerThird && (
         <MainPlayerIntroOverlay
           player={player}
           playerRoles={config?.playerRoles}

@@ -1,0 +1,239 @@
+.root {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(24px, 4vh, 56px);
+  transform: translateX(-50%);
+  width: min(94vw, 1560px);
+  z-index: 3;
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1.4fr) minmax(100px, 0.7fr) minmax(140px, 0.95fr) minmax(200px, 1.1fr);
+  align-items: stretch;
+  gap: 0;
+  min-height: clamp(100px, 13vh, 132px);
+  animation: ltSlideIn 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  filter: drop-shadow(0 22px 48px rgba(0, 0, 0, 0.65));
+}
+
+@keyframes ltSlideIn {
+  from { opacity: 0; transform: translateX(calc(-50% - 48px)); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+
+.photoCol {
+  position: relative;
+  z-index: 2;
+  align-self: flex-end;
+  margin-right: -8px;
+  margin-bottom: 6px;
+}
+
+.photoFrame {
+  width: clamp(96px, 10vw, 128px);
+  height: clamp(118px, 14vh, 150px);
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  background: linear-gradient(145deg, #f0c14b, #8b6914 45%, #f7d774 55%, #c9a227);
+  padding: 4px;
+  animation: ltPhotoIn 0.6s ease 0.15s both;
+}
+
+@keyframes ltPhotoIn {
+  from { transform: scale(0.92); opacity: 0.6; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.photoInner {
+  width: 100%;
+  height: 100%;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  background: #0a1628;
+  overflow: hidden;
+}
+
+.photoInner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.photoFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.identity {
+  background: linear-gradient(180deg, #0c1a3a 0%, #06122c 100%);
+  border: 2px solid rgba(201, 162, 39, 0.55);
+  border-right: none;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.name {
+  margin: 0;
+  font-size: clamp(16px, 1.65vw, 26px);
+  font-weight: 1000;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.05;
+  color: #fff;
+}
+
+.roleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rolePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: linear-gradient(180deg, #e8c04a, #a67c00);
+  color: #1a1200;
+  font-size: clamp(9px, 0.75vw, 12px);
+  font-weight: 1000;
+  text-transform: uppercase;
+  border-radius: 3px;
+}
+
+.statusPill {
+  font-size: clamp(8px, 0.65vw, 10px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #7cffb2;
+}
+
+.baseBlock {
+  background: linear-gradient(180deg, #dce1ea 0%, #b8c0ce 100%);
+  color: #0a1628;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-top: 3px solid #c9a227;
+  border-bottom: 3px solid #8b7355;
+}
+
+.baseKicker {
+  font-size: clamp(8px, 0.62vw, 10px);
+  font-weight: 900;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.baseAmount {
+  font-size: clamp(15px, 1.35vw, 22px);
+  font-weight: 1000;
+}
+
+.bidBlock {
+  background: linear-gradient(145deg, #f5d76e 0%, #c9a227 35%, #8b6914 100%);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid #fff4c4;
+  box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.25), 0 0 28px rgba(255, 199, 44, 0.35);
+}
+
+.bidKicker {
+  font-size: clamp(8px, 0.62vw, 10px);
+  font-weight: 1000;
+  text-transform: uppercase;
+  color: #2a1f00;
+  opacity: 0.85;
+}
+
+.bidAmount {
+  font-size: clamp(20px, 2vw, 32px);
+  font-weight: 1000;
+  color: #0a1628;
+  line-height: 1;
+}
+
+.teamBlock {
+  background: linear-gradient(180deg, #e8ecf2 0%, #c5cdd8 100%);
+  padding: 10px 14px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  border: 2px solid rgba(201, 162, 39, 0.5);
+  border-left: none;
+  animation: ltTeamIn 0.5s ease both;
+}
+
+@keyframes ltTeamIn {
+  from { opacity: 0.4; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.teamLogo {
+  width: clamp(40px, 4vw, 52px);
+  height: clamp(40px, 4vw, 52px);
+  border-radius: 8px;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.teamLogoFb {
+  width: clamp(40px, 4vw, 52px);
+  height: clamp(40px, 4vw, 52px);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-weight: 1000;
+  background: #0a1628;
+  color: #c9a227;
+}
+
+.teamKicker {
+  font-size: clamp(7px, 0.58vw, 9px);
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #334155;
+}
+
+.teamName {
+  font-size: clamp(11px, 1vw, 15px);
+  font-weight: 1000;
+  text-transform: uppercase;
+  color: #0a1628;
+  line-height: 1.15;
+}
+
+.sold .bidBlock {
+  animation: ltGoldFlash 0.85s ease;
+}
+
+@keyframes ltGoldFlash {
+  0%, 100% { filter: brightness(1); }
+  40% { filter: brightness(1.35); box-shadow: 0 0 40px rgba(255, 215, 0, 0.8); }
+}
+
+.unsold .identity {
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.15);
+}
+
+.unsold .statusPill {
+  color: #fca5a5;
+}
+
+.soldStamp {
+  font-size: clamp(14px, 1.2vw, 18px);
+  font-weight: 1000;
+  color: #0a1628;
+}
