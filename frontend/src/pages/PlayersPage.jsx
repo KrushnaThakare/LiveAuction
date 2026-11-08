@@ -56,7 +56,7 @@ export default function PlayersPage() {
   const [cleaningProfiles, setCleaningProfiles] = useState(false);
   const [repairingRoles, setRepairingRoles] = useState(false);
   const playerRoles = getPlayerRoles(activeTournament);
-  const defaultRole = playerRoles[0]?.key || 'BATSMAN';
+  const defaultRole = playerRoles[0]?.key || 'LEFT_HAND_BATSMAN';
 
   const fetchPlayers = useCallback(async () => {
     if (!activeTournament) return;

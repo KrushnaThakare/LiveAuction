@@ -52,7 +52,7 @@ public class PlayerRoleService {
 
     public String resolveRole(Tournament tournament, String rawRole) {
         List<PlayerRoleDto> roles = getRoles(tournament);
-        if (roles.isEmpty()) return "BATSMAN";
+        if (roles.isEmpty()) return "LEFT_HAND_BATSMAN";
         if (rawRole == null || rawRole.isBlank()) return normalizeRoleKey(roles.get(0).getKey());
 
         String normalizedRaw = normalizeComparable(rawRole);
@@ -74,10 +74,16 @@ public class PlayerRoleService {
             );
         }
         return List.of(
-                role("BATSMAN", "Batsman", "BAT", "#3b82f6", "BAT", "bat", "batter", "batsmen"),
-                role("BOWLER", "Bowler", "BOWL", "#ef4444", "BOWL", "bowl", "b"),
-                role("ALL_ROUNDER", "All-Rounder", "AR", "#10b981", "AR", "all rounder", "allrounder", "all-rounder", "ar"),
-                role("WICKET_KEEPER", "Wicket Keeper", "WK", "#f59e0b", "WK", "wicketkeeper", "keeper", "wkt", "wk")
+                role("LEFT_ARM_BOWLER", "Left Arm Bowler", "LAB", "#ef4444", "LAB",
+                        "left arm bowler", "leftarmbowler", "lab", "l bowler"),
+                role("LEFT_HAND_BATSMAN", "Left Handed Batsmen", "LHB", "#3b82f6", "LHB",
+                        "left hand batsman", "left handed batsmen", "left hand bat", "lhb", "batsman", "bat"),
+                role("RIGHT_ARM_BOWLER", "Right Arm Bowler", "RAB", "#dc2626", "RAB",
+                        "right arm bowler", "rightarmbowler", "rab", "r bowler", "bowler", "bowl"),
+                role("RIGHT_HAND_BATSMAN", "Right Handed Batsmen", "RHB", "#2563eb", "RHB",
+                        "right hand batsman", "right handed batsmen", "right hand bat", "rhb"),
+                role("ALL_ROUNDER", "All Rounder", "AR", "#10b981", "AR",
+                        "all rounder", "allrounder", "all-rounder", "allrounder", "ar", "allrounder")
         );
     }
 

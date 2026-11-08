@@ -46,10 +46,11 @@ export function getAuctionDisplayName(tournament, fallback = 'Auction') {
 }
 
 export const DEFAULT_PLAYER_ROLES = [
-  { key: 'BATSMAN', label: 'Batsman', shortLabel: 'BAT', color: '#3b82f6', icon: '🏏' },
-  { key: 'BOWLER', label: 'Bowler', shortLabel: 'BOWL', color: '#ef4444', icon: '🎳' },
-  { key: 'ALL_ROUNDER', label: 'All-Rounder', shortLabel: 'AR', color: '#10b981', icon: '⭐' },
-  { key: 'WICKET_KEEPER', label: 'Wicket Keeper', shortLabel: 'WK', color: '#f59e0b', icon: '🧤' },
+  { key: 'LEFT_ARM_BOWLER', label: 'Left Arm Bowler', shortLabel: 'LAB', color: '#ef4444', icon: 'LAB' },
+  { key: 'LEFT_HAND_BATSMAN', label: 'Left Handed Batsmen', shortLabel: 'LHB', color: '#3b82f6', icon: 'LHB' },
+  { key: 'RIGHT_ARM_BOWLER', label: 'Right Arm Bowler', shortLabel: 'RAB', color: '#dc2626', icon: 'RAB' },
+  { key: 'RIGHT_HAND_BATSMAN', label: 'Right Handed Batsmen', shortLabel: 'RHB', color: '#2563eb', icon: 'RHB' },
+  { key: 'ALL_ROUNDER', label: 'All Rounder', shortLabel: 'AR', color: '#10b981', icon: 'AR' },
 ];
 
 export const FOOTBALL_PLAYER_ROLES = [

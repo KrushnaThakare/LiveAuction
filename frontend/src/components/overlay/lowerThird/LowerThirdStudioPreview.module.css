@@ -19,6 +19,13 @@
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+  transform: translateZ(0);
+  isolation: isolate;
+}
+
+.stage,
+.stage * {
+  pointer-events: none;
 }
 
 .scaled {

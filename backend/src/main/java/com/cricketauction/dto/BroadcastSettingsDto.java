@@ -25,6 +25,7 @@ public class BroadcastSettingsDto {
     private Integer overlayPlayerStatsIntroMs;
     private Boolean overlayShowMainPlayerIntro;
     private Integer overlayMainPlayerIntroMs;
+    private String overlayMainIntroConfig;
     private Boolean overlayShowCinematicIntro;
     private Boolean overlayCinematicIntroLive;
     private Boolean overlayShowPlayerTransition;

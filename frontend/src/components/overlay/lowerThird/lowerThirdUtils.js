@@ -65,7 +65,7 @@ export const LOWER_THIRD_PREVIEW_SAMPLE = {
   player: {
     id: 101,
     name: 'Pankaj Patil',
-    role: 'ALLROUNDER',
+    role: 'ALL_ROUNDER',
     basePrice: 5000,
     imageUrl: null,
   },

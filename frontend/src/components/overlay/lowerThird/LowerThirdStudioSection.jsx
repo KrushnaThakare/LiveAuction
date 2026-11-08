@@ -19,7 +19,10 @@ export default function LowerThirdStudioSection({
   overlayToken,
 }) {
   const token = settings?.tokenEnabled ? overlayToken : null;
-  const { data, config } = useOverlayRealtime(tournamentId, token, { studioOverlay: true });
+  const { data, config } = useOverlayRealtime(tournamentId, token, {
+    studioOverlay: true,
+    applyOverlayClass: false,
+  });
 
   const previewConfig = useMemo(() => ({
     ...config,
