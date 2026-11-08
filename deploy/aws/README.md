@@ -26,6 +26,27 @@ If you use Docker Hub tags (`krushnathakare/...`), set env vars and:
 docker compose -f deploy/aws/docker-compose.pull.yml --env-file deploy/aws/production.env up -d
 ```
 
+## Uploads (logos, player photos) on EC2
+
+Backend stores files under `/tmp/cricket-auction-uploads` inside the **backend** container. Without a Docker volume, files disappear when you recreate the container (`compose up --force-recreate`, `down`, or instance rebuild). MySQL keeps logo **URLs**, so the UI shows broken images (404).
+
+Add to your **backend** service in `docker-compose.yml`:
+
+```yaml
+  backend:
+    volumes:
+      - cricket_uploads:/tmp/cricket-auction-uploads
+      - cricket_images:/tmp/cricket-auction-images
+
+volumes:
+  cricket_uploads:
+  cricket_images:
+```
+
+Re-upload tournament/team logos once. Optional: set `CLOUDINARY_*` env vars for cloud-backed storage.
+
+The frontend nginx image proxies `/api/` uploads; it must allow at least 10MB (`client_max_body_size` in `frontend/nginx.conf`) or uploads return **413**.
+
 ## Backups (Render/Netlify)
 
 Do **not** put ktauction URLs in committed code. Netlify sets `VITE_API_URL` at build time; Render sets `CORS_ORIGINS` and `DB_URL` in its dashboard.
