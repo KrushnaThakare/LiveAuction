@@ -32,6 +32,8 @@ export default function BroadcastControlPage() {
     overlayShowTicker: true,
     overlayShowPlayerStatsIntro: true,
     overlayPlayerStatsIntroMs: 5500,
+    overlayShowMainPlayerIntro: true,
+    overlayMainPlayerIntroMs: 4500,
     publicViewShowTeams: true,
     publicViewShowSold: true,
     publicViewShowUnsold: true,
@@ -219,11 +221,26 @@ export default function BroadcastControlPage() {
             <ToggleRow label="Ticker" checked={!!settings.overlayShowTicker} onChange={e => setSettings(s => ({ ...s, overlayShowTicker: e.target.checked }))} />
             <ToggleRow label="Bid amount pop" checked={settings.overlayShowBidPop !== false} onChange={e => setSettings(s => ({ ...s, overlayShowBidPop: e.target.checked }))} />
             <ToggleRow label="Main player transition" checked={settings.overlayShowPlayerTransition !== false} onChange={e => setSettings(s => ({ ...s, overlayShowPlayerTransition: e.target.checked }))} />
+            <ToggleRow label="Main player intro (photo + details)" hint="OBS lower-third full reveal" checked={settings.overlayShowMainPlayerIntro !== false} onChange={e => setSettings(s => ({ ...s, overlayShowMainPlayerIntro: e.target.checked }))} />
             <ToggleRow label="CricHeroes stats intro" checked={settings.overlayShowPlayerStatsIntro !== false} onChange={e => setSettings(s => ({ ...s, overlayShowPlayerStatsIntro: e.target.checked }))} />
             <ToggleRow label="Cinematic intro (Audience)" checked={!!settings.overlayShowCinematicIntro} onChange={e => setSettings(s => ({ ...s, overlayShowCinematicIntro: e.target.checked }))} />
             <ToggleRow label="Squad formation animation" checked={!!settings.overlayShowSquadFormation} onChange={e => setSettings(s => ({ ...s, overlayShowSquadFormation: e.target.checked }))} />
             <ToggleRow label="Record-break animation" checked={settings.overlayShowRecordBreak !== false} onChange={e => setSettings(s => ({ ...s, overlayShowRecordBreak: e.target.checked }))} />
           </div>
+          {settings.overlayShowMainPlayerIntro !== false && (
+            <label className="block mt-3 text-sm">
+              Main player intro (seconds)
+              <input
+                className="input mt-1"
+                type="number"
+                min="1.5"
+                max="12"
+                step="0.5"
+                value={(Number(settings.overlayMainPlayerIntroMs || 4500) / 1000).toString()}
+                onChange={e => setSettings(s => ({ ...s, overlayMainPlayerIntroMs: Math.round(Number(e.target.value || 4.5) * 1000) }))}
+              />
+            </label>
+          )}
           {settings.overlayShowPlayerStatsIntro !== false && (
             <label className="block mt-3 text-sm">
               Stats intro (seconds)

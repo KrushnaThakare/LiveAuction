@@ -4,6 +4,7 @@ import { driveImg } from '../../../utils/driveImage';
 import { playerIdLabel } from '../../../utils/playerSearch';
 import { getRoleShortLabel } from '../../../utils/formatters';
 import { parseMainOverlayFields } from '../../../utils/overlayMainFields';
+import { MAIN_OVERLAY_STAT_SLOTS, buildDetailSlotDefs, resolvePlayerDetailSlots } from '../../../utils/playerDisplayExtras';
 import BidAmountDisplay from '../BidAmountDisplay';
 import styles from '../../../pages/OverlayBroadcast.module.css';
 
@@ -26,6 +27,11 @@ export default function OverlayMainHplLayout({
   const fields = parseMainOverlayFields(config?.overlayMainShowFields);
   const imgUrl = player ? driveImg(player.imageUrl) || resolveUrl(player.imageUrl) : null;
   const status = auction?.status || 'IDLE';
+  const detailFields = fields.detailSlots === false ? [] : config?.overlayMainDetailFields;
+  const [detailA, detailB] = resolvePlayerDetailSlots(
+    player,
+    buildDetailSlotDefs(detailFields, MAIN_OVERLAY_STAT_SLOTS),
+  );
 
   return (
     <>
@@ -63,6 +69,12 @@ export default function OverlayMainHplLayout({
             )}
             {config?.auctionDisplayName && (
               <span className={styles.hplTag}>{config.auctionDisplayName}</span>
+            )}
+            {fields.detailSlots !== false && detailA?.value && detailA.value !== '—' && (
+              <span className={styles.hplTag} title={detailA.value}>{detailA.label}: {detailA.value}</span>
+            )}
+            {fields.detailSlots !== false && detailB?.value && detailB.value !== '—' && (
+              <span className={styles.hplTag} title={detailB.value}>{detailB.label}: {detailB.value}</span>
             )}
           </div>
         </div>

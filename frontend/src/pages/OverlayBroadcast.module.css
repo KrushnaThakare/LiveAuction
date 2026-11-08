@@ -15,6 +15,160 @@
   box-sizing: border-box;
 }
 
+.mainIntroOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: clamp(12px, 2vw, 32px);
+  pointer-events: none;
+  animation: mainIntroFadeIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes mainIntroFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.mainIntroGlow {
+  position: absolute;
+  inset: 12% 18%;
+  background: radial-gradient(ellipse at center, rgba(255, 199, 44, 0.22), transparent 68%);
+  filter: blur(28px);
+  opacity: 0.9;
+}
+
+.mainIntroCard {
+  position: relative;
+  z-index: 1;
+  width: min(92vw, 920px);
+  display: grid;
+  grid-template-columns: minmax(200px, 34%) 1fr;
+  gap: clamp(14px, 2vw, 28px);
+  padding: clamp(14px, 1.6vw, 22px);
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(255, 199, 44, 0.16), transparent 38%),
+    linear-gradient(180deg, rgba(8, 14, 32, 0.94), rgba(4, 8, 20, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.62), 0 0 48px rgba(255, 199, 44, 0.14);
+  backdrop-filter: blur(20px) saturate(1.2);
+  animation: mainIntroCardIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes mainIntroCardIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.mainIntroPhotoWrap {
+  border-radius: 22px;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  min-height: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.mainIntroPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.mainIntroPhotoFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.mainIntroBody {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(8px, 1vh, 14px);
+  min-width: 0;
+}
+
+.mainIntroEyebrow {
+  color: #ffc72c;
+  font-size: clamp(11px, 0.85vw, 14px);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.mainIntroName {
+  margin: 0;
+  font-size: clamp(28px, 3.2vw, 52px);
+  font-weight: 1000;
+  line-height: 1.02;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+
+.mainIntroMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mainIntroPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: clamp(12px, 0.95vw, 15px);
+  font-weight: 900;
+}
+
+.mainIntroDetails {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.mainIntroDetailCell {
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: grid;
+  gap: 4px;
+}
+
+.mainIntroDetailCell span {
+  font-size: clamp(9px, 0.68vw, 11px);
+  font-weight: 900;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.mainIntroDetailCell strong {
+  font-size: clamp(15px, 1.35vw, 22px);
+  font-weight: 1000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dockHidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px);
+  transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s;
+}
+
 .statsOverlayPanel {
   position: fixed;
   right: clamp(18px, 1.7vw, 32px);

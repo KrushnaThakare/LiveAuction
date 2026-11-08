@@ -146,6 +146,15 @@ public class Tournament {
     @Builder.Default
     private Integer overlayPlayerStatsIntroMs = 5500;
 
+    /** Main overlay (OBS): photo + name + role intro on next player */
+    @Column(name = "overlay_show_main_player_intro")
+    @Builder.Default
+    private Boolean overlayShowMainPlayerIntro = true;
+
+    @Column(name = "overlay_main_player_intro_ms")
+    @Builder.Default
+    private Integer overlayMainPlayerIntroMs = 4500;
+
     /** Audience Display: cinematic next-player reveal (admin setting) */
     @Column(name = "overlay_show_cinematic_intro")
     @Builder.Default
