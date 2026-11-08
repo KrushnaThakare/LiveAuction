@@ -156,7 +156,7 @@ export function collectIntroDetailRows(player, studio, customHeaders = []) {
 export const INTRO_PREVIEW_PLAYER = {
   id: 108,
   name: 'Pankaj Patil',
-  role: 'ALLROUNDER',
+  role: 'ALL_ROUNDER',
   basePrice: 5000,
   age: '28',
   statsMatches: 42,

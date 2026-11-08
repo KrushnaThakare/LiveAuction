@@ -22,8 +22,8 @@ class PlayerRoleServiceTest {
         assertEquals("ALL_ROUNDER", service.resolveRole(tournament, "All-Rounder"));
         assertEquals("ALL_ROUNDER", service.resolveRole(tournament, "All Rounder"));
         assertEquals("ALL_ROUNDER", service.resolveRole(tournament, "AR"));
-        assertEquals("BOWLER", service.resolveRole(tournament, "Bowler"));
-        assertEquals("BATSMAN", service.resolveRole(tournament, "Batsman"));
+        assertEquals("RIGHT_ARM_BOWLER", service.resolveRole(tournament, "Bowler"));
+        assertEquals("LEFT_HAND_BATSMAN", service.resolveRole(tournament, "Batsman"));
     }
 
     @Test

@@ -30,7 +30,10 @@ export default function PlayerIntroStudioSection({
   overlayToken,
 }) {
   const token = settings?.tokenEnabled ? overlayToken : null;
-  const { data, config } = useOverlayRealtime(tournamentId, token, { studioOverlay: true });
+  const { data, config } = useOverlayRealtime(tournamentId, token, {
+    studioOverlay: true,
+    applyOverlayClass: false,
+  });
   const auction = data?.auction;
   const livePlayer = auction?.currentPlayer;
   const testDuration = introStudio.durationSec * 1000;
