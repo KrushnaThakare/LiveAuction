@@ -119,6 +119,45 @@ Expect `200` or `401` on API (auth), and `200` on frontend.
 
 ## Troubleshooting (short)
 
+### 502 Bad Gateway (Cloudflare: Host = Error)
+
+Cloudflare is up but **nothing healthy is answering on the EC2 origin** (usually port **3000** for the frontend, via `cloudflared` or your tunnel).
+
+**On EC2 (SSH):**
+
+```bash
+cd ~
+docker ps -a
+docker compose logs --tail=80 frontend
+docker compose logs --tail=120 backend
+docker compose logs --tail=40 mysql
+curl -s -o /dev/null -w "frontend %{http_code}\n" http://127.0.0.1:3000/
+curl -s -o /dev/null -w "backend %{http_code}\n" http://127.0.0.1:8080/api/tournaments
+sudo systemctl status cloudflared   # if you use a tunnel on this box
+```
+
+| What you see | Likely fix |
+|----------------|------------|
+| `frontend`/`backend` **Exited** or **Restarting** | Read `docker compose logs` for the failing service (OOM, DB, `exec format error`) |
+| `exec format error` in logs | Image built on Apple Silicon without `linux/amd64`. Rebuild: `docker build --platform linux/amd64 ...` then push and pull again |
+| `frontend` missing, only mysql | `docker compose up -d` — wait until mysql healthy, then backend, then frontend |
+| `curl localhost:3000` = **200** but site still 502 | Restart tunnel: `sudo systemctl restart cloudflared` (or check Cloudflare Zero Trust → tunnel → origin URL = `http://localhost:3000`) |
+| Backend can’t connect to MySQL | Keep `SPRING_DATASOURCE_URL` / `jdbc:mysql://mysql:3306/...` in `~/docker-compose.yml`; don’t run backend alone without compose network |
+| Disk full | `df -h` then `docker system prune -f` (not `-v` unless you accept data loss) |
+
+**Fast recovery (same images):**
+
+```bash
+cd ~
+docker compose pull
+docker compose up -d
+sleep 45
+docker ps
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3000/
+```
+
+**Rollback:** if the new `:latest` image is bad, on PC push a known-good tag or rebuild from last good `main`, then on EC2 `docker compose pull && docker compose up -d`.
+
 ### Site unchanged after deploy
 
 ```bash
