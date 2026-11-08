@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { introDurationMs, introExitMs } from '../utils/overlayIntroStudio';
 
 /**
- * Main overlay player introduction — once per auction session while ACTIVE.
+ * Main overlay player introduction — once per auction session, only while ACTIVE.
  * Phases: hidden → playing → exiting → hidden (restores lower third).
  */
 export function useMainPlayerIntroOverlay(player, sessionId, enabled, config, status) {
@@ -48,24 +48,32 @@ export function useMainPlayerIntroOverlay(player, sessionId, enabled, config, st
     }, holdMs);
   };
 
+  /** Never replay intro after SOLD/UNSOLD — mark session consumed if we missed ACTIVE window. */
   useEffect(() => {
-    if (!enabled || status !== 'ACTIVE' || !sessionId) {
-      if (status !== 'ACTIVE') {
-        clearTimers();
-        setPhase('hidden');
-        playedSessionRef.current = null;
-      }
+    if (!sessionId || !player?.id) return;
+    if (status !== 'ACTIVE' && String(playedSessionRef.current) !== String(sessionId)) {
+      playedSessionRef.current = sessionId;
+    }
+  }, [sessionId, player?.id, status]);
+
+  useEffect(() => {
+    if (status !== 'ACTIVE') {
+      clearTimers();
+      setPhase('hidden');
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (!enabled || status !== 'ACTIVE' || !sessionId || !player?.id) {
       return undefined;
     }
-
-    if (!player?.id) return undefined;
 
     if (String(playedSessionRef.current) === String(sessionId)) {
       return undefined;
     }
 
     startIntro(sessionId);
-    return clearTimers;
+    return undefined;
   }, [enabled, sessionId, status, player?.id]);
 
   useEffect(() => {
@@ -75,9 +83,11 @@ export function useMainPlayerIntroOverlay(player, sessionId, enabled, config, st
     }
   }, [enabled]);
 
+  const liveIntro = status === 'ACTIVE' && enabled;
+
   return {
     phase,
-    visible: phase === 'playing' || phase === 'exiting',
+    visible: liveIntro && (phase === 'playing' || phase === 'exiting'),
     exiting: phase === 'exiting',
     sessionReady: phase === 'hidden',
     introPlayer: player,

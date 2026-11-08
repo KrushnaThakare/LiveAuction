@@ -7,8 +7,9 @@ export default function IntroCinematicReveal({ player, config, sessionKey, exiti
     studio, rows, photoSrc, role, style, bgClass,
   } = useIntroPresentationProps({ player, config, sessionKey, exiting, studioOverride });
 
-  const bgMap = { 'navy-gradient': s.bgNavy, spotlight: s.bgSpotlight, electric: s.bgElectric };
-  const bgCls = bgMap[bgClass] || s.bgNavy;
+  const bgMap = { none: s.bgNone, 'navy-gradient': s.bgNavy, spotlight: s.bgSpotlight, electric: s.bgElectric };
+  const bgCls = bgMap[bgClass] || s.bgNone;
+  const showBackdrop = bgClass && bgClass !== 'none';
 
   return (
     <div
@@ -16,8 +17,8 @@ export default function IntroCinematicReveal({ player, config, sessionKey, exiti
       style={style}
       key={sessionKey}
     >
-      <div className={s.backdrop} aria-hidden />
-      <div className={s.spotlight} aria-hidden />
+      {showBackdrop && <div className={s.backdrop} aria-hidden />}
+      {showBackdrop && <div className={s.spotlight} aria-hidden />}
       <div className={s.card}>
         {studio.showPhoto !== false && (
           <div className={s.photoCol}>

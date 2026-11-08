@@ -5,6 +5,12 @@
   transform-origin: center;
 }
 
+.bgNone .card {
+  background: transparent;
+  box-shadow: none;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
 .backdrop {
   position: absolute;
   inset: -12vh -20vw;

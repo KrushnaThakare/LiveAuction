@@ -1,4 +1,4 @@
-import { parseIntroStudioConfig } from '../../../utils/overlayIntroStudio';
+import { parseIntroStudioConfig, INTRO_PLACEMENTS } from '../../../utils/overlayIntroStudio';
 import IntroCinematicReveal from './IntroCinematicReveal';
 import IntroSportsProfile from './IntroSportsProfile';
 import IntroDynamicCard from './IntroDynamicCard';
@@ -17,11 +17,14 @@ export default function PlayerIntroPresentation({
 
   const studio = studioOverride || parseIntroStudioConfig(config?.overlayMainIntroConfig);
   const template = studio.template || 'cinematic-reveal';
+  const placement = studio.placement || 'center';
+  const placementKnown = INTRO_PLACEMENTS.some((p) => p.id === placement);
+  const placementClass = placementKnown ? s[`pos_${placement.replace(/-/g, '_')}`] : s.pos_center;
   const props = { player, config, sessionKey: sessionKey || 'intro', exiting, studioOverride: studio };
 
   return (
     <div
-      className={`${embedded ? s.rootEmbedded : s.root} ${exiting ? s.rootExit : s.rootEnter}`}
+      className={`${embedded ? s.rootEmbedded : s.root} ${placementClass} ${exiting ? s.rootExit : s.rootEnter}`}
       aria-live="polite"
       data-template={template}
     >
