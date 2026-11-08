@@ -176,6 +176,7 @@ export default function PlayerIntroStudioSection({
             exiting={testExiting}
             studioOverride={introStudio}
             forceVisible
+            embedded
           />
         </div>
         <div className="flex flex-wrap gap-2 mt-2">

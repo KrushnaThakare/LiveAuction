@@ -11,6 +11,7 @@ export default function PlayerIntroPresentation({
   exiting,
   studioOverride,
   forceVisible,
+  embedded = false,
 }) {
   if (!player && !forceVisible) return null;
 
@@ -20,7 +21,7 @@ export default function PlayerIntroPresentation({
 
   return (
     <div
-      className={`${s.root} ${exiting ? s.rootExit : s.rootEnter}`}
+      className={`${embedded ? s.rootEmbedded : s.root} ${exiting ? s.rootExit : s.rootEnter}`}
       aria-live="polite"
       data-template={template}
     >

@@ -38,9 +38,7 @@
   aspect-ratio: 16 / 9;
   background: radial-gradient(ellipse at 50% 80%, rgba(8, 14, 32, 0.95), #020408);
   border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
-}
-
-.previewStage > * {
-  position: absolute !important;
-  inset: 0;
+  transform: translateZ(0);
+  isolation: isolate;
+  pointer-events: none;
 }
