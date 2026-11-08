@@ -71,6 +71,10 @@ public class BroadcastController {
         if (d.getOverlayPlayerStatsIntroMs() != null) {
             t.setOverlayPlayerStatsIntroMs(Math.max(1000, Math.min(15000, d.getOverlayPlayerStatsIntroMs())));
         }
+        if (d.getOverlayShowMainPlayerIntro() != null) t.setOverlayShowMainPlayerIntro(d.getOverlayShowMainPlayerIntro());
+        if (d.getOverlayMainPlayerIntroMs() != null) {
+            t.setOverlayMainPlayerIntroMs(Math.max(1500, Math.min(12000, d.getOverlayMainPlayerIntroMs())));
+        }
         if (d.getOverlayShowCinematicIntro() != null) t.setOverlayShowCinematicIntro(d.getOverlayShowCinematicIntro());
         if (d.getOverlayCinematicIntroLive() != null) t.setOverlayCinematicIntroLive(d.getOverlayCinematicIntroLive());
         if (d.getOverlayShowPlayerTransition() != null) t.setOverlayShowPlayerTransition(d.getOverlayShowPlayerTransition());
@@ -160,6 +164,8 @@ public class BroadcastController {
                 .auctionDisplayName(t.getAuctionDisplayName())
                 .overlayShowPlayerStatsIntro(t.getOverlayShowPlayerStatsIntro())
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
+                .overlayShowMainPlayerIntro(t.getOverlayShowMainPlayerIntro() != null ? t.getOverlayShowMainPlayerIntro() : true)
+                .overlayMainPlayerIntroMs(t.getOverlayMainPlayerIntroMs() != null ? t.getOverlayMainPlayerIntroMs() : 4500)
                 .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())
                 .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
                 .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())

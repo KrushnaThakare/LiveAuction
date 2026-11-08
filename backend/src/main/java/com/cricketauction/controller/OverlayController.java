@@ -94,6 +94,8 @@ public class OverlayController {
                 .overlayShowTeamMaxBid(t.getOverlayShowTeamMaxBid() != null ? t.getOverlayShowTeamMaxBid() : true)
                 .overlayShowPlayerStatsIntro(t.getOverlayShowPlayerStatsIntro())
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
+                .overlayShowMainPlayerIntro(t.getOverlayShowMainPlayerIntro() != null ? t.getOverlayShowMainPlayerIntro() : true)
+                .overlayMainPlayerIntroMs(t.getOverlayMainPlayerIntroMs() != null ? t.getOverlayMainPlayerIntroMs() : 4500)
                 .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())
                 .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
                 .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())

@@ -2,6 +2,8 @@ import { useSearchParams } from 'react-router-dom';
 import { BarChart3, Activity, Radio, Shield, Target, TrendingUp, Trophy } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { useTimedPlayerStatsOverlay } from '../hooks/useTimedPlayerStatsOverlay';
+import { useMainPlayerIntroOverlay } from '../hooks/useMainPlayerIntroOverlay';
+import MainPlayerIntroOverlay from '../components/overlay/MainPlayerIntroOverlay';
 import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
 import { resolveUrl } from '../utils/resolveUrl';
 import { playerIdLabel } from '../utils/playerSearch';
@@ -63,12 +65,20 @@ export default function OverlayMainPage() {
   const squadPickLabel = isSold ? formatSquadPickLabel(team?.playerCount) : null;
   const bidPopEnabled = config?.overlayShowBidPop !== false;
   const bidPopToken = useOverlayBidPop(auction?.currentBid, auction?.sessionId, bidPopEnabled && status === 'ACTIVE');
+  const mainIntroEnabled = config?.overlayShowMainPlayerIntro !== false;
+  const { visible: showMainIntro, sessionReady: mainIntroReady } = useMainPlayerIntroOverlay(
+    player,
+    auction?.sessionId,
+    mainIntroEnabled && status === 'ACTIVE',
+    config?.overlayMainPlayerIntroMs || 4500,
+  );
   const showStatsIntro = useTimedPlayerStatsOverlay(
     player,
     auction?.sessionId,
-    config?.overlayShowPlayerStatsIntro !== false,
+    config?.overlayShowPlayerStatsIntro !== false && mainIntroReady,
     config?.overlayPlayerStatsIntroMs || 5500
   );
+  const dockHidden = showMainIntro;
 
   if (!data && !config) {
     return (
@@ -173,6 +183,14 @@ export default function OverlayMainPage() {
     <div className={styles.obsViewport} style={viewportStyle}>
       <div className={`${styles.stage} ${styles.obsScaled}`} style={scaledStyle}>
       <OverlayFullscreenButton />
+      {showMainIntro && (
+        <MainPlayerIntroOverlay
+          player={player}
+          playerRoles={config?.playerRoles}
+          detailFields={mainFields.detailSlots === false ? [] : config?.overlayMainDetailFields}
+          sessionKey={auction?.sessionId}
+        />
+      )}
       {showStatsIntro && <PlayerStatsOverlay player={player} />}
       {showVerdict && (
         <div
@@ -196,7 +214,7 @@ export default function OverlayMainPage() {
           </div>
         </div>
       )}
-      {dock}
+      <div className={dockHidden ? styles.dockHidden : ''}>{dock}</div>
       </div>
     </div>
   );

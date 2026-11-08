@@ -23,6 +23,8 @@ public class BroadcastSettingsDto {
     private Boolean overlayShowTeamMaxBid;
     private Boolean overlayShowPlayerStatsIntro;
     private Integer overlayPlayerStatsIntroMs;
+    private Boolean overlayShowMainPlayerIntro;
+    private Integer overlayMainPlayerIntroMs;
     private Boolean overlayShowCinematicIntro;
     private Boolean overlayCinematicIntroLive;
     private Boolean overlayShowPlayerTransition;
