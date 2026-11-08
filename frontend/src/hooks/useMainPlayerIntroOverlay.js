@@ -10,8 +10,9 @@ export function useMainPlayerIntroOverlay(player, sessionId, enabled, config, st
   const [phase, setPhase] = useState('hidden');
   const holdTimerRef = useRef(null);
   const exitTimerRef = useRef(null);
-  const activeSessionRef = useRef(null);
+  const playedSessionRef = useRef(null);
   const playerRef = useRef(player);
+  const configRef = useRef(config);
 
   const clearTimers = () => {
     if (holdTimerRef.current) {
@@ -28,18 +29,16 @@ export function useMainPlayerIntroOverlay(player, sessionId, enabled, config, st
 
   useEffect(() => {
     playerRef.current = player;
-  }, [player]);
+    configRef.current = config;
+  }, [player, config]);
 
   const startIntro = (sid) => {
     clearTimers();
-    if (!playerRef.current) {
-      setPhase('hidden');
-      return;
-    }
-    activeSessionRef.current = sid;
+    if (!playerRef.current) return;
+    playedSessionRef.current = sid;
     setPhase('playing');
-    const holdMs = introDurationMs(config, config?.overlayMainPlayerIntroMs);
-    const exitMs = introExitMs(config);
+    const holdMs = introDurationMs(configRef.current, configRef.current?.overlayMainPlayerIntroMs);
+    const exitMs = introExitMs(configRef.current);
     holdTimerRef.current = setTimeout(() => {
       setPhase('exiting');
       exitTimerRef.current = setTimeout(() => {
@@ -54,18 +53,20 @@ export function useMainPlayerIntroOverlay(player, sessionId, enabled, config, st
       if (status !== 'ACTIVE') {
         clearTimers();
         setPhase('hidden');
-        activeSessionRef.current = null;
+        playedSessionRef.current = null;
       }
       return undefined;
     }
 
-    if (String(activeSessionRef.current) === String(sessionId)) {
+    if (!player?.id) return undefined;
+
+    if (String(playedSessionRef.current) === String(sessionId)) {
       return undefined;
     }
 
     startIntro(sessionId);
     return clearTimers;
-  }, [config, enabled, sessionId, status]);
+  }, [enabled, sessionId, status, player?.id]);
 
   useEffect(() => {
     if (!enabled) {
