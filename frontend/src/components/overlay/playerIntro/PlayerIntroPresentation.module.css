@@ -6,6 +6,30 @@
   place-items: center;
   padding: clamp(16px, 3vh, 48px);
   pointer-events: none;
+  --intro-ribbon-offset: calc(min(25.5vh, 286px) + clamp(40px, 5vh, 56px));
+}
+
+.pos_center {
+  place-items: center;
+}
+
+.pos_above_ribbon {
+  place-items: end center;
+  padding-bottom: var(--intro-ribbon-offset);
+  padding-left: clamp(18px, 1.7vw, 32px);
+  padding-right: clamp(18px, 1.7vw, 32px);
+}
+
+.pos_bottom_left {
+  place-items: end start;
+  padding-bottom: clamp(28px, 4vh, 44px);
+  padding-left: clamp(18px, 1.7vw, 32px);
+}
+
+.pos_bottom_right {
+  place-items: end end;
+  padding-bottom: clamp(28px, 4vh, 44px);
+  padding-right: clamp(18px, 1.7vw, 32px);
 }
 
 .root,

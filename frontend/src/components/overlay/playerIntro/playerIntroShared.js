@@ -1,6 +1,6 @@
 import { resolveUrl } from '../../../utils/resolveUrl';
 import { driveImg } from '../../../utils/driveImage';
-import { getRoleShortLabel } from '../../../utils/formatters';
+import { formatRole } from '../../../utils/formatters';
 import { playerIdLabel } from '../../../utils/playerSearch';
 import { collectIntroDetailRows, parseIntroStudioConfig } from '../../../utils/overlayIntroStudio';
 
@@ -24,7 +24,7 @@ export function useIntroPresentationProps({
     player,
     rows,
     photoSrc,
-    role: getRoleShortLabel(player?.role, config?.playerRoles),
+    role: formatRole(player?.role, config?.playerRoles),
     playerId: player?.id ? playerIdLabel(player) : null,
     sessionKey,
     exiting,

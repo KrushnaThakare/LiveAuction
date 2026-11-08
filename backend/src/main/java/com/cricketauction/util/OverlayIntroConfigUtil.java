@@ -22,8 +22,8 @@ public final class OverlayIntroConfigUtil {
 
     public static String defaultConfigJson() {
         return "{\"template\":\"cinematic-reveal\",\"durationSec\":5,\"showPhoto\":true,\"showRole\":true,"
-                + "\"showStats\":true,\"backgroundStyle\":\"navy-gradient\",\"animationSpeed\":1,\"photoScalePercent\":100,"
-                + "\"introScalePercent\":100,\"displayFields\":[\"battingStyle\",\"bowlingStyle\",\"age\",\"city\","
-                + "\"previousTeam\",\"matches\",\"runs\",\"wickets\"]}";
+                + "\"showStats\":true,\"backgroundStyle\":\"none\",\"placement\":\"center\",\"animationSpeed\":1,"
+                + "\"photoScalePercent\":100,\"introScalePercent\":100,\"displayFields\":[\"battingStyle\",\"bowlingStyle\","
+                + "\"age\",\"city\",\"previousTeam\",\"matches\",\"runs\",\"wickets\"]}";
     }
 }

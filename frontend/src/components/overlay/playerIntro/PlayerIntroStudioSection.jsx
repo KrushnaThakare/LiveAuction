@@ -5,6 +5,7 @@ import {
   INTRO_TEMPLATES,
   INTRO_DURATION_OPTIONS,
   INTRO_BACKGROUND_STYLES,
+  INTRO_PLACEMENTS,
   INTRO_FIELD_CATALOG,
   INTRO_PREVIEW_PLAYER,
   introExitMs,
@@ -106,11 +107,23 @@ export default function PlayerIntroStudioSection({
           Background
           <select
             className="input mt-1"
-            value={introStudio.backgroundStyle}
+            value={introStudio.backgroundStyle || 'none'}
             onChange={(e) => onIntroChange({ backgroundStyle: e.target.value })}
           >
             {INTRO_BACKGROUND_STYLES.map((b) => (
               <option key={b.id} value={b.id}>{b.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm">
+          On-screen position
+          <select
+            className="input mt-1"
+            value={introStudio.placement || 'center'}
+            onChange={(e) => onIntroChange({ placement: e.target.value })}
+          >
+            {INTRO_PLACEMENTS.map((p) => (
+              <option key={p.id} value={p.id}>{p.label}</option>
             ))}
           </select>
         </label>

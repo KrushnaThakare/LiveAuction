@@ -7,9 +7,11 @@ export default function IntroDynamicCard({ player, config, sessionKey, exiting, 
     player, config, sessionKey, exiting, studioOverride,
   });
 
+  const bare = studio.backgroundStyle === 'none';
+
   return (
     <div className={`${s.stage} ${exiting ? s.exit : ''}`} style={style} key={sessionKey}>
-      <div className={s.card}>
+      <div className={`${s.card} ${bare ? s.cardBare : ''}`}>
         <div className={s.accent} aria-hidden />
         {studio.showPhoto !== false && (
           <div className={s.photo}>

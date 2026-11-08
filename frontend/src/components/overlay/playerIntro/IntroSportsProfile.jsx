@@ -7,9 +7,11 @@ export default function IntroSportsProfile({ player, config, sessionKey, exiting
     player, config, sessionKey, exiting, studioOverride,
   });
 
+  const bare = studio.backgroundStyle === 'none';
+
   return (
     <div className={`${s.stage} ${exiting ? s.exit : ''}`} style={style} key={sessionKey}>
-      <div className={s.panel}>
+      <div className={`${s.panel} ${bare ? s.panelBare : ''}`}>
         {studio.showPhoto !== false && (
           <div className={s.photoSide}>
             <div className={s.photoWrap}>

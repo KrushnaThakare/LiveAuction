@@ -10,9 +10,17 @@ export const INTRO_TEMPLATES = [
 export const INTRO_DURATION_OPTIONS = [3, 4, 5, 6, 7, 8];
 
 export const INTRO_BACKGROUND_STYLES = [
+  { id: 'none', label: 'No background (transparent)' },
   { id: 'navy-gradient', label: 'Navy gradient' },
   { id: 'spotlight', label: 'Spotlight' },
   { id: 'electric', label: 'Electric dark' },
+];
+
+export const INTRO_PLACEMENTS = [
+  { id: 'center', label: 'Centre (full screen)' },
+  { id: 'above-ribbon', label: 'Above main ribbon (bottom centre)' },
+  { id: 'bottom-left', label: 'Bottom left' },
+  { id: 'bottom-right', label: 'Bottom right' },
 ];
 
 const DEFAULT_INTRO_STUDIO = {
@@ -21,7 +29,8 @@ const DEFAULT_INTRO_STUDIO = {
   showPhoto: true,
   showRole: true,
   showStats: true,
-  backgroundStyle: 'navy-gradient',
+  backgroundStyle: 'none',
+  placement: 'center',
   animationSpeed: 1,
   photoScalePercent: 100,
   introScalePercent: 100,
