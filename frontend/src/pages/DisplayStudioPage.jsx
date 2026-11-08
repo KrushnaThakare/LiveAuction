@@ -10,6 +10,8 @@ import {
   parseMainOverlayFields,
   serializeMainOverlayFields,
 } from '../utils/overlayMainFields';
+import LowerThirdStudioSection from '../components/overlay/lowerThird/LowerThirdStudioSection';
+import { LOWER_THIRD_PREMIUM_LAYOUTS } from '../components/overlay/lowerThird/lowerThirdUtils';
 
 function ToggleRow({ label, hint, checked, onChange }) {
   return (
@@ -119,10 +121,18 @@ export default function DisplayStudioPage() {
         </div>
       </section>
 
+      <LowerThirdStudioSection
+        tournamentId={tid}
+        settings={settings}
+        mainFields={mainFields}
+        overlayToken={settings.overlaySecretToken}
+        onSelectLayout={(id) => setSettings((s) => ({ ...s, overlayMainLayout: id }))}
+      />
+
       <section className="card p-4 space-y-3">
-        <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Main overlay layout</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Legacy main overlay layouts</h2>
         <div className="grid sm:grid-cols-2 gap-3">
-          {MAIN_OVERLAY_LAYOUTS.map((layout) => (
+          {MAIN_OVERLAY_LAYOUTS.filter((layout) => !LOWER_THIRD_PREMIUM_LAYOUTS.some((p) => p.id === layout.id)).map((layout) => (
             <label key={layout.id} className={`rounded-xl p-3 border cursor-pointer ${settings.overlayMainLayout === layout.id ? 'border-blue-500' : ''}`}
               style={{ borderColor: settings.overlayMainLayout === layout.id ? 'var(--color-primary)' : 'var(--color-border)', background: 'var(--color-surface-2)' }}>
               <input
