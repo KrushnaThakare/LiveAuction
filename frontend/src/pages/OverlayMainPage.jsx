@@ -3,7 +3,7 @@ import { BarChart3, Activity, Radio, Shield, Target, TrendingUp, Trophy } from '
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { useTimedPlayerStatsOverlay } from '../hooks/useTimedPlayerStatsOverlay';
 import { useMainPlayerIntroOverlay } from '../hooks/useMainPlayerIntroOverlay';
-import MainPlayerIntroOverlay from '../components/overlay/MainPlayerIntroOverlay';
+import PlayerIntroPresentation from '../components/overlay/playerIntro/PlayerIntroPresentation';
 import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
 import { resolveUrl } from '../utils/resolveUrl';
 import { playerIdLabel } from '../utils/playerSearch';
@@ -68,11 +68,12 @@ export default function OverlayMainPage() {
   const bidPopEnabled = config?.overlayShowBidPop !== false;
   const bidPopToken = useOverlayBidPop(auction?.currentBid, auction?.sessionId, bidPopEnabled && status === 'ACTIVE');
   const mainIntroEnabled = config?.overlayShowMainPlayerIntro !== false;
-  const { visible: showMainIntro, sessionReady: mainIntroReady } = useMainPlayerIntroOverlay(
+  const { visible: showMainIntro, exiting: introExiting, sessionReady: mainIntroReady, introPlayer } = useMainPlayerIntroOverlay(
     player,
     auction?.sessionId,
     mainIntroEnabled && status === 'ACTIVE',
-    config?.overlayMainPlayerIntroMs || 4500,
+    config,
+    status,
   );
   const showStatsIntro = useTimedPlayerStatsOverlay(
     player,
@@ -80,8 +81,7 @@ export default function OverlayMainPage() {
     config?.overlayShowPlayerStatsIntro !== false && mainIntroReady,
     config?.overlayPlayerStatsIntroMs || 5500
   );
-  const premiumLowerThird = layout === 'modern-3d-sports' || layout === 'clean-premium-tv' || layout === 'dynamic-electric';
-  const dockHidden = showMainIntro && !premiumLowerThird;
+  const dockHidden = showMainIntro;
 
   if (!data && !config) {
     return (
@@ -183,12 +183,12 @@ export default function OverlayMainPage() {
     <div className={styles.obsViewport} style={viewportStyle}>
       <div className={`${styles.stage} ${styles.obsScaled}`} style={scaledStyle}>
       <OverlayFullscreenButton />
-      {showMainIntro && !premiumLowerThird && (
-        <MainPlayerIntroOverlay
-          player={player}
-          playerRoles={config?.playerRoles}
-          detailFields={mainFields.detailSlots === false ? [] : config?.overlayMainDetailFields}
+      {showMainIntro && (
+        <PlayerIntroPresentation
+          player={introPlayer || player}
+          config={config}
           sessionKey={auction?.sessionId}
+          exiting={introExiting}
         />
       )}
       {showStatsIntro && <PlayerStatsOverlay player={player} />}

@@ -75,6 +75,9 @@ public class BroadcastController {
         if (d.getOverlayMainPlayerIntroMs() != null) {
             t.setOverlayMainPlayerIntroMs(Math.max(1500, Math.min(12000, d.getOverlayMainPlayerIntroMs())));
         }
+        if (d.getOverlayMainIntroConfig() != null) {
+            t.setOverlayMainIntroConfig(com.cricketauction.util.OverlayIntroConfigUtil.normalize(d.getOverlayMainIntroConfig()));
+        }
         if (d.getOverlayShowCinematicIntro() != null) t.setOverlayShowCinematicIntro(d.getOverlayShowCinematicIntro());
         if (d.getOverlayCinematicIntroLive() != null) t.setOverlayCinematicIntroLive(d.getOverlayCinematicIntroLive());
         if (d.getOverlayShowPlayerTransition() != null) t.setOverlayShowPlayerTransition(d.getOverlayShowPlayerTransition());
@@ -166,6 +169,9 @@ public class BroadcastController {
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
                 .overlayShowMainPlayerIntro(t.getOverlayShowMainPlayerIntro() != null ? t.getOverlayShowMainPlayerIntro() : true)
                 .overlayMainPlayerIntroMs(t.getOverlayMainPlayerIntroMs() != null ? t.getOverlayMainPlayerIntroMs() : 4500)
+                .overlayMainIntroConfig(t.getOverlayMainIntroConfig() != null
+                        ? t.getOverlayMainIntroConfig()
+                        : com.cricketauction.util.OverlayIntroConfigUtil.defaultConfigJson())
                 .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())
                 .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
                 .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())

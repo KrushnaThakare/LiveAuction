@@ -96,6 +96,9 @@ public class OverlayController {
                 .overlayPlayerStatsIntroMs(t.getOverlayPlayerStatsIntroMs())
                 .overlayShowMainPlayerIntro(t.getOverlayShowMainPlayerIntro() != null ? t.getOverlayShowMainPlayerIntro() : true)
                 .overlayMainPlayerIntroMs(t.getOverlayMainPlayerIntroMs() != null ? t.getOverlayMainPlayerIntroMs() : 4500)
+                .overlayMainIntroConfig(t.getOverlayMainIntroConfig() != null
+                        ? t.getOverlayMainIntroConfig()
+                        : com.cricketauction.util.OverlayIntroConfigUtil.defaultConfigJson())
                 .overlayShowCinematicIntro(t.getOverlayShowCinematicIntro())
                 .overlayCinematicIntroLive(t.getOverlayCinematicIntroLive())
                 .overlayShowPlayerTransition(t.getOverlayShowPlayerTransition())

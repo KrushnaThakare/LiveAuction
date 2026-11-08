@@ -1,0 +1,47 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: clamp(16px, 3vh, 48px);
+  pointer-events: none;
+}
+
+.root,
+.root * {
+  pointer-events: none;
+}
+
+.rootEmbedded {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  pointer-events: none;
+}
+
+.rootEmbedded,
+.rootEmbedded * {
+  pointer-events: none;
+}
+
+.rootEnter {
+  animation: introRootIn 0.5s ease both;
+}
+
+.rootExit {
+  animation: introRootOut 0.42s ease forwards;
+}
+
+@keyframes introRootIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes introRootOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.98); }
+}
