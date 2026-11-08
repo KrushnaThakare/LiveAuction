@@ -155,6 +155,11 @@ public class Tournament {
     @Builder.Default
     private Integer overlayMainPlayerIntroMs = 4500;
 
+    /** JSON: template, field toggles, animation — Player Introduction Studio */
+    @Lob
+    @Column(name = "overlay_main_intro_config", columnDefinition = "TEXT")
+    private String overlayMainIntroConfig;
+
     /** Audience Display: cinematic next-player reveal (admin setting) */
     @Column(name = "overlay_show_cinematic_intro")
     @Builder.Default

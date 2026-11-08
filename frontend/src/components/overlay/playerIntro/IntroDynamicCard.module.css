@@ -1,0 +1,126 @@
+.stage {
+  width: min(88vw, 920px);
+  transform: scale(var(--intro-scale, 1));
+  perspective: 1200px;
+}
+
+.card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(160px, 36%) 1fr;
+  gap: 20px;
+  padding: 20px 24px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #050a14, #0a1628);
+  border: 1px solid rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 32px rgba(6, 182, 212, 0.25), 0 28px 60px rgba(0, 0, 0, 0.55);
+  animation: cardFlipIn var(--intro-speed, 0.6s) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes cardFlipIn {
+  from { opacity: 0; transform: rotateY(-8deg) scale(0.94); }
+  to { opacity: 1; transform: rotateY(0) scale(1); }
+}
+
+.exit .card {
+  animation: cardFlipOut var(--intro-speed, 0.42s) ease forwards;
+}
+
+@keyframes cardFlipOut {
+  to { opacity: 0; transform: rotateY(6deg) scale(0.96); }
+}
+
+.accent {
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 4px;
+  background: linear-gradient(180deg, #22d3ee, #0891b2);
+  box-shadow: 0 0 16px #22d3ee;
+}
+
+.photo {
+  clip-path: polygon(0 0, 100% 0, 100% 88%, 84% 100%, 0 100%);
+  border: 2px solid rgba(34, 211, 238, 0.55);
+  overflow: hidden;
+  aspect-ratio: 3/4;
+  max-height: 280px;
+  transform: scale(var(--intro-photo-scale, 1));
+  transform-origin: center bottom;
+  animation: photoReveal var(--intro-speed, 0.55s) ease 0.08s both;
+}
+
+@keyframes photoReveal {
+  from { opacity: 0; filter: brightness(1.4); }
+  to { opacity: 1; filter: brightness(1); }
+}
+
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photoFb {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: #0a1628;
+  color: #22d3ee;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.kicker {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #67e8f9;
+}
+
+.name {
+  margin: 0;
+  font-size: clamp(30px, 3.4vw, 50px);
+  font-weight: 1000;
+  text-transform: uppercase;
+  color: #e0f2fe;
+}
+
+.role {
+  font-size: 13px;
+  font-weight: 900;
+  color: #22d3ee;
+  text-transform: uppercase;
+}
+
+.base {
+  font-size: 15px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  color: #a5f3fc;
+}

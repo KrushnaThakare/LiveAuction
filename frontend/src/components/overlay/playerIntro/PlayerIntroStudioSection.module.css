@@ -1,0 +1,46 @@
+.templateCard {
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid var(--color-border, rgba(255, 255, 255, 0.12));
+  background: var(--color-surface-2, rgba(255, 255, 255, 0.04));
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.templateSelected {
+  border-color: var(--color-primary, #3b82f6);
+  transform: translateY(-1px);
+}
+
+.templateLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.templateDesc {
+  display: block;
+  font-size: 11px;
+  margin-top: 4px;
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.55));
+  line-height: 1.35;
+}
+
+.previewWrap {
+  margin-top: 8px;
+}
+
+.previewStage {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: radial-gradient(ellipse at 50% 80%, rgba(8, 14, 32, 0.95), #020408);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+}
+
+.previewStage > * {
+  position: absolute !important;
+  inset: 0;
+}

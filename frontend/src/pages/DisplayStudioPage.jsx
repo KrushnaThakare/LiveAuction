@@ -12,6 +12,8 @@ import {
 } from '../utils/overlayMainFields';
 import LowerThirdStudioSection from '../components/overlay/lowerThird/LowerThirdStudioSection';
 import { LOWER_THIRD_PREMIUM_LAYOUTS } from '../components/overlay/lowerThird/lowerThirdUtils';
+import PlayerIntroStudioSection from '../components/overlay/playerIntro/PlayerIntroStudioSection';
+import { parseIntroStudioConfig, serializeIntroStudioConfig } from '../utils/overlayIntroStudio';
 
 function ToggleRow({ label, hint, checked, onChange }) {
   return (
@@ -32,6 +34,7 @@ export default function DisplayStudioPage() {
   const tid = activeTournament?.id;
   const [settings, setSettings] = useState(null);
   const [mainFields, setMainFields] = useState(parseMainOverlayFields());
+  const [introStudio, setIntroStudio] = useState(() => parseIntroStudioConfig());
   const audienceBgInputRef = useRef(null);
   const logoInputRef = useRef(null);
   const base = window.location.origin;
@@ -51,14 +54,18 @@ export default function DisplayStudioPage() {
         logoUrl: loaded.logoUrl || activeTournament?.logoUrl || '',
       });
       setMainFields(parseMainOverlayFields(loaded.overlayMainShowFields));
+      setIntroStudio(parseIntroStudioConfig(loaded.overlayMainIntroConfig));
     });
   }, [tid, activeTournament?.logoUrl]);
 
   const save = async () => {
     if (!tid || !settings) return;
+    const introPayload = serializeIntroStudioConfig(introStudio);
     await broadcastApi.updateSettings(tid, {
       ...settings,
       overlayMainShowFields: serializeMainOverlayFields(mainFields),
+      overlayMainIntroConfig: introPayload,
+      overlayMainPlayerIntroMs: (introStudio.durationSec || 5) * 1000,
     });
     toast.success('Display studio saved');
   };
@@ -120,6 +127,15 @@ export default function DisplayStudioPage() {
           </div>
         </div>
       </section>
+
+      <PlayerIntroStudioSection
+        tournamentId={tid}
+        settings={settings}
+        introStudio={introStudio}
+        overlayToken={settings.overlaySecretToken}
+        onEnabledChange={(enabled) => setSettings((s) => ({ ...s, overlayShowMainPlayerIntro: enabled }))}
+        onIntroChange={(patch) => setIntroStudio((prev) => ({ ...prev, ...patch }))}
+      />
 
       <LowerThirdStudioSection
         tournamentId={tid}
