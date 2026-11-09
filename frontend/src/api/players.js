@@ -20,6 +20,13 @@ export const playerApi = {
     api.post(`/tournaments/${tournamentId}/players/repair-roles`),
   update: (tournamentId, playerId, data) =>
     api.put(`/tournaments/${tournamentId}/players/${playerId}`, data),
+  uploadPhoto: (tournamentId, playerId, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post(`/tournaments/${tournamentId}/players/${playerId}/photo`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   fetchCricHeroesStats: (tournamentId, playerId) =>
     api.post(`/tournaments/${tournamentId}/players/${playerId}/cricheroes/fetch-stats`),
   cleanInvalidCricHeroesProfiles: (tournamentId) =>

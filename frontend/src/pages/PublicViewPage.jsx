@@ -8,6 +8,7 @@ import { resolveUrl } from '../utils/resolveUrl';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
 import { useOverlayBidPop } from '../hooks/useOverlayBidPop';
 import { useAuctionVerdictOverlay } from '../hooks/useAuctionVerdictOverlay';
+import { useBroadcasterVerdictFlash, BROADCASTER_VERDICT_FLASH_MS } from '../hooks/useBroadcasterVerdictFlash';
 import SequentialImage from '../components/common/SequentialImage';
 import GavelOverlay from '../components/common/GavelOverlay';
 import BidAmountDisplay from '../components/overlay/BidAmountDisplay';
@@ -50,7 +51,8 @@ export default function PublicViewPage() {
   const [remaining, setRemaining]     = useState([]);
   const [loadedTabs, setLoadedTabs]   = useState({});
   const [tabLoading, setTabLoading]   = useState(false);
-  const { soldOverlay } = useAuctionVerdictOverlay(data?.auction, data?.teams);
+  const { soldOverlay, dismissOverlay } = useAuctionVerdictOverlay(data?.auction, data?.teams);
+  const showClosedVerdict = useBroadcasterVerdictFlash(data?.auction);
   const loadedTabsRef = useRef({});
   const previousAuctionRef = useRef(null);
 
@@ -244,6 +246,7 @@ export default function PublicViewPage() {
                 teams={summaryTeams}
                 roles={playerRoles}
                 maxSquadSize={config?.maxSquadSize}
+                showClosedVerdict={showClosedVerdict}
               />
             )}
             {activeTab === 'teams' && (
@@ -270,8 +273,7 @@ export default function PublicViewPage() {
         )}
       </div>
 
-      {/* Gavel overlay — same for SOLD and UNSOLD */}
-      {soldOverlay && (
+      {activeTab === 'auction' && soldOverlay && (
         <GavelOverlay
           key={soldOverlay.sessionKey}
           verdict={soldOverlay.verdict}
@@ -280,7 +282,8 @@ export default function PublicViewPage() {
           teamLogo={soldOverlay.teamLogo}
           amount={soldOverlay.amount}
           squadPick={soldOverlay.squadPick}
-          duration={soldOverlay.verdict === 'SOLD' ? 5500 : 4000}
+          duration={BROADCASTER_VERDICT_FLASH_MS}
+          onComplete={dismissOverlay}
         />
       )}
     </div>
@@ -290,19 +293,21 @@ export default function PublicViewPage() {
 /* GavelOverlay handles both SOLD and UNSOLD — imported from components/common */
 
 /* ═══ AUCTION VIEW ═══ */
-function AuctionView({ auctionState, teams, roles, maxSquadSize, bidPopEnabled = true }) {
+function AuctionView({ auctionState, teams, roles, maxSquadSize, bidPopEnabled = true, showClosedVerdict = false }) {
   const isActive = auctionState?.status === 'ACTIVE';
   const player   = auctionState?.currentPlayer;
   const bidPopToken = useOverlayBidPop(auctionState?.currentBid, auctionState?.sessionId, bidPopEnabled && isActive);
 
   if (!isActive || !player) {
+    const st = auctionState?.status;
+    const showVerdictBanner = showClosedVerdict && (st === 'SOLD' || st === 'UNSOLD');
     return (
       <div className="text-center py-12 max-w-sm mx-auto">
         <Gavel size={48} className="mx-auto mb-4" style={{ color: 'var(--color-text-secondary)', opacity: 0.3 }} />
         <h2 className="text-lg font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>
-          {auctionState?.status === 'SOLD'   ? '✅ Player Sold! Next coming…' :
-           auctionState?.status === 'UNSOLD' ? '❌ Unsold. Next coming…' :
-           'Auction not started yet'}
+          {showVerdictBanner && st === 'SOLD' ? '✅ Player Sold! Next coming…' :
+           showVerdictBanner && st === 'UNSOLD' ? '❌ Unsold. Next coming…' :
+           'Waiting for next player'}
         </h2>
         <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
           Updates live when the auction desk changes players or bids

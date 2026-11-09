@@ -137,6 +137,13 @@ public class PlayerService {
         return mapToResponse(player);
     }
 
+    public PlayerResponse updatePlayerImageUrl(Long id, String imageUrl) {
+        Player player = findById(id);
+        player.setImageUrl(imageUrl);
+        player = playerRepository.save(player);
+        return mapToResponse(player);
+    }
+
     public PlayerResponse updatePlayer(Long id, com.cricketauction.dto.PlayerRequest request) {
         Player player = findById(id);
         Tournament tournament = player.getTournament();

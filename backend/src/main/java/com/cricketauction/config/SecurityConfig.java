@@ -22,14 +22,19 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final JwtFilter      jwtFilter;
+    private final JwtFilter             jwtFilter;
+    private final TournamentAccessFilter tournamentAccessFilter;
     private final AppUserService userService;
     private final PasswordEncoder passwordEncoder;
 
-    public SecurityConfig(JwtFilter jwtFilter, AppUserService userService, PasswordEncoder passwordEncoder) {
-        this.jwtFilter      = jwtFilter;
-        this.userService    = userService;
-        this.passwordEncoder = passwordEncoder;
+    public SecurityConfig(JwtFilter jwtFilter,
+                          TournamentAccessFilter tournamentAccessFilter,
+                          AppUserService userService,
+                          PasswordEncoder passwordEncoder) {
+        this.jwtFilter               = jwtFilter;
+        this.tournamentAccessFilter  = tournamentAccessFilter;
+        this.userService             = userService;
+        this.passwordEncoder         = passwordEncoder;
     }
 
     @Bean
@@ -113,7 +118,8 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(tournamentAccessFilter, JwtFilter.class);
 
         return http.build();
     }

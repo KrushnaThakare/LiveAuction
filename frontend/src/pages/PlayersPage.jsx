@@ -14,7 +14,7 @@ import { resolveUrl } from '../utils/resolveUrl';
 import { matchesPlayerIdOrName } from '../utils/playerSearch';
 import { hasCricHeroesProfile, hasPlayerStats, isCricHeroesProfileUrl, statValue } from '../utils/playerStats';
 import toast from 'react-hot-toast';
-import { BarChart3, Users, Upload, Search, Download, X, RefreshCw, Plus } from 'lucide-react';
+import { BarChart3, Users, Upload, Search, Download, X, RefreshCw, Plus, ImagePlus } from 'lucide-react';
 
 const STATUS_FILTERS = ['ALL', 'AVAILABLE', 'SOLD', 'UNSOLD', 'IN_AUCTION', 'RETAINED'];
 
@@ -49,6 +49,8 @@ export default function PlayersPage() {
     teamId: '',
   };
   const [editForm, setEditForm]           = useState(emptyPlayerForm);
+  const [editPhotoFile, setEditPhotoFile] = useState(null);
+  const [editPhotoPreview, setEditPhotoPreview] = useState(null);
   const [editSaving, setEditSaving]       = useState(false);
   const [statsFetching, setStatsFetching] = useState(false);
   const [bulkStatsFetching, setBulkStatsFetching] = useState(false);
@@ -125,9 +127,21 @@ export default function PlayersPage() {
   };
 
   /* ── open edit ── */
+  const photoPreview = editPhotoPreview || (editForm.imageUrl ? resolveUrl(editForm.imageUrl) : null);
+
+  const handlePhotoPick = (file) => {
+    if (!file) return;
+    setEditPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setEditPhotoPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
   const openEdit = (player) => {
     setEditingPlayer(player);
     setShowManualModal(false);
+    setEditPhotoFile(null);
+    setEditPhotoPreview(player.imageUrl ? resolveUrl(player.imageUrl) : null);
     setEditForm({
       name:      player.name,
       role:      player.role,
@@ -148,6 +162,8 @@ export default function PlayersPage() {
   const openManualAdd = () => {
     setEditingPlayer(null);
     setEditForm({ ...emptyPlayerForm, role: defaultRole });
+    setEditPhotoFile(null);
+    setEditPhotoPreview(null);
     setShowManualModal(true);
   };
 
@@ -176,14 +192,21 @@ export default function PlayersPage() {
     setEditSaving(true);
     try {
       const payload = buildPlayerPayload();
-      const res = isEdit
+      let res = isEdit
         ? await playerApi.update(activeTournament.id, editingPlayer.id, payload)
         : await playerApi.create(activeTournament.id, payload);
+      const playerId = isEdit ? editingPlayer.id : res.data.data?.id;
+      if (editPhotoFile && playerId) {
+        const up = await playerApi.uploadPhoto(activeTournament.id, playerId, editPhotoFile);
+        res = up;
+      }
       toast.success(isEdit ? 'Player updated' : 'Player added');
       if (isEdit) setPlayers(p => p.map(x => x.id === editingPlayer.id ? res.data.data : x));
       else setPlayers(p => [...p, res.data.data]);
       setEditingPlayer(null);
       setShowManualModal(false);
+      setEditPhotoFile(null);
+      setEditPhotoPreview(null);
       fetchPlayers();
     } finally {
       setEditSaving(false);
@@ -475,10 +498,32 @@ export default function PlayersPage() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-              Image URL <span style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}>(Google Drive link OK)</span>
+              Player photo
+            </label>
+            <div className="flex flex-wrap items-center gap-3">
+              {photoPreview ? (
+                <img src={photoPreview} alt="" className="w-16 h-20 rounded-lg object-cover border"
+                  style={{ borderColor: 'var(--color-border)' }} />
+              ) : (
+                <div className="w-16 h-20 rounded-lg flex items-center justify-center border"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  <ImagePlus size={22} />
+                </div>
+              )}
+              <label className="btn-secondary text-xs cursor-pointer">
+                Upload image
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => handlePhotoPick(e.target.files?.[0])} />
+              </label>
+            </div>
+            <label className="block text-xs font-medium mt-2 mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+              Or image URL <span style={{ fontWeight: 400 }}>(Google Drive OK)</span>
             </label>
             <input className="input" placeholder="https://..." value={editForm.imageUrl}
-              onChange={e => setEditForm(f => ({ ...f, imageUrl: e.target.value }))} />
+              onChange={e => {
+                setEditForm(f => ({ ...f, imageUrl: e.target.value }));
+                if (!editPhotoFile) setEditPhotoPreview(e.target.value ? resolveUrl(e.target.value) : null);
+              }} />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>

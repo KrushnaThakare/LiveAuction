@@ -48,6 +48,10 @@ public class AppUser {
     @Column(name = "app_logo_url", length = 500)
     private String appLogoUrl;
 
+    /** JSON array of tournament ids; null = legacy access to all (OPERATOR/VIEWER). */
+    @Column(name = "allowed_tournament_ids", columnDefinition = "TEXT")
+    private String allowedTournamentIds;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
