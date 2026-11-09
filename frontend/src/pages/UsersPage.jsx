@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/auth';
+import { tournamentApi } from '../api/tournaments';
 import Modal from '../components/common/Modal';
 import toast from 'react-hot-toast';
 import { Plus, Edit, Trash2, Key, ShieldCheck, Eye, Crown, Upload, Building2 } from 'lucide-react';
@@ -13,6 +14,45 @@ const ROLES = [
 ];
 const ROLE_MAP = Object.fromEntries(ROLES.map(r => [r.value, r]));
 
+function parseAllowedTournamentIds(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(Number).filter((n) => Number.isFinite(n)) : [];
+  } catch {
+    return [];
+  }
+}
+
+function TournamentAccessPicker({ role, tournaments, selectedIds, onChange }) {
+  if (role === 'SUPER_ADMIN') {
+    return (
+      <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+        Super admins can access all tournaments.
+      </p>
+    );
+  }
+  const toggle = (id) => {
+    const set = new Set(selectedIds);
+    if (set.has(id)) set.delete(id);
+    else set.add(id);
+    onChange(Array.from(set));
+  };
+  return (
+    <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg p-2"
+      style={{ border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+      {tournaments.length === 0 ? (
+        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>No tournaments yet.</p>
+      ) : tournaments.map((t) => (
+        <label key={t.id} className="flex items-center gap-2 text-sm cursor-pointer py-1 px-1 rounded hover:bg-white/5">
+          <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => toggle(t.id)} />
+          <span>{t.name}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 function resolveLogoUrl(url) {
   if (!url) return null;
   return url.startsWith('/api') ? API_ORIGIN + url : url;
@@ -20,6 +60,7 @@ function resolveLogoUrl(url) {
 
 export default function UsersPage() {
   const [users, setUsers]           = useState([]);
+  const [allTournaments, setAllTournaments] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showEdit, setShowEdit]     = useState(false);
@@ -29,13 +70,13 @@ export default function UsersPage() {
   const [newPwd, setNewPwd]         = useState('');
 
   const [createForm, setCreateForm] = useState({
-    username: '', password: '', displayName: '', role: 'OPERATOR', appName: '',
+    username: '', password: '', displayName: '', role: 'OPERATOR', appName: '', allowedTournamentIds: [],
   });
   const [createLogoFile, setCreateLogoFile]   = useState(null);
   const [createLogoPreview, setCreateLogoPreview] = useState(null);
 
   const [editForm, setEditForm] = useState({
-    displayName: '', role: 'OPERATOR', active: true, appName: '',
+    displayName: '', role: 'OPERATOR', active: true, appName: '', allowedTournamentIds: [],
   });
   const [editLogoFile, setEditLogoFile]     = useState(null);
   const [editLogoPreview, setEditLogoPreview] = useState(null);
@@ -50,6 +91,10 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
+  useEffect(() => {
+    tournamentApi.getAll().then((res) => setAllTournaments(res.data.data || [])).catch(() => {});
+  }, []);
+
   /* ── Create ── */
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -57,16 +102,26 @@ export default function UsersPage() {
       toast.error('Username, password and display name are required');
       return;
     }
+    if (createForm.role !== 'SUPER_ADMIN' && createForm.allowedTournamentIds.length === 0) {
+      toast.error('Select at least one tournament for this role');
+      return;
+    }
     setSaving(true);
     try {
-      const res = await authApi.createUser(createForm);
+      const payload = {
+        ...createForm,
+        allowedTournamentIds: createForm.role === 'SUPER_ADMIN'
+          ? null
+          : JSON.stringify(createForm.allowedTournamentIds),
+      };
+      const res = await authApi.createUser(payload);
       const userId = res.data.data?.id;
       if (createLogoFile && userId) {
         await authApi.uploadUserLogo(userId, createLogoFile);
       }
       toast.success('User created');
       setShowCreate(false);
-      setCreateForm({ username: '', password: '', displayName: '', role: 'OPERATOR', appName: '' });
+      setCreateForm({ username: '', password: '', displayName: '', role: 'OPERATOR', appName: '', allowedTournamentIds: [] });
       setCreateLogoFile(null);
       setCreateLogoPreview(null);
       fetchUsers();
@@ -78,7 +133,23 @@ export default function UsersPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await authApi.updateUser(selected.id, editForm);
+      const keepingLegacyAll = editForm.role !== 'SUPER_ADMIN'
+        && editForm.allowedTournamentIds.length === 0
+        && !selected?.allowedTournamentIds;
+      if (editForm.role !== 'SUPER_ADMIN' && editForm.allowedTournamentIds.length === 0 && !keepingLegacyAll) {
+        toast.error('Select at least one tournament');
+        setSaving(false);
+        return;
+      }
+      const payload = {
+        ...editForm,
+        allowedTournamentIds: editForm.role === 'SUPER_ADMIN'
+          ? null
+          : keepingLegacyAll
+            ? null
+            : JSON.stringify(editForm.allowedTournamentIds),
+      };
+      await authApi.updateUser(selected.id, payload);
       if (editLogoFile) {
         await authApi.uploadUserLogo(selected.id, editLogoFile);
       }
@@ -109,7 +180,13 @@ export default function UsersPage() {
 
   const openEdit = (user) => {
     setSelected(user);
-    setEditForm({ displayName: user.displayName, role: user.role, active: user.active, appName: user.appName || '' });
+    setEditForm({
+      displayName: user.displayName,
+      role: user.role,
+      active: user.active,
+      appName: user.appName || '',
+      allowedTournamentIds: parseAllowedTournamentIds(user.allowedTournamentIds),
+    });
     setEditLogoFile(null);
     setEditLogoPreview(resolveLogoUrl(user.appLogoUrl));
     setShowEdit(true);
@@ -190,6 +267,11 @@ export default function UsersPage() {
                     )}
                   </div>
                   <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>@{user.username}</p>
+                  {user.role !== 'SUPER_ADMIN' && user.allowedTournamentIds && parseAllowedTournamentIds(user.allowedTournamentIds).length > 0 && (
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+                      Tournaments: {parseAllowedTournamentIds(user.allowedTournamentIds).length} allowed
+                    </p>
+                  )}
                 </div>
 
                 <span className="text-xs px-2.5 py-1 rounded-full font-semibold flex-shrink-0"
@@ -293,6 +375,18 @@ export default function UsersPage() {
             </div>
           </div>
 
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+              Tournament access
+            </label>
+            <TournamentAccessPicker
+              role={createForm.role}
+              tournaments={allTournaments}
+              selectedIds={createForm.allowedTournamentIds}
+              onChange={(ids) => setCreateForm((f) => ({ ...f, allowedTournamentIds: ids }))}
+            />
+          </div>
+
           <div className="flex gap-3 justify-end">
             <button type="button" className="btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Creating…' : 'Create User'}</button>
@@ -355,6 +449,23 @@ export default function UsersPage() {
                 </label>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+              Tournament access
+            </label>
+            {!selected?.allowedTournamentIds && editForm.role !== 'SUPER_ADMIN' && (
+              <p className="text-xs mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                Legacy: all tournaments until you select specific ones below.
+              </p>
+            )}
+            <TournamentAccessPicker
+              role={editForm.role}
+              tournaments={allTournaments}
+              selectedIds={editForm.allowedTournamentIds}
+              onChange={(ids) => setEditForm((f) => ({ ...f, allowedTournamentIds: ids }))}
+            />
           </div>
 
           <div className="flex items-center gap-2">

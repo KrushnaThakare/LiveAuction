@@ -13,10 +13,15 @@ import com.cricketauction.repository.PlayerRegistrationRepository;
 import com.cricketauction.repository.PlayerRepository;
 import com.cricketauction.repository.TeamRepository;
 import com.cricketauction.repository.TournamentRepository;
+import com.cricketauction.entity.AppUser;
+import com.cricketauction.util.TournamentAccessUtil;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -32,6 +37,7 @@ public class TournamentService {
     private final TeamRepository teamRepository;
     private final AuditLogService auditLogService;
     private final PlayerRoleService playerRoleService;
+    private final AppUserService appUserService;
 
     public TournamentService(TournamentRepository tournamentRepository,
                              AuctionSessionRepository auctionSessionRepository,
@@ -42,7 +48,8 @@ public class TournamentService {
                              PlayerRepository playerRepository,
                              TeamRepository teamRepository,
                              AuditLogService auditLogService,
-                             PlayerRoleService playerRoleService) {
+                             PlayerRoleService playerRoleService,
+                             AppUserService appUserService) {
         this.tournamentRepository    = tournamentRepository;
         this.auctionSessionRepository = auctionSessionRepository;
         this.playerRegistrationRepository = playerRegistrationRepository;
@@ -53,6 +60,7 @@ public class TournamentService {
         this.teamRepository = teamRepository;
         this.auditLogService = auditLogService;
         this.playerRoleService = playerRoleService;
+        this.appUserService = appUserService;
     }
 
     public TournamentResponse createTournament(TournamentRequest request) {
@@ -73,7 +81,21 @@ public class TournamentService {
 
     @Transactional(readOnly = true)
     public List<TournamentResponse> getAllTournaments() {
-        return tournamentRepository.findAll().stream().map(this::mapToResponse).toList();
+        List<TournamentResponse> all = tournamentRepository.findAll().stream().map(this::mapToResponse).toList();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            return all;
+        }
+        AppUser user;
+        try {
+            user = appUserService.currentUserFromAuth(auth.getName());
+        } catch (RuntimeException e) {
+            return all;
+        }
+        if (user.getRole() == AppUser.UserRole.SUPER_ADMIN) return all;
+        Set<Long> allowed = TournamentAccessUtil.allowedIdSet(user);
+        if (allowed == null) return all;
+        return all.stream().filter(t -> allowed.contains(t.getId())).toList();
     }
 
     @Transactional(readOnly = true)

@@ -96,7 +96,8 @@ public class SchemaFixRunner implements ApplicationRunner {
         // Also add branding columns to app_users if missing
         addColumnsToTable(conn, "app_users", new String[]{
             "app_name     VARCHAR(100)",
-            "app_logo_url VARCHAR(500)"
+            "app_logo_url VARCHAR(500)",
+            "allowed_tournament_ids TEXT"
         });
         // Also ensure the status ENUM includes UNDONE
         try {

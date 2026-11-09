@@ -26,6 +26,7 @@ import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import toast from 'react-hot-toast';
+import { useBroadcasterVerdictFlash } from '../hooks/useBroadcasterVerdictFlash';
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
@@ -125,6 +126,7 @@ export default function AuctionPage() {
   const { activeTournament } = useTournament();
 
   const [auctionState, setAuctionState]         = useState(null);
+  const showClosedVerdict = useBroadcasterVerdictFlash(auctionState);
   const [availablePlayers, setAvailablePlayers] = useState([]);
   const [unsoldPlayers, setUnsoldPlayers]       = useState([]);
   const [teams, setTeams]                       = useState([]);
@@ -916,6 +918,7 @@ export default function AuctionPage() {
             <div className="flex-1 overflow-auto min-h-0">
               <IdleStage
                 auctionState={auctionState}
+                showClosedVerdict={showClosedVerdict}
                 availablePlayers={availablePlayers}
                 unsoldPlayers={unsoldPlayers}
                 allDone={allDone}
@@ -1297,6 +1300,7 @@ function TeamAssignStrip({ teams, auctionState, displayBid, proposedBid, maxSqua
 ═══════════════════════════════════════════════════════════ */
 function IdleStage({
   auctionState,
+  showClosedVerdict,
   availablePlayers,
   unsoldPlayers,
   allDone,
@@ -1358,8 +1362,8 @@ function IdleStage({
         <div className="relative z-10 flex flex-col items-center gap-3">
         <Gavel size={48} style={{ color: 'var(--color-primary)', opacity: 0.55 }} />
         <h2 className="text-2xl font-black" style={{ color: 'var(--color-text-primary)' }}>
-          {auctionState?.status === 'SOLD'   ? '✅ SOLD! Select next player' :
-           auctionState?.status === 'UNSOLD' ? '❌ UNSOLD. Select next player' :
+          {showClosedVerdict && auctionState?.status === 'SOLD' ? '✅ SOLD! Select next player' :
+           showClosedVerdict && auctionState?.status === 'UNSOLD' ? '❌ UNSOLD. Select next player' :
            'Ready to start — pick a player'}
         </h2>
         <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>

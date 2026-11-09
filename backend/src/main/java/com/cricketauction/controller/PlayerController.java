@@ -4,7 +4,9 @@ import com.cricketauction.dto.ApiResponse;
 import com.cricketauction.dto.PlayerRequest;
 import com.cricketauction.dto.PlayerResponse;
 import com.cricketauction.entity.Player;
+import com.cricketauction.service.FileStorageService;
 import com.cricketauction.service.PlayerService;
+import com.cricketauction.service.OverlayPushService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,9 +21,15 @@ import java.util.Map;
 public class PlayerController {
 
     private final PlayerService playerService;
+    private final FileStorageService fileStorage;
+    private final OverlayPushService overlayPushService;
 
-    public PlayerController(PlayerService playerService) {
+    public PlayerController(PlayerService playerService,
+                            FileStorageService fileStorage,
+                            OverlayPushService overlayPushService) {
         this.playerService = playerService;
+        this.fileStorage = fileStorage;
+        this.overlayPushService = overlayPushService;
     }
 
     @PostMapping
@@ -77,6 +85,21 @@ public class PlayerController {
             @PathVariable Long playerId,
             @Valid @RequestBody PlayerRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Player updated", playerService.updatePlayer(playerId, request)));
+    }
+
+    @PostMapping("/{playerId}/photo")
+    public ResponseEntity<ApiResponse<PlayerResponse>> uploadPhoto(
+            @PathVariable Long tournamentId,
+            @PathVariable Long playerId,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            String url = fileStorage.savePlayerPhoto(tournamentId, file);
+            PlayerResponse updated = playerService.updatePlayerImageUrl(playerId, url);
+            overlayPushService.pushSnapshot(tournamentId);
+            return ResponseEntity.ok(ApiResponse.success("Photo uploaded", updated));
+        } catch (IOException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @PostMapping("/{playerId}/cricheroes/fetch-stats")

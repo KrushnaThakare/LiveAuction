@@ -96,10 +96,27 @@ export default function AuctionDisplayPage() {
       setIncludePlayers(true);
     }
   }, [ceremonyEnabled, audienceMode]);
+
   const title = params.get('title') || getAuctionDisplayName(config, 'Auction Live');
   const auction = data?.auction;
   const player = auction?.currentPlayer;
   const teams = data?.teams || [];
+
+  useEffect(() => {
+    if (audienceMode !== 'squadBoard' || teams.length < 2) return undefined;
+    const onKey = (event) => {
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        setSquadTeamIndex((i) => (i + 1) % teams.length);
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        setSquadTeamIndex((i) => (i - 1 + teams.length) % teams.length);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [audienceMode, teams.length]);
   const team = teams.find(t => t.id === auction?.highestBidderTeamId || t.name === auction?.highestBidderTeamName);
   const status = auction?.status || 'IDLE';
   const liveText = status === 'ACTIVE' ? 'Auction Live' : status === 'SOLD' ? 'Sold' : status === 'UNSOLD' ? 'Unsold' : 'Auction Standby';

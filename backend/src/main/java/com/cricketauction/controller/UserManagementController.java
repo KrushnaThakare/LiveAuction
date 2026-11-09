@@ -36,7 +36,7 @@ public class UserManagementController {
         AppUser.UserRole role = AppUser.UserRole.valueOf(req.getRole().toUpperCase());
         AppUser user = userService.createUser(
                 req.getUsername(), req.getPassword(), req.getDisplayName(), role,
-                req.getAppName(), null);
+                req.getAppName(), null, req.getAllowedTournamentIds());
         return ResponseEntity.ok(ApiResponse.success("User created", UserResponse.from(user)));
     }
 
@@ -46,7 +46,7 @@ public class UserManagementController {
         AppUser.UserRole role = req.getRole() != null
                 ? AppUser.UserRole.valueOf(req.getRole().toUpperCase()) : null;
         AppUser user = userService.updateUser(
-                id, req.getDisplayName(), role, req.getActive(), req.getAppName());
+                id, req.getDisplayName(), role, req.getActive(), req.getAppName(), req.getAllowedTournamentIds());
         return ResponseEntity.ok(ApiResponse.success("User updated", UserResponse.from(user)));
     }
 
@@ -86,6 +86,8 @@ public class UserManagementController {
         private String displayName;
         private String role;
         private String appName;   // white-label brand name shown in header
+        /** JSON array of tournament ids, e.g. [1,2] */
+        private String allowedTournamentIds;
     }
 
     @Data
@@ -94,19 +96,22 @@ public class UserManagementController {
         private String  role;
         private Boolean active;
         private String  appName;
+        private String  allowedTournamentIds;
     }
 
     public record UserResponse(
             Long id, String username, String displayName,
             String role, Boolean active, String createdAt,
-            String appName, String appLogoUrl
+            String appName, String appLogoUrl,
+            String allowedTournamentIds
     ) {
         static UserResponse from(AppUser u) {
             return new UserResponse(
                     u.getId(), u.getUsername(), u.getDisplayName(),
                     u.getRole().name(), u.getActive(),
                     u.getCreatedAt() != null ? u.getCreatedAt().toString() : null,
-                    u.getAppName(), u.getAppLogoUrl());
+                    u.getAppName(), u.getAppLogoUrl(),
+                    u.getAllowedTournamentIds());
         }
     }
 }
