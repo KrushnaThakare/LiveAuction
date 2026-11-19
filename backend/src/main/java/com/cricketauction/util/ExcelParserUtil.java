@@ -78,7 +78,6 @@ public class ExcelParserUtil {
                 String name = null;
                 String roleStr = null;
                 Double basePrice = null;
-                String playerCategory = null;
                 String imageUrl = null;
                 String cricheroesProfileUrl = null;
                 LinkedHashMap<String, String> extras = new LinkedHashMap<>();
@@ -89,7 +88,6 @@ public class ExcelParserUtil {
                         case NAME -> name = value;
                         case ROLE -> roleStr = value;
                         case BASE_PRICE -> basePrice = parseNumericValue(row.getCell(entry.getKey()));
-                        case CATEGORY -> playerCategory = value;
                         case IMAGE_URL -> imageUrl = value;
                         case CRICHEROES_URL -> cricheroesProfileUrl = value;
                         default -> { }
@@ -117,7 +115,6 @@ public class ExcelParserUtil {
                         .name(name.trim())
                         .role(role)
                         .basePrice(basePrice)
-                        .playerCategory(playerCategory != null ? playerCategory.trim() : null)
                         .currentBid(0.0)
                         .imageUrl(convertedImageUrl)
                         .cricheroesProfileUrl(blankToNull(normalizeCricHeroesProfileUrl(cricheroesProfileUrl)))
@@ -221,7 +218,7 @@ public class ExcelParserUtil {
     }
 
     private enum KnownColumn {
-        NAME, ROLE, BASE_PRICE, IMAGE_URL, CRICHEROES_URL, CATEGORY
+        NAME, ROLE, BASE_PRICE, IMAGE_URL, CRICHEROES_URL
     }
 
     private KnownColumn resolveKnownColumn(String headerLabel) {
@@ -234,7 +231,6 @@ public class ExcelParserUtil {
             case "imageurl", "image", "photo", "photourl", "playerphoto" -> KnownColumn.IMAGE_URL;
             case "cricheroesprofileurl", "cricheroesurl", "cricheroes", "cricheroesprofile", "crhprofile", "crh" ->
                     KnownColumn.CRICHEROES_URL;
-            case "category", "playercategory", "grade", "class", "tier" -> KnownColumn.CATEGORY;
             default -> null;
         };
     }
