@@ -14,7 +14,7 @@ import { resolveUrl } from '../utils/resolveUrl';
 import { matchesPlayerIdOrName } from '../utils/playerSearch';
 import { hasCricHeroesProfile, hasPlayerStats, isCricHeroesProfileUrl, statValue } from '../utils/playerStats';
 import toast from 'react-hot-toast';
-import { BarChart3, Users, Upload, Search, Download, X, RefreshCw, Plus, ImagePlus } from 'lucide-react';
+import { BarChart3, Users, Upload, Search, Download, X, RefreshCw, Plus, ImagePlus, Trash2 } from 'lucide-react';
 
 const STATUS_FILTERS = ['ALL', 'AVAILABLE', 'SOLD', 'UNSOLD', 'IN_AUCTION', 'RETAINED'];
 
@@ -57,6 +57,7 @@ export default function PlayersPage() {
   const [bulkStatsProgress, setBulkStatsProgress] = useState({ done: 0, total: 0 });
   const [cleaningProfiles, setCleaningProfiles] = useState(false);
   const [repairingRoles, setRepairingRoles] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   const playerRoles = getPlayerRoles(activeTournament);
   const defaultRole = playerRoles[0]?.key || 'LEFT_HAND_BATSMAN';
 
@@ -282,6 +283,27 @@ export default function PlayersPage() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (!activeTournament || players.length === 0) return;
+    const livePlayer = players.some((p) => p.status === 'IN_AUCTION');
+    if (livePlayer) {
+      toast.error('Stop the live auction first, then remove all players.');
+      return;
+    }
+    const msg = `Remove all ${players.length} players? Sold and retained assignments will be cleared so you can re-upload Excel.`;
+    if (!confirm(msg)) return;
+    setDeletingAll(true);
+    try {
+      const res = await playerApi.deleteAll(activeTournament.id);
+      const removed = res.data.data?.removed ?? players.length;
+      toast.success(`Removed ${removed} player(s)`);
+      setPlayers([]);
+      fetchPlayers();
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   const handleCleanInvalidProfiles = async () => {
     if (!activeTournament) return;
     setCleaningProfiles(true);
@@ -357,6 +379,15 @@ export default function PlayersPage() {
               <button className="btn-secondary" onClick={handleCleanInvalidProfiles} disabled={cleaningProfiles || bulkStatsFetching}>
                 <X size={15} />
                 {cleaningProfiles ? 'Cleaning...' : 'Clean Bad Stats URLs'}
+              </button>
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={handleDeleteAll}
+                disabled={deletingAll || bulkStatsFetching}
+              >
+                <Trash2 size={15} />
+                {deletingAll ? 'Removing...' : 'Remove all players'}
               </button>
               <button className="btn-secondary" onClick={handleRepairRoles} disabled={repairingRoles || uploading}>
                 <RefreshCw size={15} />

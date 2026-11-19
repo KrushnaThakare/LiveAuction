@@ -162,7 +162,9 @@ public class TeamService {
         Team team = findById(id);
         double budgetDiff = request.getBudget() - team.getBudget();
         team.setName(request.getName());
-        team.setLogoUrl(request.getLogoUrl());
+        if (request.getLogoUrl() != null && !request.getLogoUrl().isBlank()) {
+            team.setLogoUrl(request.getLogoUrl().trim());
+        }
         team.setBudget(request.getBudget());
         team.setRemainingBudget(team.getRemainingBudget() + budgetDiff);
         team = teamRepository.save(team);
