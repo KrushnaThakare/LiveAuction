@@ -15,4 +15,7 @@ public class TournamentRequest {
     private String description;
     private String logoUrl;
     private Integer maxSquadSize;
+    private Boolean categoryQuotasEnabled;
+    /** JSON: { categories: [...], strictMandatoryFirst: true } */
+    private String categoryQuotasConfig;
 }

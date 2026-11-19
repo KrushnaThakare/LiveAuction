@@ -2,6 +2,9 @@ import api from './axios';
 
 export const auctionApi = {
   getState:          (tid)             => api.get(`/tournaments/${tid}/auction/state`),
+  getConstraints:    (tid, bidAmount)  => api.get(`/tournaments/${tid}/auction/constraints`, {
+    params: bidAmount != null ? { bidAmount } : {},
+  }),
   startAuction:      (tid, playerId)   => api.post(`/tournaments/${tid}/auction/start/${playerId}`),
   startRandom:       (tid)             => api.post(`/tournaments/${tid}/auction/start-random`),
   assignBid:         (tid, teamId, customBidAmount) =>

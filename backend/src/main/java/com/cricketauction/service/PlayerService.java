@@ -101,6 +101,7 @@ public class PlayerService {
                 .name(request.getName())
                 .role(playerRoleService.resolveRole(tournament, request.getRole()))
                 .basePrice(request.getBasePrice())
+                .playerCategory(blankToNull(request.getPlayerCategory()))
                 .currentBid(0.0)
                 .imageUrl(request.getImageUrl() != null ? googleDriveUtil.convertToDirectLink(request.getImageUrl()) : null)
                 .cricheroesProfileUrl(ExcelParserUtil.normalizeCricHeroesProfileUrl(request.getCricheroesProfileUrl()))
@@ -150,6 +151,7 @@ public class PlayerService {
         player.setName(request.getName());
         player.setRole(playerRoleService.resolveRole(tournament, request.getRole()));
         player.setBasePrice(request.getBasePrice());
+        player.setPlayerCategory(blankToNull(request.getPlayerCategory()));
         if (request.getImageUrl() != null) {
             player.setImageUrl(googleDriveUtil.convertToDirectLink(request.getImageUrl()));
         }
@@ -244,6 +246,7 @@ public class PlayerService {
                 .name(player.getName())
                 .role(player.getRole())
                 .basePrice(player.getBasePrice())
+                .playerCategory(player.getPlayerCategory())
                 .currentBid(player.getCurrentBid())
                 .imageUrl(player.getImageUrl())
                 .cricheroesProfileUrl(player.getCricheroesProfileUrl())

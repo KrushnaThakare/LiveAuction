@@ -158,7 +158,12 @@ public class SchemaFixRunner implements ApplicationRunner {
             "overlay_main_detail_fields TEXT",
             "highest_sold_bid DOUBLE DEFAULT 0",
             "overlay_show_record_break BOOLEAN DEFAULT TRUE",
-            "overlay_countdown_seconds INT DEFAULT 5"
+            "overlay_countdown_seconds INT DEFAULT 5",
+            "category_quotas_enabled BOOLEAN DEFAULT FALSE",
+            "category_quotas_config TEXT"
+        });
+        addColumnsToTable(conn, "players", new String[]{
+            "player_category VARCHAR(50)"
         });
     }
 

@@ -12,6 +12,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { DEFAULT_PLAYER_ROLES, FOOTBALL_PLAYER_ROLES, roleConfigToLines, roleLinesToConfig } from '../utils/formatters';
 import SquadSizeInput from '../components/common/SquadSizeInput';
 import { clampSquadSize } from '../utils/squadFormation';
+import CategoryQuotasEditor from '../components/tournament/CategoryQuotasEditor';
+import { parseCategoryQuotaConfig, serializeCategoryQuotaConfig } from '../utils/categoryQuotas';
 
 export default function HomePage() {
   const { tournaments, loading, fetchTournaments, selectTournament, activeTournament } = useTournament();
@@ -19,7 +21,10 @@ export default function HomePage() {
 
   const [showCreateModal, setShowCreateModal]   = useState(false);
   const [editingTournament, setEditingTournament] = useState(null);
-  const [editForm, setEditForm]                 = useState({ name: '', auctionDisplayName: '', sport: 'CRICKET', roleLines: '', description: '', maxSquadSize: 15 });
+  const [editForm, setEditForm]                 = useState({
+    name: '', auctionDisplayName: '', sport: 'CRICKET', roleLines: '', description: '', maxSquadSize: 15,
+    categoryQuotasEnabled: false, categoryQuotaConfig: parseCategoryQuotaConfig(null),
+  });
   const [editLogoFile, setEditLogoFile]         = useState(null);
   const [editLogoPreview, setEditLogoPreview]   = useState(null);
   const [editSaving, setEditSaving]             = useState(false);
@@ -35,6 +40,8 @@ export default function HomePage() {
       roleLines: roleConfigToLines(t.playerRoles || DEFAULT_PLAYER_ROLES),
       description: t.description || '',
       maxSquadSize: t.maxSquadSize ?? 15,
+      categoryQuotasEnabled: t.categoryQuotasEnabled === true,
+      categoryQuotaConfig: parseCategoryQuotaConfig(t.categoryQuotasConfig),
     });
     setEditLogoFile(null);
     setEditLogoPreview(resolveUrl(t.logoUrl));
@@ -53,6 +60,10 @@ export default function HomePage() {
         playerRoles: roleLinesToConfig(editForm.roleLines),
         description: editForm.description,
         maxSquadSize: clampSquadSize(maxSquadSize),
+        categoryQuotasEnabled: editForm.categoryQuotasEnabled,
+        categoryQuotasConfig: editForm.categoryQuotasEnabled
+          ? serializeCategoryQuotaConfig(editForm.categoryQuotaConfig)
+          : null,
       });
       if (editLogoFile) {
         await tournamentApi.uploadLogo(editingTournament.id, editLogoFile);
@@ -303,6 +314,12 @@ export default function HomePage() {
             />
             <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Allowed range: 5–30 (e.g. 11, 12, 13, 15).</p>
           </div>
+          <CategoryQuotasEditor
+            enabled={editForm.categoryQuotasEnabled}
+            config={editForm.categoryQuotaConfig}
+            onEnabledChange={(categoryQuotasEnabled) => setEditForm((f) => ({ ...f, categoryQuotasEnabled }))}
+            onConfigChange={(categoryQuotaConfig) => setEditForm((f) => ({ ...f, categoryQuotaConfig }))}
+          />
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Description</label>
             <textarea className="input resize-none" rows={2} value={editForm.description}
