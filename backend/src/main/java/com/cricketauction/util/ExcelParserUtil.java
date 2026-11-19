@@ -229,7 +229,7 @@ public class ExcelParserUtil {
         return switch (normalized) {
             case "name", "playername", "player" -> KnownColumn.NAME;
             case "role", "playerrole", "playingrole", "playertype", "roletype", "position",
-                    "skill", "specialty", "playercategory", "batbowl", "playerroletype" -> KnownColumn.ROLE;
+                    "skill", "specialty", "batbowl", "playerroletype" -> KnownColumn.ROLE;
             case "baseprice", "price", "base" -> KnownColumn.BASE_PRICE;
             case "imageurl", "image", "photo", "photourl", "playerphoto" -> KnownColumn.IMAGE_URL;
             case "cricheroesprofileurl", "cricheroesurl", "cricheroes", "cricheroesprofile", "crhprofile", "crh" ->
@@ -345,7 +345,7 @@ public class ExcelParserUtil {
         if (normalized.isEmpty()) return false;
         return switch (normalized) {
             case "role", "playerrole", "playingrole", "playertype", "roletype", "position",
-                    "skill", "specialty", "playercategory", "type", "batbowl", "playerroletype" -> true;
+                    "skill", "specialty", "type", "batbowl", "playerroletype" -> true;
             default -> normalized.contains("role") || normalized.endsWith("type") || normalized.contains("skill");
         };
     }
