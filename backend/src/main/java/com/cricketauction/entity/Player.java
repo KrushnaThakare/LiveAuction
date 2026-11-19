@@ -32,6 +32,10 @@ public class Player {
     @Column(name = "base_price", nullable = false)
     private Double basePrice;
 
+    /** Auction category for squad quotas (e.g. A+, A, C) */
+    @Column(name = "player_category", length = 50)
+    private String playerCategory;
+
     @Column(name = "current_bid")
     @Builder.Default
     private Double currentBid = 0.0;

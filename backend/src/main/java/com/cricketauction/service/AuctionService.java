@@ -1,5 +1,6 @@
 package com.cricketauction.service;
 
+import com.cricketauction.dto.AuctionConstraintsResponse;
 import com.cricketauction.dto.AuctionStateResponse;
 import com.cricketauction.dto.BidAmountRequest;
 import com.cricketauction.dto.BidRequest;
@@ -32,6 +33,7 @@ public class AuctionService {
     private final OverlayAudienceSignalService overlayAudienceSignalService;
     private final TopSoldCacheService      topSoldCacheService;
     private final AuctionConstraintService auctionConstraintService;
+    private final SquadQuotaService squadQuotaService;
 
     public AuctionService(AuctionSessionRepository auctionSessionRepository,
                           PlayerRepository playerRepository,
@@ -42,7 +44,8 @@ public class AuctionService {
                           AuditLogService auditLogService,
                           OverlayAudienceSignalService overlayAudienceSignalService,
                           TopSoldCacheService topSoldCacheService,
-                          AuctionConstraintService auctionConstraintService) {
+                          AuctionConstraintService auctionConstraintService,
+                          SquadQuotaService squadQuotaService) {
         this.auctionSessionRepository = auctionSessionRepository;
         this.playerRepository         = playerRepository;
         this.teamRepository           = teamRepository;
@@ -53,6 +56,7 @@ public class AuctionService {
         this.overlayAudienceSignalService = overlayAudienceSignalService;
         this.topSoldCacheService      = topSoldCacheService;
         this.auctionConstraintService = auctionConstraintService;
+        this.squadQuotaService = squadQuotaService;
     }
 
     /* ── start auction for a specific player ── */
@@ -121,10 +125,7 @@ public class AuctionService {
         Player currentPlayer = session.getCurrentPlayer();
         double basePrice = currentPlayer != null && currentPlayer.getBasePrice() != null
                 ? currentPlayer.getBasePrice() : 0.0;
-        int playerCount = (int) playerRepository.countByTournamentIdAndTeamId(tournamentId, team.getId());
-        auctionConstraintService.validateTeamBid(
-                team.getName(), session.getTournament(), playerCount,
-                team.getRemainingBudget(), newBid, basePrice);
+        validateBidForTeam(session.getTournament(), team, currentPlayer, newBid);
 
         session.setCurrentBid(newBid);
         session.setHighestBidderTeam(team);
@@ -178,10 +179,7 @@ public class AuctionService {
 
         double saleBid = session.getCurrentBid();
         double basePrice = player != null && player.getBasePrice() != null ? player.getBasePrice() : 0.0;
-        int playerCount = (int) playerRepository.countByTournamentIdAndTeamId(tournamentId, winningTeam.getId());
-        auctionConstraintService.validateTeamBid(
-                winningTeam.getName(), session.getTournament(), playerCount,
-                winningTeam.getRemainingBudget(), saleBid, basePrice);
+        validateBidForTeam(session.getTournament(), winningTeam, player, saleBid);
 
         winningTeam.setRemainingBudget(winningTeam.getRemainingBudget() - saleBid);
         teamRepository.save(winningTeam);
@@ -500,5 +498,30 @@ public class AuctionService {
 
     private void bumpStateRevision(AuctionSession session) {
         session.setStateRevision((session.getStateRevision() == null ? 0L : session.getStateRevision()) + 1L);
+    }
+
+    private void validateBidForTeam(Tournament tournament, Team team, Player currentPlayer, double bidAmount) {
+        if (squadQuotaService.hasActiveRules(tournament)) {
+            squadQuotaService.validateAssignBid(tournament, team, currentPlayer, bidAmount);
+            return;
+        }
+        double basePrice = currentPlayer != null && currentPlayer.getBasePrice() != null
+                ? currentPlayer.getBasePrice() : 0.0;
+        int playerCount = (int) playerRepository.countByTournamentIdAndTeamId(tournament.getId(), team.getId());
+        auctionConstraintService.validateTeamBid(
+                team.getName(), tournament, playerCount, team.getRemainingBudget(), bidAmount, basePrice);
+    }
+
+    @Transactional(readOnly = true)
+    public AuctionConstraintsResponse getBidConstraints(Long tournamentId, Double bidAmount) {
+        Tournament tournament = tournamentService.findById(tournamentId);
+        if (!squadQuotaService.hasActiveRules(tournament)) {
+            return AuctionConstraintsResponse.builder().quotasEnabled(false).teams(List.of()).build();
+        }
+        Optional<AuctionSession> active = auctionSessionRepository
+                .findByTournamentIdAndStatus(tournamentId, AuctionSession.AuctionStatus.ACTIVE);
+        Player current = active.map(AuctionSession::getCurrentPlayer).orElse(null);
+        double amount = bidAmount != null ? bidAmount : (active.map(AuctionSession::getCurrentBid).orElse(0.0));
+        return squadQuotaService.constraintsForActiveLot(tournament, current, amount);
     }
 }

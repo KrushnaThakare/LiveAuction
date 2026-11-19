@@ -10,6 +10,7 @@ import EmptyState from '../components/common/EmptyState';
 import Modal from '../components/common/Modal';
 import { exportPlayersList } from '../utils/playersExport';
 import { formatRole, getPlayerRoles, getAuctionDisplayName } from '../utils/formatters';
+import { parseCategoryQuotaConfig } from '../utils/categoryQuotas';
 import { resolveUrl } from '../utils/resolveUrl';
 import { matchesPlayerIdOrName } from '../utils/playerSearch';
 import { hasCricHeroesProfile, hasPlayerStats, isCricHeroesProfileUrl, statValue } from '../utils/playerStats';
@@ -47,6 +48,7 @@ export default function PlayersPage() {
     statsAverage: '',
     retained: false,
     teamId: '',
+    playerCategory: '',
   };
   const [editForm, setEditForm]           = useState(emptyPlayerForm);
   const [editPhotoFile, setEditPhotoFile] = useState(null);
@@ -59,6 +61,8 @@ export default function PlayersPage() {
   const [repairingRoles, setRepairingRoles] = useState(false);
   const playerRoles = getPlayerRoles(activeTournament);
   const defaultRole = playerRoles[0]?.key || 'LEFT_HAND_BATSMAN';
+  const categoryQuotasOn = activeTournament?.categoryQuotasEnabled === true;
+  const quotaCategoryOptions = parseCategoryQuotaConfig(activeTournament?.categoryQuotasConfig).categories || [];
 
   const fetchPlayers = useCallback(async () => {
     if (!activeTournament) return;
@@ -156,6 +160,7 @@ export default function PlayersPage() {
       statsAverage: player.statsAverage ?? '',
       retained:  Boolean(player.retained),
       teamId:    player.teamId || '',
+      playerCategory: player.playerCategory || '',
     });
   };
 
@@ -184,6 +189,7 @@ export default function PlayersPage() {
     statsAverage: numberOrNull(editForm.statsAverage),
     retained:  Boolean(editForm.retained),
     teamId:    editForm.retained && editForm.teamId ? Number(editForm.teamId) : null,
+    playerCategory: editForm.playerCategory?.trim() || null,
   });
 
   const handleEditSave = async (e) => {
@@ -496,6 +502,31 @@ export default function PlayersPage() {
               value={editForm.basePrice}
               onChange={e => setEditForm(f => ({ ...f, basePrice: e.target.value }))} />
           </div>
+          {(categoryQuotasOn || editForm.playerCategory) && (
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                Category {categoryQuotasOn ? '*' : '(optional)'}
+              </label>
+              {quotaCategoryOptions.length > 0 ? (
+                <select className="input" required={categoryQuotasOn}
+                  value={editForm.playerCategory}
+                  onChange={e => setEditForm(f => ({ ...f, playerCategory: e.target.value }))}>
+                  <option value="">— Select —</option>
+                  {quotaCategoryOptions.map((r) => (
+                    <option key={r.key} value={r.key}>{r.label || r.key}</option>
+                  ))}
+                </select>
+              ) : (
+                <input className="input" required={categoryQuotasOn}
+                  placeholder="e.g. A+, A, C"
+                  value={editForm.playerCategory}
+                  onChange={e => setEditForm(f => ({ ...f, playerCategory: e.target.value }))} />
+              )}
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                Matches tournament quota rules. Excel column <strong>Category</strong> also works on upload.
+              </p>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
               Player photo

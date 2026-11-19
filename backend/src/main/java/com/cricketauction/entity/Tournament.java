@@ -190,6 +190,14 @@ public class Tournament {
     @Builder.Default
     private Integer maxSquadSize = 15;
 
+    /** When true, enforce configurable min/max players per category per team */
+    @Column(name = "category_quotas_enabled")
+    @Builder.Default
+    private Boolean categoryQuotasEnabled = false;
+
+    @Column(name = "category_quotas_config", columnDefinition = "TEXT")
+    private String categoryQuotasConfig;
+
     @Column(name = "overlay_secret_token", length = 120)
     private String overlaySecretToken;
 

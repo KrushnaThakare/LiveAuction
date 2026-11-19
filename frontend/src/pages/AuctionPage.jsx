@@ -21,7 +21,7 @@ import {
   pickRandomPlayer,
   POOL_FILTER_ALL,
 } from '../utils/playerPoolFilter';
-import { canTeamBid, isSquadFull, maxAllowedBid } from '../utils/auctionConstraints';
+import { isSquadFull, resolveTeamBidPermission } from '../utils/auctionConstraints';
 import SequentialImage from '../components/common/SequentialImage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
@@ -147,6 +147,8 @@ export default function AuctionPage() {
   const [countdownLoading, setCountdownLoading] = useState(false);
   const [poolFilterColumn, setPoolFilterColumn] = useState('');
   const [poolFilterValue, setPoolFilterValue] = useState(POOL_FILTER_ALL);
+  const [teamConstraintsById, setTeamConstraintsById] = useState(null);
+  const categoryQuotasOn = activeTournament?.categoryQuotasEnabled === true;
   const containerRef = useRef(null);
   const bidUpdateSeq = useRef(0);
   const callingBidInFlightRef = useRef(false);
@@ -344,6 +346,61 @@ export default function AuctionPage() {
     return () => clearInterval(id);
   }, [auctionState?.status, activeTournament, applyServerAuctionState]);
 
+  useEffect(() => {
+    if (!activeTournament?.id || !categoryQuotasOn) {
+      setTeamConstraintsById(null);
+      return undefined;
+    }
+    if (auctionState?.status !== 'ACTIVE' || !auctionState?.currentPlayer) {
+      setTeamConstraintsById(null);
+      return undefined;
+    }
+    const bidAmount = proposedBid ?? auctionState?.currentBid ?? 0;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await auctionApi.getConstraints(activeTournament.id, bidAmount);
+        if (cancelled) return;
+        const data = res.data?.data;
+        if (data?.quotasEnabled && Array.isArray(data.teams)) {
+          setTeamConstraintsById(Object.fromEntries(data.teams.map((t) => [t.teamId, t])));
+        } else {
+          setTeamConstraintsById(null);
+        }
+      } catch {
+        /* keep last snapshot */
+      }
+    };
+    load();
+    const id = setInterval(load, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [
+    activeTournament?.id,
+    categoryQuotasOn,
+    auctionState?.status,
+    auctionState?.currentPlayer?.id,
+    auctionState?.currentBid,
+    proposedBid,
+  ]);
+
+  const teamBidPermission = useCallback((team, bidAmount) => {
+    const basePrice = auctionState?.currentPlayer?.basePrice ?? 0;
+    return resolveTeamBidPermission(team, bidAmount, {
+      useQuotas: categoryQuotasOn && Boolean(teamConstraintsById),
+      constraintsByTeamId: teamConstraintsById,
+      maxSquadSize: activeTournament?.maxSquadSize,
+      basePrice,
+    });
+  }, [
+    auctionState?.currentPlayer?.basePrice,
+    categoryQuotasOn,
+    teamConstraintsById,
+    activeTournament?.maxSquadSize,
+  ]);
+
   /* ── start specific player ── */
   const handleStartAuction = useCallback(async (player) => {
     if (!activeTournament || actionLoading) return;
@@ -427,8 +484,7 @@ export default function AuctionPage() {
     const team = teams.find(t => t.id === teamId);
     const currentBid = auctionState?.currentBid ?? 0;
     const optimisticBid = proposedBid ?? currentBid;
-    const basePrice = auctionState?.currentPlayer?.basePrice ?? 0;
-    if (!team || !canTeamBid(team, optimisticBid, activeTournament.maxSquadSize, basePrice)) return;
+    if (!team || !teamBidPermission(team, optimisticBid).canBid) return;
     const previousState = auctionState;
     const optimisticAuction = auctionState ? {
       ...auctionState,
@@ -477,7 +533,7 @@ export default function AuctionPage() {
       assignPromiseRef.current = null;
       setAssigningTeamId(null);
     }
-  }, [activeTournament, actionLoading, assigningTeamId, proposedBid, voiceEnabled, teams, auctionState]);
+  }, [activeTournament, actionLoading, assigningTeamId, proposedBid, voiceEnabled, teams, auctionState, teamBidPermission]);
 
   /* ── sell ── */
   const syncCallingBidToServer = useCallback(async () => {
@@ -749,16 +805,15 @@ export default function AuctionPage() {
       const num = parseInt(e.key, 10);
       if (!isNaN(num) && num >= 1 && num <= 9 && isActive) {
         const team = teams[num - 1];
-        const basePrice = auctionState?.currentPlayer?.basePrice ?? 0;
         const bidAmount = proposedBid ?? auctionState?.currentBid ?? 0;
-        if (team && canTeamBid(team, bidAmount, activeTournament?.maxSquadSize, basePrice)) {
+        if (team && teamBidPermission(team, bidAmount).canBid) {
           handleAssignBid(team.id);
         }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [auctionState, teams, proposedBid, activeTournament, handleSell, handleUnsold, handleStartRandom, handleAssignBid, stepUp, stepDown, toggleFullscreen]);
+  }, [auctionState, teams, proposedBid, activeTournament, handleSell, handleUnsold, handleStartRandom, handleAssignBid, stepUp, stepDown, toggleFullscreen, teamBidPermission]);
 
   useEffect(() => {
     const h = () => setFullscreen(!!document.fullscreenElement);
@@ -910,6 +965,9 @@ export default function AuctionPage() {
                 proposedBid={proposedBid}
                 maxSquadSize={activeTournament.maxSquadSize}
                 basePrice={auctionState?.currentPlayer?.basePrice ?? 0}
+                categoryQuotasOn={categoryQuotasOn}
+                teamConstraintsById={teamConstraintsById}
+                teamBidPermission={teamBidPermission}
                 onAssign={handleAssignBid}
                 disabled={actionLoading || Boolean(assigningTeamId)}
               />
@@ -1206,7 +1264,9 @@ function BidStrip({ proposedBid, setProposedBid, setBidKey, committedBid, nextBi
 /* ═══════════════════════════════════════════════════════════
    TEAM ASSIGN STRIP — single horizontal row during live auction
 ═══════════════════════════════════════════════════════════ */
-function TeamAssignStrip({ teams, auctionState, displayBid, proposedBid, maxSquadSize, basePrice, onAssign, disabled }) {
+function TeamAssignStrip({
+  teams, auctionState, displayBid, proposedBid, maxSquadSize, onAssign, disabled, teamBidPermission,
+}) {
   return (
     <div className="flex-shrink-0 px-3 py-2"
       style={{ backgroundColor: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
@@ -1226,14 +1286,14 @@ function TeamAssignStrip({ teams, auctionState, displayBid, proposedBid, maxSqua
         {teams.map((team, idx) => {
           const isHighest = team.id === auctionState?.highestBidderTeamId;
           const squadFull = isSquadFull(team, maxSquadSize);
-          const canBid = !squadFull && canTeamBid(team, displayBid, maxSquadSize, basePrice);
-          const maxBid = maxAllowedBid(team, maxSquadSize, basePrice);
+          const { canBid, maxBid, reason } = teamBidPermission(team, displayBid);
           const playerCount = Number(team.playerCount) || 0;
 
           return (
             <button
               key={team.id}
               type="button"
+              title={!canBid && reason ? reason : undefined}
               onClick={() => onAssign(team.id)}
               disabled={disabled || !canBid}
               className="relative w-full flex flex-col gap-0.5 px-2.5 py-2 rounded-xl text-left transition-all duration-200 active:scale-[0.98]"

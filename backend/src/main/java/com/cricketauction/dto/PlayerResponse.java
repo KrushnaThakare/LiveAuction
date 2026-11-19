@@ -10,6 +10,7 @@ public class PlayerResponse {
     private String name;
     private String role;
     private Double basePrice;
+    private String playerCategory;
     private Double currentBid;
     private String imageUrl;
     private String cricheroesProfileUrl;

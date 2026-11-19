@@ -26,4 +26,6 @@ public class TournamentResponse {
     private String registrationMessage;
     private String registrationRedirectLink;
     private Integer maxSquadSize;
+    private Boolean categoryQuotasEnabled;
+    private String categoryQuotasConfig;
 }
