@@ -33,6 +33,8 @@ export const playerApi = {
     api.post(`/tournaments/${tournamentId}/players/cricheroes/clean-invalid`),
   delete: (tournamentId, playerId) =>
     api.delete(`/tournaments/${tournamentId}/players/${playerId}`),
+  deleteAll: (tournamentId) =>
+    api.delete(`/tournaments/${tournamentId}/players`),
   downloadImages: (tournamentId) =>
     api.post(`/tournaments/${tournamentId}/players/download-images`),
 };

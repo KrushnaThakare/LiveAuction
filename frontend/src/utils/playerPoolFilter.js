@@ -6,6 +6,18 @@ export function isPoolFilterActive(column, value) {
   return Boolean(column && value && value !== ALL_VALUE);
 }
 
+/** Union of filter columns: Excel extras plus optional quota Category field. */
+export function collectPoolFilterColumns(players = [], { includePlayerCategory = false } = {}) {
+  const cols = collectExtraColumnsFromPlayers(players);
+  if (includePlayerCategory) {
+    const hasCategory = cols.some((c) => normalizeHeader(c.label) === 'category');
+    if (!hasCategory) {
+      cols.unshift({ key: 'category', label: 'Category' });
+    }
+  }
+  return cols;
+}
+
 /** Union of Excel extra column labels across players (preserves display spelling). */
 export function collectExtraColumnsFromPlayers(players = []) {
   const byNorm = new Map();
@@ -30,14 +42,25 @@ export function getPlayerExtraFieldValue(player, columnLabel) {
   return '';
 }
 
-export function distinctValuesForColumn(players = [], columnLabel) {
+export function distinctValuesForColumn(players = [], columnLabel, { categoryQuotasOn = false } = {}) {
   if (!columnLabel) return [];
   const values = new Set();
+  const isCategory = categoryQuotasOn && normalizeHeader(columnLabel) === 'category';
   for (const player of players) {
-    const v = getPlayerExtraFieldValue(player, columnLabel);
+    const v = isCategory
+      ? (player.playerCategory || '').trim()
+      : getPlayerExtraFieldValue(player, columnLabel);
     if (v) values.add(v);
   }
   return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
+export function applyPoolFilter(players = [], column, value, { categoryQuotasOn = false } = {}) {
+  if (!isPoolFilterActive(column, value)) return players;
+  if (categoryQuotasOn && normalizeHeader(column) === 'category') {
+    return players.filter((p) => (p.playerCategory || '').trim() === value);
+  }
+  return applyExtraPoolFilter(players, column, value);
 }
 
 export function applyExtraPoolFilter(players = [], column, value) {
