@@ -114,7 +114,9 @@ public class TournamentService {
             t.setPlayerRolesConfig(playerRoleService.toConfigJson(null, t.getSport()));
         }
         t.setDescription(request.getDescription());
-        if (request.getLogoUrl() != null) t.setLogoUrl(request.getLogoUrl());
+        if (request.getLogoUrl() != null && !request.getLogoUrl().isBlank()) {
+            t.setLogoUrl(request.getLogoUrl().trim());
+        }
         if (request.getMaxSquadSize() != null) t.setMaxSquadSize(squadSizeOrDefault(request.getMaxSquadSize()));
         return mapToResponse(tournamentRepository.save(t));
     }

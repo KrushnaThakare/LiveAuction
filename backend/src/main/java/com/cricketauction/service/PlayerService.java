@@ -8,6 +8,8 @@ import com.cricketauction.entity.Team;
 import com.cricketauction.entity.Tournament;
 import com.cricketauction.exception.AuctionException;
 import com.cricketauction.exception.ResourceNotFoundException;
+import com.cricketauction.entity.AuctionSession;
+import com.cricketauction.repository.AuctionSessionRepository;
 import com.cricketauction.repository.PlayerRepository;
 import com.cricketauction.repository.TeamRepository;
 import com.cricketauction.util.ExcelParserUtil;
@@ -35,6 +37,7 @@ public class PlayerService {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final PlayerRepository  playerRepository;
+    private final AuctionSessionRepository auctionSessionRepository;
     private final TournamentService tournamentService;
     private final TeamRepository    teamRepository;
     private final AuditLogService   auditLogService;
@@ -44,6 +47,7 @@ public class PlayerService {
     private final PlayerRoleService playerRoleService;
 
     public PlayerService(PlayerRepository playerRepository,
+                         AuctionSessionRepository auctionSessionRepository,
                          TournamentService tournamentService,
                          TeamRepository teamRepository,
                          AuditLogService auditLogService,
@@ -52,6 +56,7 @@ public class PlayerService {
                          CricHeroesStatsService cricHeroesStatsService,
                          PlayerRoleService playerRoleService) {
         this.playerRepository  = playerRepository;
+        this.auctionSessionRepository = auctionSessionRepository;
         this.tournamentService = tournamentService;
         this.teamRepository    = teamRepository;
         this.auditLogService   = auditLogService;
@@ -231,6 +236,25 @@ public class PlayerService {
         clearRetainedBudget(player);
         playerRepository.delete(player);
         auditLogService.record("PLAYER_DELETED", "Player", id, tournamentId, name);
+    }
+
+    public int deleteAllPlayers(Long tournamentId) {
+        tournamentService.findById(tournamentId);
+        if (auctionSessionRepository
+                .findByTournamentIdAndStatus(tournamentId, AuctionSession.AuctionStatus.ACTIVE)
+                .isPresent()) {
+            throw new AuctionException("Stop the live auction before removing all players");
+        }
+        List<Player> all = playerRepository.findByTournamentId(tournamentId);
+        for (Player player : all) {
+            clearRetainedBudget(player);
+        }
+        auctionSessionRepository.nullifyForeignKeysForTournament(tournamentId);
+        int count = all.size();
+        playerRepository.deleteByTournamentId(tournamentId);
+        auditLogService.record("PLAYERS_DELETED_ALL", "Tournament", tournamentId, tournamentId,
+                "Removed all " + count + " player(s)");
+        return count;
     }
 
     public Player findById(Long id) {
