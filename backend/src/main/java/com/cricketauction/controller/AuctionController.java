@@ -1,7 +1,6 @@
 package com.cricketauction.controller;
 
 import com.cricketauction.dto.ApiResponse;
-import com.cricketauction.dto.AuctionConstraintsResponse;
 import com.cricketauction.dto.AuctionStateResponse;
 import com.cricketauction.dto.BidAmountRequest;
 import com.cricketauction.dto.BidRequest;
@@ -30,14 +29,6 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionStateResponse>> getAuctionState(
             @PathVariable Long tournamentId) {
         return ResponseEntity.ok(ApiResponse.success(auctionService.getAuctionState(tournamentId)));
-    }
-
-    /** Team bid eligibility when category squad quotas are enabled (default off). */
-    @GetMapping("/constraints")
-    public ResponseEntity<ApiResponse<AuctionConstraintsResponse>> getBidConstraints(
-            @PathVariable Long tournamentId,
-            @RequestParam(required = false) Double bidAmount) {
-        return ResponseEntity.ok(ApiResponse.success(auctionService.getBidConstraints(tournamentId, bidAmount)));
     }
 
     /** Start auction for a specific player */

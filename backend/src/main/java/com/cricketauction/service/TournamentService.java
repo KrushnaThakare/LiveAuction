@@ -75,9 +75,6 @@ public class TournamentService {
                 .playerRolesConfig(playerRoleService.toConfigJson(request.getPlayerRoles(), normalizeSport(request.getSport())))
                 .description(request.getDescription())
                 .logoUrl(request.getLogoUrl())
-                .maxSquadSize(squadSizeOrDefault(request.getMaxSquadSize()))
-                .categoryQuotasEnabled(Boolean.TRUE.equals(request.getCategoryQuotasEnabled()))
-                .categoryQuotasConfig(normalizeQuotaConfig(request.getCategoryQuotasConfig()))
                 .build();
         return mapToResponse(tournamentRepository.save(tournament));
     }
@@ -119,12 +116,6 @@ public class TournamentService {
         t.setDescription(request.getDescription());
         if (request.getLogoUrl() != null) t.setLogoUrl(request.getLogoUrl());
         if (request.getMaxSquadSize() != null) t.setMaxSquadSize(squadSizeOrDefault(request.getMaxSquadSize()));
-        if (request.getCategoryQuotasEnabled() != null) {
-            t.setCategoryQuotasEnabled(request.getCategoryQuotasEnabled());
-        }
-        if (request.getCategoryQuotasConfig() != null) {
-            t.setCategoryQuotasConfig(normalizeQuotaConfig(request.getCategoryQuotasConfig()));
-        }
         return mapToResponse(tournamentRepository.save(t));
     }
 
@@ -179,15 +170,7 @@ public class TournamentService {
                 .registrationMessage(t.getRegistrationMessage())
                 .registrationRedirectLink(t.getRegistrationRedirectLink())
                 .maxSquadSize(squadSizeOrDefault(t.getMaxSquadSize()))
-                .categoryQuotasEnabled(t.getCategoryQuotasEnabled())
-                .categoryQuotasConfig(t.getCategoryQuotasConfig())
                 .build();
-    }
-
-    private String normalizeQuotaConfig(String raw) {
-        if (raw == null || raw.isBlank()) return null;
-        return com.cricketauction.util.CategoryQuotaConfigUtil.serialize(
-                com.cricketauction.util.CategoryQuotaConfigUtil.parse(raw));
     }
 
     private static int squadSizeOrDefault(Integer value) {

@@ -50,38 +50,6 @@ export function isSquadFull(team, maxSquadSize) {
   return teamPlayerCount(team) >= squadSize;
 }
 
-/**
- * Legacy min-purse reserve OR server quota constraints (when category quotas enabled).
- */
-export function resolveTeamBidPermission(team, bidAmount, {
-  useQuotas,
-  constraintsByTeamId,
-  maxSquadSize,
-  basePrice,
-}) {
-  const squadSize = clampSquadSize(maxSquadSize);
-  if (teamPlayerCount(team) >= squadSize) {
-    return { canBid: false, maxBid: 0, reason: 'Squad full' };
-  }
-  if (useQuotas && constraintsByTeamId?.[team.id]) {
-    const row = constraintsByTeamId[team.id];
-    const maxBid = Number(row.maxBid) || 0;
-    const bid = Number(bidAmount) || 0;
-    const withinMax = bid <= maxBid + 0.01;
-    return {
-      canBid: Boolean(row.canBid) && withinMax,
-      maxBid,
-      reason: row.reason || null,
-    };
-  }
-  const maxBid = maxAllowedBid(team, squadSize, basePrice);
-  return {
-    canBid: canTeamBid(team, bidAmount, squadSize, basePrice),
-    maxBid,
-    reason: null,
-  };
-}
-
 /** Max bid hint for squad boards, audience, and broadcaster /view (always shown when team exists). */
 export function maxBidInfoForTeam(team, maxSquadSize, auctionState) {
   if (!team) return null;

@@ -17,9 +17,6 @@ public class PlayerRequest {
     @Min(value = 1, message = "Base price must be positive")
     private Double basePrice;
 
-    /** Squad quota category when tournament category quotas are enabled */
-    private String playerCategory;
-
     private String imageUrl;
 
     private String cricheroesProfileUrl;
