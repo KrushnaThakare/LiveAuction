@@ -14,14 +14,15 @@ import { driveImg } from '../utils/driveImage';
 import { resolveUrl } from '../utils/resolveUrl';
 import { matchesPlayerIdOrName, playerIdLabel } from '../utils/playerSearch';
 import {
-  applyPoolFilter,
+  applyExtraPoolFilter,
+  collectExtraColumnsFromPlayers,
+  distinctValuesForColumn,
   isPoolFilterActive,
   pickRandomPlayer,
   POOL_FILTER_ALL,
 } from '../utils/playerPoolFilter';
 import { isSquadFull, resolveTeamBidPermission } from '../utils/auctionConstraints';
 import SequentialImage from '../components/common/SequentialImage';
-import PoolFilterBar from '../components/auction/PoolFilterBar';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import toast from 'react-hot-toast';
@@ -29,7 +30,7 @@ import { useBroadcasterVerdictFlash } from '../hooks/useBroadcasterVerdictFlash'
 import {
   Gavel, Maximize2, Minimize2, Volume2, VolumeX,
   ChevronRight, CheckCircle, XCircle, Plus, Minus,
-  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X, Clapperboard, Timer,
+  Keyboard, Shuffle, StopCircle, RefreshCw, Share2, RotateCcw, Search, X, Clapperboard, Timer, Filter,
 } from 'lucide-react';
 
 function getDynamicIncrement(rules, amount, fallbackNextBid) {
@@ -306,8 +307,8 @@ export default function AuctionPage() {
   }, [activeTournament?.id, poolFilterColumn, poolFilterValue]);
 
   const filteredAvailablePool = useMemo(
-    () => applyPoolFilter(availablePlayers, poolFilterColumn, poolFilterValue, { categoryQuotasOn }),
-    [availablePlayers, poolFilterColumn, poolFilterValue, categoryQuotasOn],
+    () => applyExtraPoolFilter(availablePlayers, poolFilterColumn, poolFilterValue),
+    [availablePlayers, poolFilterColumn, poolFilterValue],
   );
 
   useEffect(() => {
@@ -955,17 +956,6 @@ export default function AuctionPage() {
                   onCommitBid={updateCallingBid}
                   disabled={actionLoading}
                 />
-
-                <PoolFilterBar
-                  compact
-                  categoryQuotasOn={categoryQuotasOn}
-                  availablePlayers={availablePlayers}
-                  unsoldPlayers={unsoldPlayers}
-                  poolFilterColumn={poolFilterColumn}
-                  poolFilterValue={poolFilterValue}
-                  onPoolFilterColumnChange={setPoolFilterColumn}
-                  onPoolFilterValueChange={setPoolFilterValue}
-                />
               </div>
 
               <TeamAssignStrip
@@ -992,7 +982,6 @@ export default function AuctionPage() {
                 allDone={allDone}
                 actionLoading={actionLoading}
                 roles={playerRoles}
-                categoryQuotasOn={categoryQuotasOn}
                 poolFilterColumn={poolFilterColumn}
                 poolFilterValue={poolFilterValue}
                 onPoolFilterColumnChange={setPoolFilterColumn}
@@ -1377,7 +1366,6 @@ function IdleStage({
   allDone,
   actionLoading,
   roles,
-  categoryQuotasOn,
   poolFilterColumn,
   poolFilterValue,
   onPoolFilterColumnChange,
@@ -1395,15 +1383,30 @@ function IdleStage({
     [availablePlayers, unsoldPlayers],
   );
 
+  const extraColumns = useMemo(
+    () => collectExtraColumnsFromPlayers(playersForColumnScan),
+    [playersForColumnScan],
+  );
+
+  const valueOptions = useMemo(
+    () => distinctValuesForColumn(availablePlayers, poolFilterColumn),
+    [availablePlayers, poolFilterColumn],
+  );
+
   const poolFiltered = useMemo(
-    () => applyPoolFilter(availablePlayers, poolFilterColumn, poolFilterValue, { categoryQuotasOn }),
-    [availablePlayers, poolFilterColumn, poolFilterValue, categoryQuotasOn],
+    () => applyExtraPoolFilter(availablePlayers, poolFilterColumn, poolFilterValue),
+    [availablePlayers, poolFilterColumn, poolFilterValue],
   );
 
   const filteredAvailablePlayers = poolFiltered.filter((player) =>
     matchesPlayerIdOrName(player, playerSearch));
 
   const filterActive = isPoolFilterActive(poolFilterColumn, poolFilterValue);
+
+  const clearPoolFilter = () => {
+    onPoolFilterColumnChange('');
+    onPoolFilterValueChange(POOL_FILTER_ALL);
+  };
 
   return (
     <div className="flex-1 flex flex-col p-4 gap-4">
@@ -1463,15 +1466,56 @@ function IdleStage({
       {/* Available players list */}
       {availablePlayers.length > 0 && (
         <>
-          <PoolFilterBar
-            categoryQuotasOn={categoryQuotasOn}
-            availablePlayers={availablePlayers}
-            unsoldPlayers={unsoldPlayers}
-            poolFilterColumn={poolFilterColumn}
-            poolFilterValue={poolFilterValue}
-            onPoolFilterColumnChange={onPoolFilterColumnChange}
-            onPoolFilterValueChange={onPoolFilterValueChange}
-          />
+          {extraColumns.length > 0 && (
+            <div className="rounded-xl p-3 flex flex-col gap-2"
+              style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide"
+                style={{ color: 'var(--color-text-secondary)' }}>
+                <Filter size={14} />
+                Excel column filter
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                <label className="flex-1 min-w-0 text-xs">
+                  <span className="block mb-1 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Column</span>
+                  <select
+                    className="input text-sm w-full"
+                    value={poolFilterColumn}
+                    onChange={(e) => {
+                      onPoolFilterColumnChange(e.target.value);
+                      onPoolFilterValueChange(POOL_FILTER_ALL);
+                    }}
+                  >
+                    <option value="">All players (no filter)</option>
+                    {extraColumns.map((col) => (
+                      <option key={col.key} value={col.label}>{col.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex-1 min-w-0 text-xs">
+                  <span className="block mb-1 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Value</span>
+                  <select
+                    className="input text-sm w-full"
+                    disabled={!poolFilterColumn}
+                    value={poolFilterValue}
+                    onChange={(e) => onPoolFilterValueChange(e.target.value)}
+                  >
+                    <option value={POOL_FILTER_ALL}>— select value —</option>
+                    {valueOptions.map((v) => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
+                </label>
+                {filterActive && (
+                  <button type="button" className="btn-secondary text-sm whitespace-nowrap" onClick={clearPoolFilter}>
+                    Clear filter
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
+                Use for Category A/B, Mens/Womens, etc. Random and the list below use only matching players until you clear the filter.
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
