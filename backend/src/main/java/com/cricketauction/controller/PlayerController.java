@@ -123,4 +123,13 @@ public class PlayerController {
         return ResponseEntity.ok(ApiResponse.success("Player deleted", null));
     }
 
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<Map<String, Integer>>> deleteAllPlayers(@PathVariable Long tournamentId) {
+        int removed = playerService.deleteAllPlayers(tournamentId);
+        overlayPushService.pushSnapshot(tournamentId);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Removed " + removed + " player(s)",
+                Map.of("removed", removed)));
+    }
+
 }
