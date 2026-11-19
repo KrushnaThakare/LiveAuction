@@ -85,9 +85,9 @@ public class SquadQuotaService {
             return deny(team, "No quota rule for category \"" + playerCat + "\"");
         }
 
-        int maxSquad = squadSizeCap(tournament.getMaxSquadSize());
-        int playerCount = (int) playerRepository.countByTournamentIdAndTeamId(tournament.getId(), team.getId());
-        if (playerCount >= maxSquad) {
+        int squadSize = snap.squadSize(team.getId());
+        int maxSquad = tournament.getMaxSquadSize() != null ? tournament.getMaxSquadSize() : 15;
+        if (squadSize >= maxSquad) {
             return deny(team, "Squad full (" + maxSquad + ")");
         }
 
@@ -111,7 +111,7 @@ public class SquadQuotaService {
             return deny(team, "Insufficient budget");
         }
 
-        double maxBid = computeMaxBid(tournament, team, playerCount, cfg, need, snap, currentPlayer, rule);
+        double maxBid = computeMaxBid(team, cfg, need, snap, currentPlayer, rule);
         if (bidAmount > maxBid + 0.01) {
             return deny(team, "Max bid ₹" + (long) maxBid + " (reserve for mandatory picks)");
         }
@@ -142,38 +142,15 @@ public class SquadQuotaService {
                 .build();
     }
 
-    private double computeMaxBid(Tournament tournament, Team team, int playerCount, CategoryQuotaConfig cfg,
-                                 Map<String, Integer> need, TournamentSnapshot snap, Player currentPlayer,
-                                 CategoryRule buyingRule) {
+    private double computeMaxBid(Team team, CategoryQuotaConfig cfg, Map<String, Integer> need,
+                                TournamentSnapshot snap, Player currentPlayer, CategoryRule buyingRule) {
         Map<String, Integer> needAfter = new HashMap<>(need);
         String bk = ruleKey(buyingRule);
         if (needAfter.getOrDefault(bk, 0) > 0) {
             needAfter.put(bk, needAfter.get(bk) - 1);
         }
-        int maxSquad = squadSizeCap(tournament.getMaxSquadSize());
-        int slotsAfterPurchase = Math.max(0, maxSquad - playerCount - 1);
-        int mandatoryLeft = needAfter.values().stream().mapToInt(Integer::intValue).sum();
-        int flexSlots = Math.max(0, slotsAfterPurchase - mandatoryLeft);
-
-        double categoryReserve = computeReserve(cfg, needAfter, snap.poolExcluding(currentPlayer.getId()));
-        double flexReserve = flexSlots * minReserveFloor(cfg);
-        double reserve = categoryReserve + flexReserve;
+        double reserve = computeReserve(cfg, needAfter, snap.poolExcluding(currentPlayer.getId()));
         return Math.max(0, Math.floor(team.getRemainingBudget() - reserve));
-    }
-
-    private int squadSizeCap(Integer value) {
-        if (value == null) return 15;
-        return Math.max(5, Math.min(30, value));
-    }
-
-    /** Cheapest configured reserve base (e.g. 1k tier) for non-mandatory squad slots. */
-    private double minReserveFloor(CategoryQuotaConfig cfg) {
-        double min = Double.MAX_VALUE;
-        for (CategoryRule rule : cfg.categories) {
-            double floor = rule.reserveFloor();
-            if (floor > 0) min = Math.min(min, floor);
-        }
-        return min == Double.MAX_VALUE ? 0.0 : min;
     }
 
     private double computeReserve(CategoryQuotaConfig cfg, Map<String, Integer> need, List<Player> pool) {
