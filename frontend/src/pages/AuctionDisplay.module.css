@@ -263,6 +263,8 @@
 
 .bidCard {
   text-align: right;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .bidAmount {
@@ -445,6 +447,11 @@
   font-size: clamp(18px, 1.35vw, 28px);
   font-weight: 950;
   text-align: right;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .resultLayer {
@@ -615,6 +622,8 @@
 
 .resultAmount {
   margin-top: 20px;
+  width: 100%;
+  max-width: min(92vw, 960px);
   color: #00d26a;
   font-size: clamp(54px, 7vw, 124px);
   line-height: 0.9;

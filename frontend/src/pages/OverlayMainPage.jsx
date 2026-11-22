@@ -167,11 +167,13 @@ export default function OverlayMainPage() {
                   +{money(increment)}
                 </div>
               )}
-              {isSold && (
-                <div className={styles.soldAmount}>
-                  {money(auction?.currentBid)}
-                </div>
-              )}
+            {isSold && (
+              <BidAmountDisplay
+                className={styles.soldAmount}
+                amount={auction?.currentBid}
+                formatAmount={money}
+              />
+            )}
             </div>
           )}
         </div>
