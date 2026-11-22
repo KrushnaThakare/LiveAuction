@@ -358,7 +358,12 @@ export default function AuctionDisplayPage() {
                     {squadPickLabel && <small className={styles.resultSquadPick}>{squadPickLabel} in Squad</small>}
                   </span>
                 </div>
-                <div className={styles.resultAmount}>{money(auction?.currentBid)}</div>
+                <BidAmountDisplay
+                  className={styles.resultAmount}
+                  amount={auction?.currentBid}
+                  formatAmount={money}
+                  align="center"
+                />
               </>
             ) : (
               <div className={styles.resultSubcopy}>Returns to the auction pool</div>

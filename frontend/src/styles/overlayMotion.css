@@ -17,7 +17,7 @@
 
 .overlay-bid-pop {
   display: inline-block;
-  transform-origin: center center;
+  transform-origin: right center;
   animation: overlayBidPop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 

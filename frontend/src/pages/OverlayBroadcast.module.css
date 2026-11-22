@@ -447,6 +447,7 @@
   grid-template-rows: auto 1fr auto;
   gap: clamp(8px, 0.8vw, 12px);
   min-height: 0;
+  min-width: 0;
 }
 
 .bidPanelSoldLayout {
@@ -642,6 +643,8 @@
   display: grid;
   align-content: center;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
   padding: clamp(10px, 1vw, 14px) clamp(12px, 1vw, 16px);
 }
 
@@ -654,6 +657,8 @@
 
 .bidAmount {
   margin-top: 5px;
+  min-width: 0;
+  max-width: 100%;
   color: #00d26a;
   font-size: clamp(34px, 4.25vw, 72px);
   line-height: 0.92;
@@ -708,12 +713,13 @@
 }
 
 .soldAmount {
+  min-width: 0;
+  max-width: 100%;
   color: #00d26a;
   font-size: clamp(16px, 1.5vw, 26px);
   font-weight: 1000;
   text-shadow: 0 0 20px rgba(0, 210, 106, 0.5);
   animation: soldAmountPop 0.75s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.2s both;
-  white-space: nowrap;
 }
 
 .teamLogo {
