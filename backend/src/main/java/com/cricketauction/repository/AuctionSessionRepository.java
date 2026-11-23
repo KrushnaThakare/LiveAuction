@@ -29,8 +29,14 @@ public interface AuctionSessionRepository extends JpaRepository<AuctionSession, 
      * Called before starting a new session for the same player (re-auction).
      * Uses native SQL so it is not JPQL-validated during schema creation on H2.
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "UPDATE auction_sessions SET current_player_id = NULL WHERE current_player_id = :playerId AND status IN ('SOLD','UNSOLD')",
            nativeQuery = true)
     void nullifyPlayerFromClosedSessions(Long playerId);
+
+    /** Clear FK on any session row so the player row can be deleted. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE auction_sessions SET current_player_id = NULL WHERE current_player_id = :playerId",
+           nativeQuery = true)
+    void nullifyCurrentPlayerFromSessions(Long playerId);
 }
