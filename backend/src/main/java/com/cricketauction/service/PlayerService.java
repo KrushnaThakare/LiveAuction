@@ -233,6 +233,18 @@ public class PlayerService {
         Player player = findById(id);
         String name = player.getName();
         Long tournamentId = player.getTournament() != null ? player.getTournament().getId() : null;
+
+        if (tournamentId != null && player.getStatus() == Player.PlayerStatus.IN_AUCTION) {
+            auctionSessionRepository
+                    .findByTournamentIdAndStatus(tournamentId, AuctionSession.AuctionStatus.ACTIVE)
+                    .filter(s -> s.getCurrentPlayer() != null && id.equals(s.getCurrentPlayer().getId()))
+                    .ifPresent(s -> {
+                        throw new AuctionException(
+                                "This player is in a live auction. Stop or finish the lot before deleting.");
+                    });
+        }
+
+        auctionSessionRepository.nullifyCurrentPlayerFromSessions(id);
         clearRetainedBudget(player);
         playerRepository.delete(player);
         auditLogService.record("PLAYER_DELETED", "Player", id, tournamentId, name);

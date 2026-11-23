@@ -209,10 +209,6 @@ public class AuctionService {
         bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
 
-        // Restore in-memory for the API response (DB already has NULLs)
-        session.setCurrentPlayer(closedPlayer);
-        session.setHighestBidderTeam(closedWinnerTeam);
-        session.setCurrentBid(closedBid);
         auditLogService.record("PLAYER_SOLD", "Player", closedPlayer.getId(), tournamentId,
                 "Player #" + closedPlayer.getId() + " " + closedPlayer.getName()
                         + " sold to " + closedWinnerTeam.getName() + " for " + (long) closedBid);
@@ -248,7 +244,6 @@ public class AuctionService {
         session.setEndedAt(LocalDateTime.now());
         bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
-        session.setCurrentPlayer(closedPlayer);
         auditLogService.record("PLAYER_UNSOLD", "Player", closedPlayer.getId(), tournamentId,
                 "Player #" + closedPlayer.getId() + " " + closedPlayer.getName() + " marked unsold");
         return mapToResponse(session);
@@ -258,20 +253,25 @@ public class AuctionService {
     public AuctionStateResponse stopAuction(Long tournamentId) {
         AuctionSession session = requireActiveSession(tournamentId);
         Player player = session.getCurrentPlayer();
+        if (player == null) {
+            throw new AuctionException("No player is active in this auction session");
+        }
 
         player.setStatus(Player.PlayerStatus.AVAILABLE);
         player.setCurrentBid(0.0);
         playerRepository.save(player);
-        Player closedPlayer = session.getCurrentPlayer();
 
-        session.setCurrentPlayer(null);   // null FK
+        session.setUndoPlayerId(player.getId());
+        session.setUndoPreviousPlayerStatus(Player.PlayerStatus.AVAILABLE);
+        session.setCurrentPlayer(null);
         session.setHighestBidderTeam(null);
         session.setStatus(AuctionSession.AuctionStatus.UNSOLD);
         session.setCurrentBid(0.0);
         session.setEndedAt(LocalDateTime.now());
         bumpStateRevision(session);
         session = auctionSessionRepository.save(session);
-        session.setCurrentPlayer(closedPlayer);
+        auditLogService.record("AUCTION_STOPPED", "Player", player.getId(), tournamentId,
+                "Player #" + player.getId() + " " + player.getName() + " returned to available pool");
         return mapToResponse(session);
     }
 
