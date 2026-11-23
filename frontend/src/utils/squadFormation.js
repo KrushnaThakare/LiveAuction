@@ -23,14 +23,14 @@ export function computeSquadGridColumns(squadSize) {
 }
 
 /** Grid layout for filled player cards — keeps full squad visible on one screen */
-export function computeFilledGridLayout(itemCount) {
+export function computeFilledGridLayout(itemCount, maxRows = 4) {
   const items = Math.max(1, itemCount);
-  const maxRows = 4;
+  const rowCap = Math.max(3, Math.min(6, maxRows));
   let cols = items <= 4 ? Math.min(4, items) : 5;
   let rows = Math.ceil(items / cols);
 
-  if (rows > maxRows) {
-    cols = Math.min(8, Math.max(5, Math.ceil(items / maxRows)));
+  if (rows > rowCap) {
+    cols = Math.min(8, Math.max(5, Math.ceil(items / rowCap)));
     rows = Math.ceil(items / cols);
   }
 
@@ -43,23 +43,27 @@ export function computeFilledGridLayout(itemCount) {
 }
 
 /** Overlay broadcast: size cards from actual filled count — avoid huge empty slots early in the draft */
-export function computeOverlayGridVars(itemCount) {
-  const layout = computeFilledGridLayout(itemCount);
+export function computeOverlayGridVars(itemCount, { audience = false } = {}) {
+  const layout = computeFilledGridLayout(itemCount, audience ? 5 : 4);
   const items = Math.max(1, itemCount);
+  const vh = audience ? 1.18 : 1;
 
   if (items <= 2) {
-    return { ...layout, cardMaxWidth: '240px', photoMaxHeight: 'min(28vh, 220px)' };
+    return { ...layout, cardMaxWidth: audience ? '280px' : '240px', photoMaxHeight: `min(${28 * vh}vh, ${audience ? 260 : 220}px)` };
   }
   if (items <= 4) {
-    return { ...layout, cardMaxWidth: '200px', photoMaxHeight: 'min(22vh, 175px)' };
+    return { ...layout, cardMaxWidth: audience ? '230px' : '200px', photoMaxHeight: `min(${22 * vh}vh, ${audience ? 210 : 175}px)` };
   }
   if (items <= 8) {
-    return { ...layout, cardMaxWidth: '168px', photoMaxHeight: 'min(18vh, 150px)' };
+    return { ...layout, cardMaxWidth: audience ? '196px' : '168px', photoMaxHeight: `min(${18 * vh}vh, ${audience ? 178 : 150}px)` };
   }
   if (items <= 12) {
-    return { ...layout, cardMaxWidth: '142px', photoMaxHeight: 'min(15vh, 128px)' };
+    return { ...layout, cardMaxWidth: audience ? '168px' : '142px', photoMaxHeight: `min(${15 * vh}vh, ${audience ? 150 : 128}px)` };
   }
-  return { ...layout, cardMaxWidth: '124px', photoMaxHeight: 'min(13vh, 112px)' };
+  if (items <= 18) {
+    return { ...layout, cardMaxWidth: audience ? '148px' : '132px', photoMaxHeight: `min(${13 * vh}vh, ${audience ? 132 : 118}px)` };
+  }
+  return { ...layout, cardMaxWidth: audience ? '132px' : '124px', photoMaxHeight: `min(${12 * vh}vh, ${audience ? 118 : 112}px)` };
 }
 
 export function squadProgress(filledCount, squadSize) {

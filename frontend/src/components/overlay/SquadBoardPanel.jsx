@@ -106,10 +106,10 @@ export default function SquadBoardPanel({
   const gridItems = filledPlayers.length + (showNextSlot && remaining > 0 ? 1 : 0);
   const isOverlay = variant === 'overlay';
   const gridLayout = isOverlay
-    ? computeOverlayGridVars(gridItems)
+    ? computeOverlayGridVars(gridItems, { audience: true })
     : computeFilledGridLayout(gridItems);
   const { cols: gridColumns, rows: gridRows, density } = gridLayout;
-  const compactHeader = filled >= 5;
+  const compactHeader = !isOverlay && filled >= 5;
   const densityClass = {
     relaxed: styles.densityRelaxed,
     cozy: styles.densityCozy,
