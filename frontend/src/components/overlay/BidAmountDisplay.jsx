@@ -1,9 +1,11 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { bidDigitTierScale } from '../../utils/bidAmountScale';
 
-const MIN_SCALE = 0.38;
+const OVERFLOW_FLOOR = 0.72;
 
 /**
- * Renders bid amount anchored to the right; scales down as digits grow so lakhs stay on screen.
+ * Audience / overlay bid: only the amount shrinks in small steps per digit count;
+ * optional tiny extra shrink if the panel is still too narrow.
  */
 export default function BidAmountDisplay({
   amount,
@@ -14,9 +16,10 @@ export default function BidAmountDisplay({
   align = 'right',
 }) {
   const text = formatAmount(amount);
+  const digitScale = bidDigitTierScale(amount);
   const outerRef = useRef(null);
   const measureRef = useRef(null);
-  const [fitScale, setFitScale] = useState(1);
+  const [overflowScale, setOverflowScale] = useState(1);
 
   useLayoutEffect(() => {
     const outer = outerRef.current;
@@ -28,9 +31,10 @@ export default function BidAmountDisplay({
       const avail = outer.clientWidth;
       const need = measure.scrollWidth;
       if (avail > 0 && need > avail) {
-        setFitScale(Math.max(MIN_SCALE, avail / need));
+        const ratio = avail / need;
+        setOverflowScale(Math.max(OVERFLOW_FLOOR / digitScale, Math.min(1, ratio)));
       } else {
-        setFitScale(1);
+        setOverflowScale(1);
       }
     };
 
@@ -38,10 +42,11 @@ export default function BidAmountDisplay({
     const ro = new ResizeObserver(fit);
     ro.observe(outer);
     return () => ro.disconnect();
-  }, [text, popToken]);
+  }, [text, popToken, digitScale]);
 
   const origin = align === 'center' ? 'center center' : 'right center';
   const justify = align === 'center' ? 'center' : 'flex-end';
+  const combined = digitScale * overflowScale;
 
   return (
     <div
@@ -61,11 +66,12 @@ export default function BidAmountDisplay({
         ref={measureRef}
         style={{
           display: 'inline-block',
-          transform: fitScale < 1 ? `scale(${fitScale})` : undefined,
+          fontSize: `${digitScale}em`,
+          transform: overflowScale < 1 ? `scale(${overflowScale})` : undefined,
           transformOrigin: origin,
           whiteSpace: 'nowrap',
-          maxWidth: fitScale < 1 ? 'none' : '100%',
         }}
+        title={combined < 0.99 ? text : undefined}
       >
         <span key={popToken} className={popToken > 0 ? 'overlay-bid-pop' : undefined}>
           {text}
