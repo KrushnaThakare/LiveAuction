@@ -86,16 +86,9 @@ export default function AuctionDisplayPage() {
   const sponsor = params.get('sponsor') || 'Premium Auction Arena';
   const [audienceMode, setAudienceMode] = useState('audience');
   const [squadTeamIndex, setSquadTeamIndex] = useState(0);
-  const [includePlayers, setIncludePlayers] = useState(false);
-  const { data, config, connected, transport } = useOverlayRealtime(tid, token, { includePlayers, studioOverlay: true });
+  const { data, config, connected, transport } = useOverlayRealtime(tid, token, { includePlayers: true, studioOverlay: true });
   const ceremonyEnabled = config?.overlayShowSquadFormation === true;
   const squadSize = resolveSquadSize(config);
-
-  useEffect(() => {
-    if (ceremonyEnabled || audienceMode === 'squadBoard') {
-      setIncludePlayers(true);
-    }
-  }, [ceremonyEnabled, audienceMode]);
 
   const title = params.get('title') || getAuctionDisplayName(config, 'Auction Live');
   const auction = data?.auction;

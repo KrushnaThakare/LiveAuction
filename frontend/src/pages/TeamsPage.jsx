@@ -56,7 +56,11 @@ export default function TeamsPage() {
     try {
       let teamId;
       if (editingTeam) {
-        await teamApi.update(activeTournament.id, editingTeam.id, formData);
+        const payload = { ...formData };
+        if (editingTeam.logoUrl && !teamLogoFile) {
+          payload.logoUrl = editingTeam.logoUrl;
+        }
+        await teamApi.update(activeTournament.id, editingTeam.id, payload);
         teamId = editingTeam.id;
         toast.success('Team updated!');
       } else {

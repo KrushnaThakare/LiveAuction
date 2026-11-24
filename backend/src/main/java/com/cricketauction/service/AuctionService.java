@@ -326,6 +326,7 @@ public class AuctionService {
 
     /* ── re-auction all unsold players (reset to AVAILABLE) ── */
     public int reAuctionUnsold(Long tournamentId) {
+        ensureNoActiveSession(tournamentId);
         List<Player> unsold = playerRepository.findByTournamentIdAndStatus(
                 tournamentId, Player.PlayerStatus.UNSOLD);
         if (unsold.isEmpty()) {
@@ -404,13 +405,28 @@ public class AuctionService {
     }
 
     private void validatePlayerForAuction(Player player, Long tournamentId) {
-        if (player.getStatus() != Player.PlayerStatus.AVAILABLE) {
-            throw new AuctionException(
-                    "Player '" + player.getName() + "' is not available for auction (status: " +
-                    player.getStatus() + ")");
-        }
         if (!player.getTournament().getId().equals(tournamentId)) {
             throw new AuctionException("Player does not belong to this tournament");
+        }
+        Player.PlayerStatus status = player.getStatus();
+        if (status == Player.PlayerStatus.SOLD) {
+            throw new AuctionException(
+                    "Player '" + player.getName() + "' is already sold and cannot be re-auctioned");
+        }
+        if (status == Player.PlayerStatus.IN_AUCTION) {
+            throw new AuctionException(
+                    "Player '" + player.getName() + "' is already in an active auction");
+        }
+        if (status == Player.PlayerStatus.UNSOLD) {
+            player.setStatus(Player.PlayerStatus.AVAILABLE);
+            player.setCurrentBid(0.0);
+            playerRepository.save(player);
+            status = Player.PlayerStatus.AVAILABLE;
+        }
+        if (status != Player.PlayerStatus.AVAILABLE) {
+            throw new AuctionException(
+                    "Player '" + player.getName() + "' is not available for auction (status: " +
+                    status + ")");
         }
     }
 
