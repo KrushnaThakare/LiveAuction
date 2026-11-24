@@ -355,6 +355,7 @@ export default function AuctionPage() {
       setProposedBid(null);
       setBidKey(k => k + 1);
       setAvailablePlayers(p => p.filter(pl => pl.id !== player.id));
+      setUnsoldPlayers(p => p.filter(pl => pl.id !== player.id));
       if (voiceEnabled) announceAuctionStart(player.name, player.basePrice);
       toast.success(`Auction started for ${player.name}`);
     } finally {
@@ -780,6 +781,7 @@ export default function AuctionPage() {
   const isActive   = auctionState?.status === 'ACTIVE';
   const displayBid = proposedBid ?? auctionState?.currentBid ?? 0;
   const allDone    = availablePlayers.length === 0 && !isActive && unsoldPlayers.length > 0;
+  const canBulkReAuction = !isActive && unsoldPlayers.length > 0;
   const playerRoles = getPlayerRoles(activeTournament);
   const auctionTitle = getAuctionDisplayName(activeTournament, activeTournament.name);
 
@@ -922,6 +924,7 @@ export default function AuctionPage() {
                 availablePlayers={availablePlayers}
                 unsoldPlayers={unsoldPlayers}
                 allDone={allDone}
+                canBulkReAuction={canBulkReAuction}
                 actionLoading={actionLoading}
                 roles={playerRoles}
                 poolFilterColumn={poolFilterColumn}
@@ -1304,6 +1307,7 @@ function IdleStage({
   availablePlayers,
   unsoldPlayers,
   allDone,
+  canBulkReAuction,
   actionLoading,
   roles,
   poolFilterColumn,
@@ -1385,9 +1389,14 @@ function IdleStage({
               <Shuffle size={16} /> Random Player <span className="opacity-60 text-xs">[R]</span>
             </button>
           )}
-          {allDone && (
-            <button onClick={onReAuction} disabled={actionLoading} className="btn-secondary">
-              <RefreshCw size={16} /> Re-auction {unsoldPlayers.length} Unsold
+          {canBulkReAuction && (
+            <button
+              onClick={onReAuction}
+              disabled={actionLoading}
+              className={allDone ? 'btn-primary' : 'btn-secondary'}
+              title={allDone ? 'Reset all unsold players to the available pool' : 'Move unsold players back into the available pool without losing remaining available players'}
+            >
+              <RefreshCw size={16} /> Re-auction all {unsoldPlayers.length} unsold
             </button>
           )}
           {canUndo && (
@@ -1516,6 +1525,45 @@ function IdleStage({
             })}
           </div>
           )}
+        </>
+      )}
+
+      {!actionLoading && unsoldPlayers.length > 0 && availablePlayers.length === 0 && (
+        <>
+          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
+            Unsold players — pick one to re-auction
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+            {unsoldPlayers.map((player) => {
+              const imgUrl = driveImg(player.imageUrl);
+              return (
+                <button
+                  key={player.id}
+                  onClick={() => onStart(player)}
+                  disabled={actionLoading}
+                  className="flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200"
+                  style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-unsold, #f59e0b)' }}
+                >
+                  <div
+                    className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 relative flex items-center justify-center"
+                    style={{ backgroundColor: getRoleBg(player.role, roles) }}
+                  >
+                    <PlayerImage imgUrl={imgUrl} name={player.name} roleColor={getRoleColor(player.role, roles)} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>{player.name}</p>
+                    <p className="text-[10px] font-black uppercase" style={{ color: 'var(--color-accent)' }}>
+                      {playerIdLabel(player)}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                      {formatRole(player.role, roles)} · {formatCurrency(player.basePrice)}
+                    </p>
+                  </div>
+                  <ChevronRight size={15} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
+                </button>
+              );
+            })}
+          </div>
         </>
       )}
     </div>

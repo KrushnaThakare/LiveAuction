@@ -2,17 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useOverlayRealtime } from '../hooks/useOverlayRealtime';
+import { useSquadBoardRoster } from '../hooks/useSquadBoardRoster';
 import SquadBoardPanel from '../components/overlay/SquadBoardPanel';
 import OverlayFullscreenButton from '../components/common/OverlayFullscreenButton';
-import {
-  boardPlayersFromTeam,
-  buildRosterByTeam,
-  mergeBoardPlayers,
-  resolveSquadSize,
-  teamHasServerRoster,
-  toSlotPlayer,
-} from '../utils/squadFormation';
-import { getRoleShortLabel } from '../utils/formatters';
+import { resolveSquadSize } from '../utils/squadFormation';
 import { maxBidInfoForTeam } from '../utils/auctionConstraints';
 import styles from './OverlayTeamSquadBoard.module.css';
 
@@ -38,79 +31,10 @@ export default function OverlayTeamSquadBoardPage() {
   const [teamIndex, setTeamIndex] = useState(0);
   const [visible, setVisible] = useState(true);
   const [autoScroll, setAutoScroll] = useState(readAutoScrollPreference);
-  const [rosterByTeam, setRosterByTeam] = useState({});
   const timerRef = useRef(null);
-  const lastSoldKeyRef = useRef('');
   const goNextRef = useRef(() => {});
-
-  useEffect(() => {
-    if (!teams.length) return;
-    const serverRoster = buildRosterByTeam(teams, playerRoles, true);
-    const hasAnyServerRoster = teams.some(teamHasServerRoster);
-
-    setRosterByTeam((current) => {
-      let changed = false;
-      const next = { ...current };
-
-      for (const team of teams) {
-        const serverPlayers = serverRoster[team.id] || [];
-        const localPlayers = next[team.id] || [];
-        const expected = Math.max(Number(team.playerCount) || 0, serverPlayers.length);
-
-        if (serverPlayers.length > 0 && (localPlayers.length < serverPlayers.length || localPlayers.length < expected)) {
-          next[team.id] = serverPlayers;
-          changed = true;
-          continue;
-        }
-
-        if (!serverPlayers.length) continue;
-
-        const merged = mergeBoardPlayers(localPlayers, team, playerRoles, true);
-        if (merged.length !== localPlayers.length) {
-          next[team.id] = merged;
-          changed = true;
-        }
-      }
-
-      if (!hasAnyServerRoster && !Object.keys(current).length) {
-        return current;
-      }
-
-      return changed ? next : current;
-    });
-  }, [teams, playerRoles]);
-
-  useEffect(() => {
-    const auction = data?.auction;
-    if (!auction || auction.status !== 'SOLD') return;
-    const player = auction.currentPlayer;
-    const teamId = auction.highestBidderTeamId;
-    const team = teams.find((entry) => String(entry.id) === String(teamId));
-    if (!player?.id || !teamId || !team) return;
-
-    const soldKey = `${auction.sessionId || 'session'}:${player.id}`;
-    if (lastSoldKeyRef.current === soldKey) return;
-
-    const serverPlayers = boardPlayersFromTeam(team, playerRoles, true);
-    if (serverPlayers.some((entry) => String(entry.id) === String(player.id))) {
-      lastSoldKeyRef.current = soldKey;
-      return;
-    }
-
-    lastSoldKeyRef.current = soldKey;
-
-    const slotPlayer = {
-      ...toSlotPlayer(player, playerRoles),
-      soldPrice: auction.currentBid ?? player.currentBid ?? player.basePrice ?? 0,
-      role: getRoleShortLabel(player.role, playerRoles),
-    };
-
-    setRosterByTeam((current) => {
-      const list = current[teamId] || [];
-      if (list.some((entry) => String(entry.id) === String(player.id))) return current;
-      return { ...current, [teamId]: [...list, slotPlayer] };
-    });
-  }, [data?.auction, playerRoles, teams]);
+  const auction = data?.auction;
+  const { filledForTeam } = useSquadBoardRoster(teams, playerRoles, auction);
 
   const teamCount = teams.length;
   const safeIndex = teamCount ? ((teamIndex % teamCount) + teamCount) % teamCount : 0;
@@ -118,10 +42,8 @@ export default function OverlayTeamSquadBoardPage() {
 
   const filledPlayers = useMemo(() => {
     if (!team) return [];
-    return mergeBoardPlayers(rosterByTeam[team.id], team, playerRoles, true);
-  }, [rosterByTeam, team, playerRoles]);
-
-  const auction = data?.auction;
+    return filledForTeam[team.id] || [];
+  }, [filledForTeam, team]);
   const maxBidInfo = useMemo(() => {
     const info = maxBidInfoForTeam(team, squadSize, auction);
     if (!info) return null;
