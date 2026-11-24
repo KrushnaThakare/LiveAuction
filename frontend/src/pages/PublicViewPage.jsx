@@ -122,7 +122,19 @@ export default function PublicViewPage() {
   const teamsForTab = useMemo(() => {
     if (!fullTeams?.length) return summaryTeams;
     const liveById = Object.fromEntries(summaryTeams.map((t) => [t.id, t]));
-    return fullTeams.map((t) => ({ ...t, ...(liveById[t.id] || {}) }));
+    return fullTeams.map((t) => {
+      const live = liveById[t.id];
+      if (!live) return t;
+      const livePlayers = Array.isArray(live.players) ? live.players : null;
+      const fullPlayers = Array.isArray(t.players) ? t.players : [];
+      return {
+        ...t,
+        ...live,
+        logoUrl: live.logoUrl || t.logoUrl,
+        playerCount: Math.max(Number(t.playerCount) || 0, Number(live.playerCount) || 0, fullPlayers.length),
+        players: livePlayers?.length ? livePlayers : fullPlayers,
+      };
+    });
   }, [fullTeams, summaryTeams]);
 
   const screenStyle = { background: '#060d1a', color: '#f0f6ff', minHeight: '100vh' };
@@ -478,6 +490,11 @@ function TeamsView({ teams, roles, loading, auctionState, maxSquadSize }) {
             </div>
 
             {/* Squad list */}
+            {isOpen && (!team.players || team.players.length === 0) && team.playerCount > 0 && (
+              <p className="mt-3 pt-3 text-xs text-center" style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                Loading squad…
+              </p>
+            )}
             {isOpen && team.players && team.players.length > 0 && (
               <div className="mt-3 space-y-1.5 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
                 <p className="text-xs font-bold uppercase tracking-wide mb-2"
